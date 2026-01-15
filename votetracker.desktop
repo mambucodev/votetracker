@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=VoteTracker
+Comment=School grade management
+Exec=votetracker
+Icon=x-office-spreadsheet
+Terminal=false
+Type=Application
+Categories=Education;Office;
+Keywords=school;grades;votes;education;
