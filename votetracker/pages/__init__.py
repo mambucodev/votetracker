@@ -9,6 +9,7 @@ from .subjects import SubjectsPage
 from .simulator import SimulatorPage
 from .calendar import CalendarPage
 from .report_card import ReportCardPage
+from .statistics import StatisticsPage
 from .settings import SettingsPage
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     "SimulatorPage",
     "CalendarPage",
     "ReportCardPage",
+    "StatisticsPage",
     "SettingsPage",
 ]
