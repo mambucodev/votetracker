@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QMessageBox, QDialog
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QKeyEvent
 
 from ..database import Database
 from ..utils import get_symbolic_icon, has_icon, get_icon_fallback, get_status_color, StatusColors
@@ -249,14 +249,49 @@ class VotesPage(QWidget):
         row = self._table.currentRow()
         if row < 0:
             return
-        
+
         reply = QMessageBox.question(
             self, "Confirm Deletion",
             "Are you sure you want to delete this vote?",
             QMessageBox.Yes | QMessageBox.No
         )
-        
+
         if reply == QMessageBox.Yes:
             vote_id = int(self._table.item(row, 6).text())
             self._db.delete_vote(vote_id)
             self.vote_changed.emit()
+
+    def handle_key(self, event: QKeyEvent) -> bool:
+        """Handle keyboard shortcuts for this page. Returns True if handled."""
+        key = event.key()
+        modifiers = event.modifiers()
+
+        # Ctrl+N: Add new vote
+        if modifiers == Qt.ControlModifier and key == Qt.Key_N:
+            if self._add_btn.isEnabled():
+                self._add_vote()
+            return True
+
+        # Delete: Delete selected vote
+        if key == Qt.Key_Delete:
+            if self._table.currentRow() >= 0:
+                self._delete_vote()
+            return True
+
+        # Enter/Return: Edit selected vote
+        if key in (Qt.Key_Return, Qt.Key_Enter):
+            if self._table.currentRow() >= 0:
+                self._edit_vote()
+            return True
+
+        # 1/2: Switch term
+        if key == Qt.Key_1:
+            self._term_toggle.set_term(1)
+            self._on_term_changed(1)
+            return True
+        if key == Qt.Key_2:
+            self._term_toggle.set_term(2)
+            self._on_term_changed(2)
+            return True
+
+        return False

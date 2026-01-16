@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QFrame, QStackedWidget
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeyEvent
 
 from .database import Database
 from .utils import calc_average, get_grade_style
@@ -207,3 +208,50 @@ class MainWindow(QMainWindow):
         """Handle school year list change."""
         self._update_year_selector()
         self._refresh_all()
+
+    def _next_page(self):
+        """Switch to next page (wraps around)."""
+        current = self._stack.currentIndex()
+        next_idx = (current + 1) % self._stack.count()
+        self._switch_page(next_idx)
+
+    def _prev_page(self):
+        """Switch to previous page (wraps around)."""
+        current = self._stack.currentIndex()
+        prev_idx = (current - 1) % self._stack.count()
+        self._switch_page(prev_idx)
+
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle keyboard shortcuts."""
+        key = event.key()
+        modifiers = event.modifiers()
+
+        # Page navigation with PgUp/PgDown
+        if key == Qt.Key_PageDown:
+            self._next_page()
+            return
+        elif key == Qt.Key_PageUp:
+            self._prev_page()
+            return
+
+        # Direct page access with Ctrl+1-6
+        if modifiers == Qt.ControlModifier:
+            page_keys = {
+                Qt.Key_1: 0,  # Dashboard
+                Qt.Key_2: 1,  # Votes
+                Qt.Key_3: 2,  # Subjects
+                Qt.Key_4: 3,  # Simulator
+                Qt.Key_5: 4,  # Report Card
+                Qt.Key_6: 5,  # Settings
+            }
+            if key in page_keys:
+                self._switch_page(page_keys[key])
+                return
+
+        # Delegate to current page if it has key handling
+        current_page = self._stack.currentWidget()
+        if hasattr(current_page, 'handle_key'):
+            if current_page.handle_key(event):
+                return
+
+        super().keyPressEvent(event)

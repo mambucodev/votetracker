@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QScrollArea, QGridLayout, QFrame, QMessageBox, QDialog
 )
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QKeyEvent
 
 from ..database import Database
 from ..utils import calc_average, round_report_card, get_symbolic_icon, has_icon, get_icon_fallback
@@ -130,16 +131,28 @@ class SubjectsPage(QWidget):
         """Edit or delete a subject."""
         votes = self._db.get_votes(subject_name)
         dialog = EditSubjectDialog(subject_name, len(votes), self)
-        
+
         if dialog.exec() == QDialog.Accepted:
             if dialog.action == "rename":
                 if self._db.rename_subject(subject_name, dialog.new_name):
                     self.subject_changed.emit()
                 else:
                     QMessageBox.warning(
-                        self, "Error", 
+                        self, "Error",
                         "A subject with that name already exists."
                     )
             elif dialog.action == "delete":
                 self._db.delete_subject(subject_name)
                 self.subject_changed.emit()
+
+    def handle_key(self, event: QKeyEvent) -> bool:
+        """Handle keyboard shortcuts for this page. Returns True if handled."""
+        key = event.key()
+        modifiers = event.modifiers()
+
+        # Ctrl+N: Add new subject
+        if modifiers == Qt.ControlModifier and key == Qt.Key_N:
+            self._add_subject()
+            return True
+
+        return False

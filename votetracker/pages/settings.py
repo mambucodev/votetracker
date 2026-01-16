@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QDialog
 )
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QKeyEvent
 
 from ..database import Database, get_db_path
 from ..utils import get_symbolic_icon, has_icon, get_icon_fallback
@@ -270,7 +271,7 @@ class SettingsPage(QWidget):
         """Clear all votes for current year."""
         active = self._db.get_active_school_year()
         year_name = active["name"] if active else "current year"
-        
+
         reply = QMessageBox.warning(
             self, "Confirm Deletion",
             f"Are you sure you want to delete ALL votes in {year_name}?\n"
@@ -278,11 +279,28 @@ class SettingsPage(QWidget):
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
-        
+
         if reply == QMessageBox.Yes:
             self._db.clear_votes()
             self.data_imported.emit()
             QMessageBox.information(
-                self, "Complete", 
+                self, "Complete",
                 f"All votes in {year_name} have been deleted."
             )
+
+    def handle_key(self, event: QKeyEvent) -> bool:
+        """Handle keyboard shortcuts for this page. Returns True if handled."""
+        key = event.key()
+        modifiers = event.modifiers()
+
+        if modifiers == Qt.ControlModifier:
+            # Ctrl+I: Import from file
+            if key == Qt.Key_I:
+                self._import_from_file()
+                return True
+            # Ctrl+E: Export to file
+            if key == Qt.Key_E:
+                self._export_to_file()
+                return True
+
+        return False
