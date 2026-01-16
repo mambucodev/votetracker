@@ -95,6 +95,10 @@ ICON_FALLBACKS = {
     "folder": "📁",
     "office-chart-line": "📈",
     "x-office-document": "📄",
+    "text-x-generic": "📄",
+    "application-pdf": "📄",
+    "office-report": "📄",
+    "view-statistics": "📊",
     "configure": "⚙️",
     # Actions
     "list-add": "+",
