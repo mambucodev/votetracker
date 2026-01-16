@@ -5,7 +5,7 @@ pkgrel=1
 pkgdesc="School grade management application"
 arch=('any')
 license=('MIT')
-depends=('python' 'pyside6')
+depends=('python' 'pyside6' 'python-reportlab')
 
 # No source - we use local files
 source=()
