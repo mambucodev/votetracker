@@ -1,101 +1,99 @@
-# VoteTracker v2.0
+# VoteTracker
 
 > **100% Vibe Coded**
 >
-> This project is entirely written and maintained by AI. It was created for curiosity and research purposes — not a single line of code was written by a human. Built with [Claude Code](https://claude.ai/code).
+> This project is entirely written and maintained by AI. Not a single line of code was written by a human. Built with [Claude Code](https://claude.ai/code).
 
----
-
-A school grade management application built with Python and PySide6 (Qt6).
+A modern school grade management application built with Python and PySide6 (Qt6).
 
 ## Features
 
-- **Grade Tracking**: Record grades with type (Written/Oral/Practical), date, and weight
-- **School Years**: Manage multiple school years with easy switching
-- **Terms (Quadrimestri)**: Split grades by term (1st/2nd semester)
-- **Dashboard**: Overview with statistics and subject cards
-- **Simulator**: Calculate what grade you need to reach a target average
-- **Report Card**: Simulated report card with rounding rules
-- **Import/Export**: JSON support for backup and data transfer
-- **Cross-platform**: Works on Linux, Windows, and macOS
-- **Native Theme**: Uses system Qt theme (Breeze on KDE, native on Windows)
+### Core
+- **Grade Tracking** - Record grades with type (Written/Oral/Practical), date, description, and weight
+- **School Years** - Manage multiple school years with easy switching
+- **Terms** - Split grades by semester (1st/2nd term)
+- **Subjects** - Organize grades by subject with automatic averages
+
+### Pages
+- **Dashboard** - Overview with statistics and subject cards at a glance
+- **Votes** - Full grade list with filtering, sorting, and CRUD operations
+- **Subjects** - Subject management with per-subject statistics
+- **Simulator** - Calculate what grade you need to reach a target average
+- **Calendar** - View grades plotted on a calendar with highlighted dates
+- **Report Card** - Simulated report card with Italian rounding rules and PDF export
+- **Statistics** - Detailed analytics with grade distribution charts
+- **Settings** - Import/export data, manage school years
+
+### Quality of Life
+- **Undo/Redo** - Ctrl+Z / Ctrl+Shift+Z for grade operations
+- **Keyboard Shortcuts** - Full keyboard navigation (see below)
+- **PDF Export** - Export report cards to clean, minimal PDFs
+- **Cross-platform** - Works on Linux, Windows, and macOS
+- **Native Theme** - Uses system Qt theme (Breeze on KDE, native elsewhere)
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+1-8` | Jump to page (Dashboard, Votes, Subjects, Simulator, Calendar, Report, Statistics, Settings) |
+| `PgUp/PgDown` | Navigate between pages |
+| `Ctrl+Z` | Undo last grade operation |
+| `Ctrl+Shift+Z` / `Ctrl+Y` | Redo |
+| `1` / `2` | Switch term (on applicable pages) |
+
+### Votes Page
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+N` | Add new grade |
+| `Enter` | Edit selected grade |
+| `Delete` | Delete selected grade |
+
+### Settings Page
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+I` | Import data |
+| `Ctrl+E` | Export data |
 
 ## Installation
 
-### Option 1: Quick install script (Linux)
+### Arch Linux (Recommended)
 ```bash
-# First install PySide6:
-# Arch:   sudo pacman -S pyside6
-# Debian: sudo apt install python3-pyside6
-
-# Then run installer
-./install.sh
-
-# Run from anywhere
-votetracker
-```
-
-### Option 2: Arch Linux (PKGBUILD)
-```bash
-# Build and install with pacman
 makepkg -si
 ```
 
-### Option 3: Install with pip
+### Quick Install (Linux)
+```bash
+# Install dependencies first:
+# Arch: sudo pacman -S pyside6 python-reportlab
+# Debian: sudo apt install python3-pyside6 python3-reportlab
+
+./install.sh
+votetracker
+```
+
+### pip
 ```bash
 pip install .
 votetracker
 ```
 
-### Option 4: Run directly (no install)
+### Run Directly
 ```bash
-pip install PySide6  # or use system package
+pip install PySide6 reportlab
 python -m votetracker
 ```
 
-### Option 5: Create standalone binary
+### Build Standalone Binary
 ```bash
-# Install PyInstaller
 pip install pyinstaller
-
-# Build executable
-python build.py
-
-# Or single-file binary
 python build.py --onefile
-
-# Or AppImage (Linux only, requires appimagetool)
-python build.py --appimage
 ```
 
-## Project Structure
+## Requirements
 
-```
-votetracker/
-├── install.sh          # Linux install script
-├── uninstall.sh        # Linux uninstall script
-├── PKGBUILD            # Arch Linux package
-├── votetracker.desktop # Linux .desktop file
-├── pyproject.toml      # pip install config
-├── build.py            # PyInstaller/AppImage build
-├── README.md
-├── votetracker/
-│   ├── __init__.py     # Package info
-│   ├── __main__.py     # Entry point
-│   ├── database.py     # SQLite manager
-│   ├── utils.py        # Helpers and colors
-│   ├── widgets.py      # Custom Qt widgets
-│   ├── dialogs.py      # Dialog windows
-│   ├── mainwindow.py   # Main window
-│   └── pages/
-│       ├── __init__.py
-│       ├── dashboard.py
-│       ├── votes.py
-│       ├── subjects.py
-│       ├── simulator.py
-│       ├── report_card.py
-│       └── settings.py
-```
+- Python 3.8+
+- PySide6
+- reportlab (for PDF export)
 
 ## Data Storage
 
@@ -104,7 +102,7 @@ Data is stored in SQLite at:
 - **Windows**: `%APPDATA%/votetracker/votes.db`
 - **macOS**: `~/Library/Application Support/votetracker/votes.db`
 
-## JSON Import Format
+## Import/Export Format
 
 ```json
 [
@@ -120,18 +118,36 @@ Data is stored in SQLite at:
 ]
 ```
 
-Also supports Italian field names: `materia`, `voto`, `tipo` (Scritto/Orale), `quadrimestre`, `data`, `desc`, `peso`
+Also supports Italian field names: `materia`, `voto`, `tipo` (Scritto/Orale/Pratico), `quadrimestre`, `data`, `desc`, `peso`
 
-## Platform Notes
+## Project Structure
 
-- **Linux (KDE)**: Uses Breeze icons natively
-- **Windows**: Uses emoji/text fallbacks for icons, native Windows theme
-- **macOS**: Uses native macOS styling
-
-## Requirements
-
-- Python 3.8+
-- PySide6
+```
+votetracker/
+├── votetracker/
+│   ├── __init__.py      # Package info
+│   ├── __main__.py      # Entry point
+│   ├── database.py      # SQLite manager
+│   ├── undo.py          # Undo/redo manager
+│   ├── utils.py         # Helpers and colors
+│   ├── widgets.py       # Custom Qt widgets
+│   ├── dialogs.py       # Dialog windows
+│   ├── mainwindow.py    # Main window
+│   └── pages/
+│       ├── dashboard.py
+│       ├── votes.py
+│       ├── subjects.py
+│       ├── simulator.py
+│       ├── calendar.py
+│       ├── report_card.py
+│       ├── statistics.py
+│       └── settings.py
+├── pyproject.toml       # Python package config
+├── PKGBUILD             # Arch Linux package
+├── build.py             # PyInstaller build script
+├── install.sh           # Linux install script
+└── uninstall.sh         # Linux uninstall script
+```
 
 ## License
 
