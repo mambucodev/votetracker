@@ -99,6 +99,7 @@ ICON_FALLBACKS = {
     "application-pdf": "📄",
     "office-report": "📄",
     "view-statistics": "📊",
+    "input-keyboard": "⌨️",
     "configure": "⚙️",
     # Actions
     "list-add": "+",

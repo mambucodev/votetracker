@@ -17,6 +17,7 @@ from .pages import (
     DashboardPage, VotesPage, SubjectsPage,
     SimulatorPage, CalendarPage, ReportCardPage, StatisticsPage, SettingsPage
 )
+from .dialogs import ShortcutsHelpDialog
 
 
 class MainWindow(QMainWindow):
@@ -247,10 +248,20 @@ class MainWindow(QMainWindow):
         if self._undo_manager.redo():
             self._refresh_all()
 
+    def _show_shortcuts_help(self):
+        """Show keyboard shortcuts help dialog."""
+        dialog = ShortcutsHelpDialog(self)
+        dialog.exec()
+
     def keyPressEvent(self, event: QKeyEvent):
         """Handle keyboard shortcuts."""
         key = event.key()
         modifiers = event.modifiers()
+
+        # Help: ? (show shortcuts)
+        if key == Qt.Key_Question:
+            self._show_shortcuts_help()
+            return
 
         # Undo: Ctrl+Z
         if modifiers == Qt.ControlModifier and key == Qt.Key_Z:

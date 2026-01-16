@@ -39,6 +39,7 @@ A modern school grade management application built with Python and PySide6 (Qt6)
 | `PgUp/PgDown` | Navigate between pages |
 | `Ctrl+Z` | Undo last grade operation |
 | `Ctrl+Shift+Z` / `Ctrl+Y` | Redo |
+| `?` | Show keyboard shortcuts help |
 | `1` / `2` | Switch term (on applicable pages) |
 
 ### Votes Page

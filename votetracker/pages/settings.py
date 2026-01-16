@@ -14,7 +14,7 @@ from PySide6.QtGui import QKeyEvent
 
 from ..database import Database, get_db_path
 from ..utils import get_symbolic_icon
-from ..dialogs import ManageSchoolYearsDialog
+from ..dialogs import ManageSchoolYearsDialog, ShortcutsHelpDialog
 
 
 class SettingsPage(QWidget):
@@ -61,7 +61,20 @@ class SettingsPage(QWidget):
         years_layout.addWidget(manage_btn)
         
         layout.addWidget(years_group)
-        
+
+        # Help section
+        help_group = QGroupBox("Help")
+        help_layout = QHBoxLayout(help_group)
+        help_layout.setContentsMargins(12, 12, 12, 12)
+
+        shortcuts_btn = QPushButton("Keyboard Shortcuts")
+        shortcuts_btn.setIcon(get_symbolic_icon("input-keyboard"))
+        shortcuts_btn.clicked.connect(self._show_shortcuts)
+        help_layout.addWidget(shortcuts_btn)
+        help_layout.addStretch()
+
+        layout.addWidget(help_group)
+
         # Tabs
         tabs = QTabWidget()
         
@@ -165,10 +178,15 @@ class SettingsPage(QWidget):
         """Open school years management dialog."""
         dialog = ManageSchoolYearsDialog(self._db, self)
         dialog.exec()
-        
+
         if dialog.was_changed():
             self.school_year_changed.emit()
             self.refresh()
+
+    def _show_shortcuts(self):
+        """Show keyboard shortcuts help dialog."""
+        dialog = ShortcutsHelpDialog(self)
+        dialog.exec()
     
     def _import_json(self):
         """Import votes from JSON text."""

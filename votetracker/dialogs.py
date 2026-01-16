@@ -7,7 +7,7 @@ from typing import Dict, Optional
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QPushButton, QLineEdit, QComboBox, QDoubleSpinBox,
-    QDateEdit, QGroupBox, QMessageBox, QSpinBox
+    QDateEdit, QGroupBox, QMessageBox, QSpinBox, QWidget
 )
 from PySide6.QtCore import Qt, QDate
 
@@ -467,3 +467,98 @@ class ManageSchoolYearsDialog(QDialog):
     def was_changed(self) -> bool:
         """Check if any changes were made."""
         return self._changed
+
+
+class ShortcutsHelpDialog(QDialog):
+    """Dialog showing keyboard shortcuts help."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Keyboard Shortcuts")
+        self.setMinimumWidth(450)
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        # Title
+        title = QLabel("Keyboard Shortcuts")
+        title.setStyleSheet("font-size: 18px; font-weight: bold;")
+        layout.addWidget(title)
+
+        # Shortcuts sections
+        sections = [
+            ("Global", [
+                ("Ctrl+1-8", "Jump to page"),
+                ("PgUp / PgDown", "Navigate pages"),
+                ("Ctrl+Z", "Undo"),
+                ("Ctrl+Shift+Z", "Redo"),
+                ("?", "Show this help"),
+            ]),
+            ("Votes Page", [
+                ("Ctrl+N", "Add new grade"),
+                ("Enter", "Edit selected"),
+                ("Delete", "Delete selected"),
+                ("1 / 2", "Switch term"),
+            ]),
+            ("Subjects Page", [
+                ("Ctrl+N", "Add new subject"),
+            ]),
+            ("Settings Page", [
+                ("Ctrl+I", "Import data"),
+                ("Ctrl+E", "Export data"),
+            ]),
+            ("Calendar / Report / Statistics", [
+                ("1 / 2", "Switch term"),
+            ]),
+        ]
+
+        for section_name, shortcuts in sections:
+            section = QGroupBox(section_name)
+            section_layout = QVBoxLayout(section)
+            section_layout.setContentsMargins(12, 8, 12, 8)
+            section_layout.setSpacing(4)
+
+            for key, desc in shortcuts:
+                row = QHBoxLayout()
+                row.setSpacing(12)
+
+                # Style keys as keyboard buttons
+                key_label = QLabel(key)
+                key_label.setStyleSheet("""
+                    background: #e0e0e0;
+                    border: 1px solid #bbb;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-family: monospace;
+                    font-weight: bold;
+                    color: #333;
+                """)
+
+                desc_label = QLabel(desc)
+                desc_label.setStyleSheet("color: #666;")
+
+                row.addWidget(key_label)
+                row.addWidget(desc_label)
+                row.addStretch()
+
+                row_widget = QWidget()
+                row_widget.setLayout(row)
+                section_layout.addWidget(row_widget)
+
+            layout.addWidget(section)
+
+        # Close hint
+        hint = QLabel("Press ? or Esc to close")
+        hint.setStyleSheet("color: gray; font-size: 11px;")
+        hint.setAlignment(Qt.AlignCenter)
+        layout.addWidget(hint)
+
+    def keyPressEvent(self, event):
+        """Close on ? or Esc."""
+        if event.key() in (Qt.Key_Question, Qt.Key_Escape):
+            self.accept()
+        else:
+            super().keyPressEvent(event)
