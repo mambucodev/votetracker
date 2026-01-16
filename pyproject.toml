@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "votetracker"
-version = "2.0.0"
+version = "2.3.0"
 description = "School grade management application"
 readme = "README.md"
 license = {text = "MIT"}
