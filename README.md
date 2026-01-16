@@ -1,5 +1,11 @@
 # VoteTracker v2.0
 
+> **100% Vibe Coded**
+>
+> This project is entirely written and maintained by AI. It was created for curiosity and research purposes — not a single line of code was written by a human. Built with [Claude Code](https://claude.ai/code).
+
+---
+
 A school grade management application built with Python and PySide6 (Qt6).
 
 ## Features
