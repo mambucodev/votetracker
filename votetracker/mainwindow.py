@@ -10,24 +10,27 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeyEvent
 
 from .database import Database
+from .undo import UndoManager
 from .utils import calc_average, get_grade_style
 from .widgets import NavButton, YearSelector
 from .pages import (
     DashboardPage, VotesPage, SubjectsPage,
-    SimulatorPage, CalendarPage, ReportCardPage, SettingsPage
+    SimulatorPage, CalendarPage, ReportCardPage, StatisticsPage, SettingsPage
 )
 
 
 class MainWindow(QMainWindow):
     """Main application window."""
-    
+
     def __init__(self):
         super().__init__()
         self._db = Database()
-        
+        self._undo_manager = UndoManager(self._db)
+        self._undo_manager.state_changed.connect(self._on_undo_state_changed)
+
         self.setWindowTitle("VoteTracker")
         self.setMinimumSize(1000, 700)
-        
+
         self._setup_ui()
         self._connect_signals()
         self._refresh_all()
@@ -55,8 +58,9 @@ class MainWindow(QMainWindow):
             ("folder", "Subjects", 2),
             ("office-chart-line", "Simulator", 3),
             ("view-calendar", "Calendar", 4),
-            ("x-office-document", "Report", 5),
-            ("configure", "Settings", 6),
+            ("office-report", "Report", 5),
+            ("view-statistics", "Statistics", 6),
+            ("configure", "Settings", 7),
         ]
         
         for icon_name, label, idx in nav_items:
@@ -116,11 +120,12 @@ class MainWindow(QMainWindow):
         self._stack = QStackedWidget()
         
         self._dashboard_page = DashboardPage(self._db)
-        self._votes_page = VotesPage(self._db)
+        self._votes_page = VotesPage(self._db, self._undo_manager)
         self._subjects_page = SubjectsPage(self._db)
         self._simulator_page = SimulatorPage(self._db)
         self._calendar_page = CalendarPage(self._db)
         self._report_card_page = ReportCardPage(self._db)
+        self._statistics_page = StatisticsPage(self._db)
         self._settings_page = SettingsPage(self._db)
 
         self._stack.addWidget(self._dashboard_page)
@@ -129,6 +134,7 @@ class MainWindow(QMainWindow):
         self._stack.addWidget(self._simulator_page)
         self._stack.addWidget(self._calendar_page)
         self._stack.addWidget(self._report_card_page)
+        self._stack.addWidget(self._statistics_page)
         self._stack.addWidget(self._settings_page)
         
         main_layout.addWidget(self._stack, 1)
@@ -165,6 +171,7 @@ class MainWindow(QMainWindow):
             self._simulator_page,
             self._calendar_page,
             self._report_card_page,
+            self._statistics_page,
             self._settings_page
         ]
 
@@ -225,10 +232,38 @@ class MainWindow(QMainWindow):
         prev_idx = (current - 1) % self._stack.count()
         self._switch_page(prev_idx)
 
+    def _on_undo_state_changed(self):
+        """Handle undo/redo state changes."""
+        # Could update UI elements here if needed
+        pass
+
+    def _undo(self):
+        """Perform undo operation."""
+        if self._undo_manager.undo():
+            self._refresh_all()
+
+    def _redo(self):
+        """Perform redo operation."""
+        if self._undo_manager.redo():
+            self._refresh_all()
+
     def keyPressEvent(self, event: QKeyEvent):
         """Handle keyboard shortcuts."""
         key = event.key()
         modifiers = event.modifiers()
+
+        # Undo: Ctrl+Z
+        if modifiers == Qt.ControlModifier and key == Qt.Key_Z:
+            self._undo()
+            return
+
+        # Redo: Ctrl+Shift+Z or Ctrl+Y
+        if key == Qt.Key_Z and modifiers == (Qt.ControlModifier | Qt.ShiftModifier):
+            self._redo()
+            return
+        if modifiers == Qt.ControlModifier and key == Qt.Key_Y:
+            self._redo()
+            return
 
         # Page navigation with PgUp/PgDown
         if key == Qt.Key_PageDown:
@@ -238,7 +273,7 @@ class MainWindow(QMainWindow):
             self._prev_page()
             return
 
-        # Direct page access with Ctrl+1-7
+        # Direct page access with Ctrl+1-8
         if modifiers == Qt.ControlModifier:
             page_keys = {
                 Qt.Key_1: 0,  # Dashboard
@@ -247,7 +282,8 @@ class MainWindow(QMainWindow):
                 Qt.Key_4: 3,  # Simulator
                 Qt.Key_5: 4,  # Calendar
                 Qt.Key_6: 5,  # Report Card
-                Qt.Key_7: 6,  # Settings
+                Qt.Key_7: 6,  # Statistics
+                Qt.Key_8: 7,  # Settings
             }
             if key in page_keys:
                 self._switch_page(page_keys[key])
