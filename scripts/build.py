@@ -38,6 +38,10 @@ def build_pyinstaller(onefile: bool = False):
         "--windowed",
         "--noconfirm",
         "--clean",
+        # Add src to Python path so PyInstaller can find votetracker package
+        "--paths", str(PROJECT_ROOT / "src"),
+        # Collect all submodules from votetracker package
+        "--collect-submodules", "votetracker",
         "--hidden-import", "PySide6.QtCore",
         "--hidden-import", "PySide6.QtGui",
         "--hidden-import", "PySide6.QtWidgets",
@@ -59,7 +63,8 @@ def build_pyinstaller(onefile: bool = False):
             cmd.extend(["--icon", str(icon_path)])
         cmd.extend(["--osx-bundle-identifier", "com.votetracker.app"])
 
-    cmd.append(str(PROJECT_ROOT / "src/votetracker/__main__.py"))
+    # Use run.py entry point (uses absolute imports, works with PyInstaller)
+    cmd.append(str(PROJECT_ROOT / "run.py"))
 
     print(f"Building for {platform.system()}...")
     print(f"Command: {' '.join(cmd)}")

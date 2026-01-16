@@ -12,7 +12,8 @@ source=()
 sha256sums=()
 
 package() {
-    cd "$startdir"
+    # PKGBUILD is in scripts/, so go up to project root
+    cd "$startdir/.."
 
     # Find Python version
     _pyver=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
