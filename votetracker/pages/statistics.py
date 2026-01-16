@@ -11,7 +11,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeyEvent
 
 from ..database import Database
-from ..utils import calc_average, get_status_color, StatusColors
+from ..utils import calc_average, get_status_color
 from ..widgets import TermToggle
 
 

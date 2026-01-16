@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDate
 
 from .database import Database
-from .utils import get_symbolic_icon, has_icon, get_icon_fallback
+from .utils import get_symbolic_icon
 
 
 class AddVoteDialog(QDialog):

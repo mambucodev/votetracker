@@ -263,11 +263,8 @@ class ReportCardPage(QWidget):
     def _export_pdf(self):
         """Export report card to PDF."""
         try:
-            from reportlab.lib import colors
             from reportlab.lib.pagesizes import A4
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.lib.units import mm
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.platypus import SimpleDocTemplate
         except ImportError:
             QMessageBox.warning(
                 self, "Missing Dependency",
@@ -315,7 +312,7 @@ class ReportCardPage(QWidget):
         from reportlab.platypus import (
             SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
         )
-        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        from reportlab.lib.enums import TA_CENTER
 
         # Soft, minimal color palette
         text_dark = colors.HexColor("#2c3e50")

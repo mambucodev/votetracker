@@ -9,11 +9,11 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QMessageBox, QDialog
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QKeyEvent
+from PySide6.QtGui import QKeyEvent
 
 from ..database import Database
 from ..undo import UndoManager
-from ..utils import get_symbolic_icon, has_icon, get_icon_fallback, get_status_color, StatusColors
+from ..utils import get_symbolic_icon, get_status_color, StatusColors
 from ..widgets import TermToggle
 from ..dialogs import AddVoteDialog
 

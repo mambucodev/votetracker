@@ -7,11 +7,9 @@ from PySide6.QtWidgets import (
     QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QFrame, QToolButton
 )
 from PySide6.QtCore import Qt, QSize, Signal
-from PySide6.QtGui import QIcon
-
 from .utils import (
     get_status_color, get_status_icon_name, get_grade_style,
-    get_symbolic_icon, has_icon, get_icon_fallback, calc_average, StatusColors
+    get_symbolic_icon, has_icon, get_icon_fallback, StatusColors
 )
 
 

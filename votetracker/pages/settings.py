@@ -7,14 +7,13 @@ import json
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QGroupBox, QTabWidget, QPlainTextEdit, QFileDialog, QMessageBox,
-    QDialog
+    QGroupBox, QTabWidget, QPlainTextEdit, QFileDialog, QMessageBox
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeyEvent
 
 from ..database import Database, get_db_path
-from ..utils import get_symbolic_icon, has_icon, get_icon_fallback
+from ..utils import get_symbolic_icon
 from ..dialogs import ManageSchoolYearsDialog
 
 

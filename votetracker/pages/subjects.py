@@ -11,7 +11,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeyEvent
 
 from ..database import Database
-from ..utils import calc_average, round_report_card, get_symbolic_icon, has_icon, get_icon_fallback
+from ..utils import calc_average, round_report_card, get_symbolic_icon
 from ..widgets import SubjectCard
 from ..dialogs import AddSubjectDialog, EditSubjectDialog
 

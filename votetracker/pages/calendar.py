@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QFrame, QScrollArea, QGroupBox
 )
 from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QKeyEvent, QColor, QPainter, QBrush, QPen
+from PySide6.QtGui import QKeyEvent, QPainter, QBrush
 
 from ..database import Database
 from ..utils import calc_average, get_status_color, get_grade_style, StatusColors
