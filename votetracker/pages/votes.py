@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QKeyEvent
 
 from ..database import Database
+from ..undo import UndoManager
 from ..utils import get_symbolic_icon, has_icon, get_icon_fallback, get_status_color, StatusColors
 from ..widgets import TermToggle
 from ..dialogs import AddVoteDialog
@@ -19,12 +20,13 @@ from ..dialogs import AddVoteDialog
 
 class VotesPage(QWidget):
     """Votes list page with CRUD operations."""
-    
+
     vote_changed = Signal()
-    
-    def __init__(self, db: Database, parent=None):
+
+    def __init__(self, db: Database, undo_manager: UndoManager = None, parent=None):
         super().__init__(parent)
         self._db = db
+        self._undo_manager = undo_manager
         self._setup_ui()
     
     def _setup_ui(self):
@@ -209,14 +211,16 @@ class VotesPage(QWidget):
         """Add a new vote."""
         current_term = self._term_toggle.get_term()
         dialog = AddVoteDialog(self._db, current_term=current_term, parent=self)
-        
+
         if dialog.exec() == QDialog.Accepted:
             data = dialog.get_vote_data()
-            self._db.add_vote(
+            vote_id = self._db.add_vote(
                 data["subject"], data["grade"], data["type"],
                 data["date"], data["description"],
                 term=data["term"], weight=data["weight"]
             )
+            if self._undo_manager and vote_id:
+                self._undo_manager.record_add(vote_id, data)
             self.vote_changed.emit()
     
     def _edit_vote(self):
@@ -224,17 +228,17 @@ class VotesPage(QWidget):
         row = self._table.currentRow()
         if row < 0:
             return
-        
+
         vote_id = int(self._table.item(row, 6).text())
-        votes = self._db.get_votes()
-        vote = next((v for v in votes if v.get("id") == vote_id), None)
-        
+        vote = self._db.get_vote(vote_id)
+
         if vote:
+            previous_data = vote.copy()
             current_term = self._term_toggle.get_term()
             dialog = AddVoteDialog(
                 self._db, vote, current_term=current_term, parent=self
             )
-            
+
             if dialog.exec() == QDialog.Accepted:
                 data = dialog.get_vote_data()
                 self._db.update_vote(
@@ -242,6 +246,8 @@ class VotesPage(QWidget):
                     data["date"], data["description"],
                     term=data["term"], weight=data["weight"]
                 )
+                if self._undo_manager:
+                    self._undo_manager.record_edit(vote_id, previous_data, data)
                 self.vote_changed.emit()
     
     def _delete_vote(self):
@@ -258,7 +264,10 @@ class VotesPage(QWidget):
 
         if reply == QMessageBox.Yes:
             vote_id = int(self._table.item(row, 6).text())
+            vote_data = self._db.get_vote(vote_id)
             self._db.delete_vote(vote_id)
+            if self._undo_manager and vote_data:
+                self._undo_manager.record_delete(vote_id, vote_data)
             self.vote_changed.emit()
 
     def handle_key(self, event: QKeyEvent) -> bool:

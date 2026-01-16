@@ -356,23 +356,23 @@ class Database:
         term: int = None,
         weight: float = 1.0,
         school_year_id: int = None
-    ):
-        """Add a new vote."""
+    ) -> int:
+        """Add a new vote. Returns the new vote ID."""
         # Ensure subject exists
         subject_id = self.get_subject_id(subject)
         if not subject_id:
             self.add_subject(subject)
             subject_id = self.get_subject_id(subject)
-        
+
         # Use active school year if not specified
         if school_year_id is None:
             active = self.get_active_school_year()
             school_year_id = active["id"] if active else None
-        
+
         # Use current term if not specified
         if term is None:
             term = self.get_current_term()
-        
+
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -380,6 +380,7 @@ class Database:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (subject_id, school_year_id, grade, vote_type, term, date, description, weight))
             conn.commit()
+            return cursor.lastrowid
     
     def update_vote(
         self,
@@ -407,6 +408,20 @@ class Database:
             """, (subject_id, grade, vote_type, term, date, description, weight, vote_id))
             conn.commit()
     
+    def get_vote(self, vote_id: int) -> Optional[Dict[str, Any]]:
+        """Get a single vote by ID."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT v.id, s.name as subject, v.grade, v.type, v.term,
+                       v.date, v.description, v.weight, v.school_year_id
+                FROM votes v
+                JOIN subjects s ON v.subject_id = s.id
+                WHERE v.id = ?
+            """, (vote_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
     def delete_vote(self, vote_id: int):
         """Delete a vote by ID."""
         with self._get_connection() as conn:
