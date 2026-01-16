@@ -61,7 +61,7 @@ A modern school grade management application built with Python and PySide6 (Qt6)
 
 ### Arch Linux (Recommended)
 ```bash
-makepkg -si
+cd scripts && makepkg -si
 ```
 
 ### Quick Install (Linux)
@@ -70,7 +70,7 @@ makepkg -si
 # Arch: sudo pacman -S pyside6 python-reportlab
 # Debian: sudo apt install python3-pyside6 python3-reportlab
 
-./install.sh
+./scripts/install.sh
 votetracker
 ```
 
@@ -89,7 +89,7 @@ python -m votetracker
 ### Build Standalone Binary
 ```bash
 pip install pyinstaller
-python build.py --onefile
+python scripts/build.py --onefile
 ```
 
 ## Requirements
@@ -127,30 +127,34 @@ Also supports Italian field names: `materia`, `voto`, `tipo` (Scritto/Orale/Prat
 
 ```
 votetracker/
-├── votetracker/
-│   ├── __init__.py      # Package info
-│   ├── __main__.py      # Entry point
-│   ├── database.py      # SQLite manager
-│   ├── undo.py          # Undo/redo manager
-│   ├── i18n.py          # Internationalization
-│   ├── utils.py         # Helpers and colors
-│   ├── widgets.py       # Custom Qt widgets
-│   ├── dialogs.py       # Dialog windows
-│   ├── mainwindow.py    # Main window
-│   └── pages/
-│       ├── dashboard.py
-│       ├── votes.py
-│       ├── subjects.py
-│       ├── simulator.py
-│       ├── calendar.py
-│       ├── report_card.py
-│       ├── statistics.py
-│       └── settings.py
-├── pyproject.toml       # Python package config
-├── PKGBUILD             # Arch Linux package
-├── build.py             # PyInstaller build script
-├── install.sh           # Linux install script
-└── uninstall.sh         # Linux uninstall script
+├── src/
+│   └── votetracker/
+│       ├── __init__.py      # Package info
+│       ├── __main__.py      # Entry point
+│       ├── database.py      # SQLite manager
+│       ├── undo.py          # Undo/redo manager
+│       ├── i18n.py          # Internationalization
+│       ├── utils.py         # Helpers and colors
+│       ├── widgets.py       # Custom Qt widgets
+│       ├── dialogs.py       # Dialog windows
+│       ├── mainwindow.py    # Main window
+│       └── pages/
+│           ├── dashboard.py
+│           ├── votes.py
+│           ├── subjects.py
+│           ├── simulator.py
+│           ├── calendar.py
+│           ├── report_card.py
+│           ├── statistics.py
+│           └── settings.py
+├── scripts/
+│   ├── build.py             # PyInstaller build script
+│   ├── install.sh           # Linux install script
+│   ├── uninstall.sh         # Linux uninstall script
+│   ├── PKGBUILD             # Arch Linux package
+│   └── votetracker.desktop  # Desktop entry
+├── pyproject.toml           # Python package config
+└── README.md
 ```
 
 ## License

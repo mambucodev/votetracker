@@ -3,13 +3,13 @@
 Build script for creating standalone executables.
 
 Usage:
-    python build.py              # Build for current platform
-    python build.py --onefile    # Single file (slower startup)
-    python build.py --appimage   # Create AppImage (Linux only)
+    python scripts/build.py              # Build for current platform
+    python scripts/build.py --onefile    # Single file (slower startup)
+    python scripts/build.py --appimage   # Create AppImage (Linux only)
 
 Requirements:
     pip install pyinstaller
-    
+
 For AppImage (Linux):
     sudo pacman -S appimagetool  # Arch
     # or download from https://appimage.github.io/appimagetool/
@@ -19,11 +19,19 @@ import subprocess
 import sys
 import platform
 import shutil
+import os
 from pathlib import Path
+
+# Get project root (parent of scripts/)
+SCRIPT_DIR = Path(__file__).parent.resolve()
+PROJECT_ROOT = SCRIPT_DIR.parent
 
 
 def build_pyinstaller(onefile: bool = False):
     """Build with PyInstaller."""
+    # Change to project root for PyInstaller
+    os.chdir(PROJECT_ROOT)
+
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--name", "VoteTracker",
@@ -31,34 +39,34 @@ def build_pyinstaller(onefile: bool = False):
         "--noconfirm",
         "--clean",
         "--hidden-import", "PySide6.QtCore",
-        "--hidden-import", "PySide6.QtGui", 
+        "--hidden-import", "PySide6.QtGui",
         "--hidden-import", "PySide6.QtWidgets",
     ]
-    
+
     if onefile:
         cmd.append("--onefile")
     else:
         cmd.append("--onedir")
-    
+
     # Platform-specific
     if platform.system() == "Windows":
-        icon_path = Path("assets/icon.ico")
+        icon_path = PROJECT_ROOT / "assets/icon.ico"
         if icon_path.exists():
             cmd.extend(["--icon", str(icon_path)])
     elif platform.system() == "Darwin":
-        icon_path = Path("assets/icon.icns")
+        icon_path = PROJECT_ROOT / "assets/icon.icns"
         if icon_path.exists():
             cmd.extend(["--icon", str(icon_path)])
         cmd.extend(["--osx-bundle-identifier", "com.votetracker.app"])
-    
-    cmd.append("votetracker/__main__.py")
-    
+
+    cmd.append(str(PROJECT_ROOT / "src/votetracker/__main__.py"))
+
     print(f"Building for {platform.system()}...")
     print(f"Command: {' '.join(cmd)}")
     print()
-    
+
     result = subprocess.run(cmd)
-    
+
     if result.returncode == 0:
         output = "dist/VoteTracker" + (".exe" if onefile and platform.system() == "Windows" else "")
         print()
@@ -105,7 +113,7 @@ exec "$HERE/usr/bin/VoteTracker" "$@"
     apprun.chmod(0o755)
     
     # Copy .desktop file
-    shutil.copy("votetracker.desktop", appdir / "votetracker.desktop")
+    shutil.copy(SCRIPT_DIR / "votetracker.desktop", appdir / "votetracker.desktop")
     
     # Create simple icon (or copy if exists)
     icon_path = appdir / "votetracker.png"

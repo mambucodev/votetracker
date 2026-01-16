@@ -28,9 +28,9 @@ env/
 .DS_Store
 Thumbs.db
 
-# Arch Linux build
-pkg/
-src/
+# Arch Linux build (makepkg creates these in scripts/)
+scripts/pkg/
+scripts/src/
 *.pkg.tar.*
 
 # User data (don't commit personal grades!)

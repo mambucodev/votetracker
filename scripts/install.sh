@@ -1,8 +1,13 @@
 #!/bin/bash
 # install.sh - Install VoteTracker on Linux without pip
 # Works on Arch, Debian, Fedora, etc.
+# Run from project root: ./scripts/install.sh
 
 set -e
+
+# Get project root (parent of scripts/)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 PREFIX="${PREFIX:-$HOME/.local}"
 LIB_DIR="$PREFIX/lib/votetracker"
@@ -35,8 +40,8 @@ mkdir -p "$DESKTOP_DIR"
 
 # Copy files
 echo "Installing files..."
-cp votetracker/*.py "$LIB_DIR/votetracker/"
-cp votetracker/pages/*.py "$LIB_DIR/votetracker/pages/"
+cp "$PROJECT_ROOT/src/votetracker/"*.py "$LIB_DIR/votetracker/"
+cp "$PROJECT_ROOT/src/votetracker/pages/"*.py "$LIB_DIR/votetracker/pages/"
 
 # Create launcher
 cat > "$BIN_DIR/votetracker" << EOF
@@ -49,7 +54,7 @@ EOF
 chmod +x "$BIN_DIR/votetracker"
 
 # Install .desktop file
-sed "s|Exec=votetracker|Exec=$BIN_DIR/votetracker|" votetracker.desktop > "$DESKTOP_DIR/votetracker.desktop"
+sed "s|Exec=votetracker|Exec=$BIN_DIR/votetracker|" "$SCRIPT_DIR/votetracker.desktop" > "$DESKTOP_DIR/votetracker.desktop"
 
 echo ""
 echo "✓ Installation complete!"
