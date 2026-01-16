@@ -28,7 +28,7 @@ jobs:
 
       - name: Build executable
         run: |
-          python build.py --onefile
+          python scripts/build.py --onefile
 
       - name: Upload artifact (Linux)
         if: runner.os == 'Linux'
