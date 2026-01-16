@@ -14,7 +14,7 @@ from .utils import calc_average, get_grade_style
 from .widgets import NavButton, YearSelector
 from .pages import (
     DashboardPage, VotesPage, SubjectsPage,
-    SimulatorPage, ReportCardPage, SettingsPage
+    SimulatorPage, CalendarPage, ReportCardPage, SettingsPage
 )
 
 
@@ -54,8 +54,9 @@ class MainWindow(QMainWindow):
             ("view-list-details", "Votes", 1),
             ("folder", "Subjects", 2),
             ("office-chart-line", "Simulator", 3),
-            ("x-office-document", "Report", 4),
-            ("configure", "Settings", 5),
+            ("view-calendar", "Calendar", 4),
+            ("x-office-document", "Report", 5),
+            ("configure", "Settings", 6),
         ]
         
         for icon_name, label, idx in nav_items:
@@ -118,13 +119,15 @@ class MainWindow(QMainWindow):
         self._votes_page = VotesPage(self._db)
         self._subjects_page = SubjectsPage(self._db)
         self._simulator_page = SimulatorPage(self._db)
+        self._calendar_page = CalendarPage(self._db)
         self._report_card_page = ReportCardPage(self._db)
         self._settings_page = SettingsPage(self._db)
-        
+
         self._stack.addWidget(self._dashboard_page)
         self._stack.addWidget(self._votes_page)
         self._stack.addWidget(self._subjects_page)
         self._stack.addWidget(self._simulator_page)
+        self._stack.addWidget(self._calendar_page)
         self._stack.addWidget(self._report_card_page)
         self._stack.addWidget(self._settings_page)
         
@@ -160,10 +163,11 @@ class MainWindow(QMainWindow):
             self._votes_page,
             self._subjects_page,
             self._simulator_page,
+            self._calendar_page,
             self._report_card_page,
             self._settings_page
         ]
-        
+
         if hasattr(pages[idx], 'refresh'):
             pages[idx].refresh()
     
@@ -234,15 +238,16 @@ class MainWindow(QMainWindow):
             self._prev_page()
             return
 
-        # Direct page access with Ctrl+1-6
+        # Direct page access with Ctrl+1-7
         if modifiers == Qt.ControlModifier:
             page_keys = {
                 Qt.Key_1: 0,  # Dashboard
                 Qt.Key_2: 1,  # Votes
                 Qt.Key_3: 2,  # Subjects
                 Qt.Key_4: 3,  # Simulator
-                Qt.Key_5: 4,  # Report Card
-                Qt.Key_6: 5,  # Settings
+                Qt.Key_5: 4,  # Calendar
+                Qt.Key_6: 5,  # Report Card
+                Qt.Key_7: 6,  # Settings
             }
             if key in page_keys:
                 self._switch_page(page_keys[key])
