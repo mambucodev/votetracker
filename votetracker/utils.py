@@ -39,10 +39,10 @@ def round_report_card(average: float) -> int:
 
 class StatusColors:
     """Color constants for grade status indicators."""
-    
+
     FAILING = QColor("#e74c3c")      # Red - below 5.5
-    WARNING = QColor("#f39c12")      # Yellow/Orange - 5.5 to 6.5
-    PASSING = QColor("#27ae60")      # Green - above 6.5
+    WARNING = QColor("#f39c12")      # Yellow/Orange - 5.5 to 6
+    PASSING = QColor("#27ae60")      # Green - 6 and above
     
     WRITTEN = QColor("#a855f7")      # Purple for written grades
     ORAL = QColor("#06b6d4")         # Cyan for oral grades
@@ -53,7 +53,7 @@ def get_status_color(average: float) -> QColor:
     """Get the status color based on average grade."""
     if average < 5.5:
         return StatusColors.FAILING
-    elif average < 6.5:
+    elif average < 6:
         return StatusColors.WARNING
     return StatusColors.PASSING
 
@@ -78,7 +78,7 @@ def get_status_icon_name(average: float) -> str:
     """Get Breeze theme icon name based on average."""
     if average < 5.5:
         return "data-error"
-    elif average < 6.5:
+    elif average < 6:
         return "data-warning"
     return "data-success"
 
