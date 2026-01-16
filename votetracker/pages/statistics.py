@@ -13,6 +13,7 @@ from PySide6.QtGui import QKeyEvent
 from ..database import Database
 from ..utils import calc_average, get_status_color
 from ..widgets import TermToggle
+from ..i18n import tr
 
 
 class BarChart(QFrame):
@@ -183,9 +184,9 @@ class StatisticsPage(QWidget):
 
         # Header
         header = QHBoxLayout()
-        title = QLabel("Statistics")
-        title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        header.addWidget(title)
+        self._title = QLabel(tr("Statistics"))
+        self._title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        header.addWidget(self._title)
         header.addStretch()
 
         # Term toggle
@@ -205,12 +206,13 @@ class StatisticsPage(QWidget):
         scroll_layout.setSpacing(16)
 
         # Summary stats
-        summary_group = QGroupBox("Summary")
-        summary_layout = QGridLayout(summary_group)
+        self._summary_group = QGroupBox(tr("Summary"))
+        summary_layout = QGridLayout(self._summary_group)
         summary_layout.setContentsMargins(16, 16, 16, 16)
         summary_layout.setSpacing(16)
 
         self._stat_labels = {}
+        self._stat_label_widgets = {}
         stats = [
             ("total_grades", "Total Grades"),
             ("overall_avg", "Overall Average"),
@@ -222,49 +224,50 @@ class StatisticsPage(QWidget):
             ("oral_avg", "Oral Avg"),
         ]
 
-        for i, (key, label) in enumerate(stats):
+        for i, (key, label_key) in enumerate(stats):
             row, col = divmod(i, 4)
-            box, value_label = self._create_stat_box(label)
+            box, label_widget, value_label = self._create_stat_box(tr(label_key))
             self._stat_labels[key] = value_label
+            self._stat_label_widgets[key] = (label_key, label_widget)
             summary_layout.addLayout(box, row, col)
 
-        scroll_layout.addWidget(summary_group)
+        scroll_layout.addWidget(self._summary_group)
 
         # Distribution chart
-        dist_group = QGroupBox("Grade Distribution")
-        dist_layout = QVBoxLayout(dist_group)
+        self._dist_group = QGroupBox(tr("Grade Distribution"))
+        dist_layout = QVBoxLayout(self._dist_group)
         dist_layout.setContentsMargins(16, 16, 16, 16)
         self._distribution_chart = DistributionChart()
         self._distribution_chart.setMinimumHeight(150)
         dist_layout.addWidget(self._distribution_chart)
-        scroll_layout.addWidget(dist_group)
+        scroll_layout.addWidget(self._dist_group)
 
         # Subject comparison
-        subjects_group = QGroupBox("Subject Averages")
-        subjects_layout = QVBoxLayout(subjects_group)
+        self._subjects_group = QGroupBox(tr("Subject Averages"))
+        subjects_layout = QVBoxLayout(self._subjects_group)
         subjects_layout.setContentsMargins(16, 16, 16, 16)
         self._subjects_chart = BarChart()
         subjects_layout.addWidget(self._subjects_chart)
-        scroll_layout.addWidget(subjects_group)
+        scroll_layout.addWidget(self._subjects_group)
 
         # Best/Worst subjects
         extremes_layout = QHBoxLayout()
 
-        best_group = QGroupBox("Best Subjects")
-        best_layout = QVBoxLayout(best_group)
+        self._best_group = QGroupBox(tr("Best Subjects"))
+        best_layout = QVBoxLayout(self._best_group)
         best_layout.setContentsMargins(12, 12, 12, 12)
         self._best_list = QVBoxLayout()
         self._best_list.setSpacing(4)
         best_layout.addLayout(self._best_list)
-        extremes_layout.addWidget(best_group)
+        extremes_layout.addWidget(self._best_group)
 
-        worst_group = QGroupBox("Subjects to Improve")
-        worst_layout = QVBoxLayout(worst_group)
+        self._worst_group = QGroupBox(tr("Subjects to Improve"))
+        worst_layout = QVBoxLayout(self._worst_group)
         worst_layout.setContentsMargins(12, 12, 12, 12)
         self._worst_list = QVBoxLayout()
         self._worst_list.setSpacing(4)
         worst_layout.addLayout(self._worst_list)
-        extremes_layout.addWidget(worst_group)
+        extremes_layout.addWidget(self._worst_group)
 
         scroll_layout.addLayout(extremes_layout)
         scroll_layout.addStretch()
@@ -273,7 +276,7 @@ class StatisticsPage(QWidget):
         layout.addWidget(scroll, 1)
 
     def _create_stat_box(self, label: str) -> tuple:
-        """Create a statistics display box. Returns (layout, value_label)."""
+        """Create a statistics display box. Returns (layout, label_widget, value_widget)."""
         box = QVBoxLayout()
         box.setSpacing(2)
 
@@ -286,7 +289,7 @@ class StatisticsPage(QWidget):
         box.addWidget(label_widget)
         box.addWidget(value_widget)
 
-        return box, value_widget
+        return box, label_widget, value_widget
 
     def _on_term_changed(self, term: int):
         """Handle term toggle change."""
@@ -296,6 +299,16 @@ class StatisticsPage(QWidget):
 
     def refresh(self):
         """Refresh all statistics."""
+        # Update labels for language changes
+        self._title.setText(tr("Statistics"))
+        self._summary_group.setTitle(tr("Summary"))
+        self._dist_group.setTitle(tr("Grade Distribution"))
+        self._subjects_group.setTitle(tr("Subject Averages"))
+        self._best_group.setTitle(tr("Best Subjects"))
+        self._worst_group.setTitle(tr("Subjects to Improve"))
+        for key, (label_key, label_widget) in self._stat_label_widgets.items():
+            label_widget.setText(tr(label_key))
+
         self._term_toggle.set_term(self._db.get_current_term())
         self._current_term = self._term_toggle.get_term()
 
@@ -366,7 +379,7 @@ class StatisticsPage(QWidget):
                 item.widget().deleteLater()
 
         if not subjects:
-            empty = QLabel("No data")
+            empty = QLabel(tr("No data"))
             empty.setStyleSheet("color: gray;")
             layout.addWidget(empty)
             return

@@ -17,7 +17,8 @@ from .pages import (
     DashboardPage, VotesPage, SubjectsPage,
     SimulatorPage, CalendarPage, ReportCardPage, StatisticsPage, SettingsPage
 )
-from .dialogs import ShortcutsHelpDialog
+from .dialogs import ShortcutsHelpDialog, OnboardingWizard
+from .i18n import init_language, tr
 
 
 class MainWindow(QMainWindow):
@@ -29,11 +30,15 @@ class MainWindow(QMainWindow):
         self._undo_manager = UndoManager(self._db)
         self._undo_manager.state_changed.connect(self._on_undo_state_changed)
 
+        # Initialize language from db or system
+        init_language(self._db)
+
         self.setWindowTitle("VoteTracker")
         self.setMinimumSize(1000, 700)
 
         self._setup_ui()
         self._connect_signals()
+        self._check_onboarding()
         self._refresh_all()
     
     def _setup_ui(self):
@@ -53,19 +58,19 @@ class MainWindow(QMainWindow):
         
         # Navigation buttons
         self._nav_buttons = []
-        nav_items = [
-            ("go-home", "Dashboard", 0),
-            ("view-list-details", "Votes", 1),
-            ("folder", "Subjects", 2),
-            ("office-chart-line", "Simulator", 3),
-            ("view-calendar", "Calendar", 4),
-            ("office-report", "Report", 5),
-            ("view-statistics", "Statistics", 6),
-            ("configure", "Settings", 7),
+        self._nav_keys = [
+            ("go-home", "Dashboard"),
+            ("view-list-details", "Votes"),
+            ("folder", "Subjects"),
+            ("office-chart-line", "Simulator"),
+            ("view-calendar", "Calendar"),
+            ("office-report", "Report"),
+            ("view-statistics", "Statistics"),
+            ("configure", "Settings"),
         ]
-        
-        for icon_name, label, idx in nav_items:
-            btn = NavButton(icon_name, label)
+
+        for idx, (icon_name, label_key) in enumerate(self._nav_keys):
+            btn = NavButton(icon_name, tr(label_key))
             btn.clicked.connect(lambda checked, i=idx: self._switch_page(i))
             sidebar_layout.addWidget(btn)
             self._nav_buttons.append(btn)
@@ -77,11 +82,11 @@ class MainWindow(QMainWindow):
         stats_layout = QVBoxLayout(stats_frame)
         stats_layout.setContentsMargins(4, 8, 4, 4)
         stats_layout.setSpacing(4)
-        
-        stats_title = QLabel("Quick Stats")
-        stats_title.setStyleSheet("font-size: 10px; color: gray;")
-        stats_title.setAlignment(Qt.AlignCenter)
-        stats_layout.addWidget(stats_title)
+
+        self._stats_title = QLabel(tr("Quick Stats"))
+        self._stats_title.setStyleSheet("font-size: 10px; color: gray;")
+        self._stats_title.setAlignment(Qt.AlignCenter)
+        stats_layout.addWidget(self._stats_title)
         
         self._quick_avg = QLabel("Avg: -")
         self._quick_avg.setAlignment(Qt.AlignCenter)
@@ -97,11 +102,11 @@ class MainWindow(QMainWindow):
         year_layout = QVBoxLayout(year_frame)
         year_layout.setContentsMargins(4, 8, 4, 4)
         year_layout.setSpacing(4)
-        
-        year_title = QLabel("School Year")
-        year_title.setStyleSheet("font-size: 10px; color: gray;")
-        year_title.setAlignment(Qt.AlignCenter)
-        year_layout.addWidget(year_title)
+
+        self._year_title = QLabel(tr("School Year"))
+        self._year_title.setStyleSheet("font-size: 10px; color: gray;")
+        self._year_title.setAlignment(Qt.AlignCenter)
+        year_layout.addWidget(self._year_title)
         
         self._year_selector = YearSelector()
         self._year_selector.year_changed.connect(self._on_year_changed)
@@ -152,6 +157,14 @@ class MainWindow(QMainWindow):
         self._subjects_page.subject_changed.connect(self._refresh_all)
         self._settings_page.data_imported.connect(self._refresh_all)
         self._settings_page.school_year_changed.connect(self._on_school_year_changed)
+        self._settings_page.language_changed.connect(self._on_language_changed)
+
+    def _check_onboarding(self):
+        """Show onboarding wizard if first run."""
+        if self._db.get_setting("onboarding_complete") != "1":
+            wizard = OnboardingWizard(self._db, self)
+            wizard.exec()
+            self._refresh_all()
     
     def _switch_page(self, index: int):
         """Switch to a page by index."""
@@ -219,6 +232,19 @@ class MainWindow(QMainWindow):
     def _on_school_year_changed(self):
         """Handle school year list change."""
         self._update_year_selector()
+        self._refresh_all()
+
+    def _on_language_changed(self):
+        """Handle language change - update all UI text."""
+        # Update navigation buttons
+        for btn, (_, label_key) in zip(self._nav_buttons, self._nav_keys):
+            btn.set_label(tr(label_key))
+
+        # Update sidebar titles
+        self._stats_title.setText(tr("Quick Stats"))
+        self._year_title.setText(tr("School Year"))
+
+        # Refresh all pages to update their text
         self._refresh_all()
 
     def _next_page(self):

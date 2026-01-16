@@ -16,6 +16,7 @@ from ..undo import UndoManager
 from ..utils import get_symbolic_icon, get_status_color, StatusColors
 from ..widgets import TermToggle
 from ..dialogs import AddVoteDialog
+from ..i18n import tr
 
 
 class VotesPage(QWidget):
@@ -33,50 +34,51 @@ class VotesPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
-        
+
         # Header
         header = QHBoxLayout()
-        title = QLabel("Votes List")
-        title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        header.addWidget(title)
+        self._title = QLabel(tr("Votes List"))
+        self._title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        header.addWidget(self._title)
         header.addStretch()
-        
+
         # Term toggle
         self._term_toggle = TermToggle(self._db.get_current_term())
         self._term_toggle.term_changed.connect(self._on_term_changed)
         header.addWidget(self._term_toggle)
-        
+
         header.addSpacing(16)
-        
-        self._add_btn = QPushButton("Add Vote")
+
+        self._add_btn = QPushButton(tr("Add Vote"))
         self._add_btn.setIcon(get_symbolic_icon("list-add"))
         self._add_btn.clicked.connect(self._add_vote)
         header.addWidget(self._add_btn)
-        
+
         layout.addLayout(header)
-        
+
         # Filter
         filter_layout = QHBoxLayout()
         filter_layout.setSpacing(8)
-        filter_layout.addWidget(QLabel("Filter:"))
+        self._filter_label = QLabel(tr("Filter:"))
+        filter_layout.addWidget(self._filter_label)
         self._filter_combo = QComboBox()
         self._filter_combo.setMinimumWidth(150)
-        self._filter_combo.addItem("All")
+        self._filter_combo.addItem(tr("All"))
         self._filter_combo.currentTextChanged.connect(self.refresh)
         filter_layout.addWidget(self._filter_combo)
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
-        
+
         # Table container
         self._table_container = QWidget()
         table_layout = QVBoxLayout(self._table_container)
         table_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Table
         self._table = QTableWidget()
         self._table.setColumnCount(7)
         self._table.setHorizontalHeaderLabels([
-            "Date", "Subject", "Description", "Term", "Type", "Grade", "ID"
+            tr("Date"), tr("Subject"), tr("Description"), tr("Term"), tr("Type"), tr("Grade"), "ID"
         ])
         self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
@@ -93,30 +95,30 @@ class VotesPage(QWidget):
         table_layout.addWidget(self._table)
         
         # Placeholder
-        self._placeholder = QLabel("No votes recorded yet")
+        self._placeholder = QLabel(tr("No votes recorded yet"))
         self._placeholder.setStyleSheet("color: gray; font-weight: bold;")
         self._placeholder.setAlignment(Qt.AlignCenter)
         self._placeholder.hide()
         table_layout.addWidget(self._placeholder)
-        
+
         layout.addWidget(self._table_container, 1)
-        
+
         # Action buttons
         action_layout = QHBoxLayout()
         action_layout.setSpacing(8)
-        
-        edit_btn = QPushButton("Edit")
-        edit_btn.setIcon(get_symbolic_icon("document-edit"))
-        edit_btn.clicked.connect(self._edit_vote)
-        
-        delete_btn = QPushButton("Delete")
-        delete_btn.setIcon(get_symbolic_icon("edit-delete"))
-        delete_btn.clicked.connect(self._delete_vote)
-        
-        action_layout.addWidget(edit_btn)
-        action_layout.addWidget(delete_btn)
+
+        self._edit_btn = QPushButton(tr("Edit"))
+        self._edit_btn.setIcon(get_symbolic_icon("document-edit"))
+        self._edit_btn.clicked.connect(self._edit_vote)
+
+        self._delete_btn = QPushButton(tr("Delete"))
+        self._delete_btn.setIcon(get_symbolic_icon("edit-delete"))
+        self._delete_btn.clicked.connect(self._delete_vote)
+
+        action_layout.addWidget(self._edit_btn)
+        action_layout.addWidget(self._delete_btn)
         action_layout.addStretch()
-        
+
         layout.addLayout(action_layout)
     
     def _on_term_changed(self, term: int):
@@ -130,6 +132,17 @@ class VotesPage(QWidget):
     
     def refresh(self):
         """Refresh the votes list."""
+        # Update labels for language changes
+        self._title.setText(tr("Votes List"))
+        self._add_btn.setText(tr("Add Vote"))
+        self._filter_label.setText(tr("Filter:"))
+        self._edit_btn.setText(tr("Edit"))
+        self._delete_btn.setText(tr("Delete"))
+        self._placeholder.setText(tr("No votes recorded yet"))
+        self._table.setHorizontalHeaderLabels([
+            tr("Date"), tr("Subject"), tr("Description"), tr("Term"), tr("Type"), tr("Grade"), "ID"
+        ])
+
         # Update add button state
         subjects = self._db.get_subjects()
         self._add_btn.setEnabled(len(subjects) > 0)
@@ -188,7 +201,7 @@ class VotesPage(QWidget):
             
             # Type with color
             vote_type = vote.get("type", "Written")
-            type_item = QTableWidgetItem(vote_type)
+            type_item = QTableWidgetItem(tr(vote_type))
             if vote_type == "Written":
                 type_item.setForeground(StatusColors.WRITTEN)
             elif vote_type == "Oral":
@@ -257,8 +270,8 @@ class VotesPage(QWidget):
             return
 
         reply = QMessageBox.question(
-            self, "Confirm Deletion",
-            "Are you sure you want to delete this vote?",
+            self, tr("Confirm Deletion"),
+            tr("Are you sure you want to delete this vote?"),
             QMessageBox.Yes | QMessageBox.No
         )
 

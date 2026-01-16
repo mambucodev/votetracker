@@ -16,6 +16,7 @@ from ..utils import (
     get_symbolic_icon, has_icon, get_icon_fallback, StatusColors
 )
 from ..widgets import StatusIndicator, TermToggle
+from ..i18n import tr
 
 
 class ReportCardPage(QWidget):
@@ -35,13 +36,13 @@ class ReportCardPage(QWidget):
         
         # Header with title and toggles
         header = QHBoxLayout()
-        title = QLabel("Simulated Report Card")
-        title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        header.addWidget(title)
+        self._title = QLabel(tr("Report Card"))
+        self._title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        header.addWidget(self._title)
         header.addStretch()
 
         # Export PDF button
-        self._export_btn = QPushButton("Export PDF")
+        self._export_btn = QPushButton(tr("Export PDF"))
         self._export_btn.setIcon(get_symbolic_icon("document-export"))
         self._export_btn.clicked.connect(self._export_pdf)
         header.addWidget(self._export_btn)
@@ -104,11 +105,15 @@ class ReportCardPage(QWidget):
     
     def refresh(self):
         """Refresh report card display."""
+        # Update labels for language changes
+        self._title.setText(tr("Report Card"))
+        self._export_btn.setText(tr("Export PDF"))
+
         # Update year in title
         active_year = self._db.get_active_school_year()
         year_name = active_year["name"] if active_year else "-"
-        term_str = f" - {self._current_term}° Term" if self._current_term else ""
-        self._report_group.setTitle(f"Report Card - {year_name}{term_str}")
+        term_str = f" - {self._current_term}° {tr('Term')}" if self._current_term else ""
+        self._report_group.setTitle(f"{tr('Report Card')} - {year_name}{term_str}")
         
         # Update term toggle
         self._term_toggle.set_term(self._db.get_current_term())

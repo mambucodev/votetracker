@@ -7,7 +7,8 @@ import json
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QGroupBox, QTabWidget, QPlainTextEdit, QFileDialog, QMessageBox
+    QGroupBox, QTabWidget, QPlainTextEdit, QFileDialog, QMessageBox,
+    QComboBox
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeyEvent
@@ -15,13 +16,15 @@ from PySide6.QtGui import QKeyEvent
 from ..database import Database, get_db_path
 from ..utils import get_symbolic_icon
 from ..dialogs import ManageSchoolYearsDialog, ShortcutsHelpDialog
+from ..i18n import tr, get_language, set_language
 
 
 class SettingsPage(QWidget):
     """Settings page with import/export and school year management."""
-    
+
     data_imported = Signal()
     school_year_changed = Signal()
+    language_changed = Signal()
     
     def __init__(self, db: Database, parent=None):
         super().__init__(parent)
@@ -74,6 +77,25 @@ class SettingsPage(QWidget):
         help_layout.addStretch()
 
         layout.addWidget(help_group)
+
+        # Language
+        lang_group = QGroupBox(tr("Language"))
+        lang_layout = QHBoxLayout(lang_group)
+        lang_layout.setContentsMargins(12, 12, 12, 12)
+
+        self._lang_combo = QComboBox()
+        self._lang_combo.addItem("English", "en")
+        self._lang_combo.addItem("Italiano", "it")
+        # Set current language
+        current = get_language()
+        idx = self._lang_combo.findData(current)
+        if idx >= 0:
+            self._lang_combo.setCurrentIndex(idx)
+        self._lang_combo.currentIndexChanged.connect(self._on_language_changed)
+        lang_layout.addWidget(self._lang_combo)
+        lang_layout.addStretch()
+
+        layout.addWidget(lang_group)
 
         # Tabs
         tabs = QTabWidget()
@@ -187,7 +209,15 @@ class SettingsPage(QWidget):
         """Show keyboard shortcuts help dialog."""
         dialog = ShortcutsHelpDialog(self)
         dialog.exec()
-    
+
+    def _on_language_changed(self, index: int):
+        """Handle language selection change."""
+        lang = self._lang_combo.itemData(index)
+        if lang and lang != get_language():
+            set_language(lang)
+            self._db.set_setting("language", lang)
+            self.language_changed.emit()
+
     def _import_json(self):
         """Import votes from JSON text."""
         text = self._json_input.toPlainText().strip()

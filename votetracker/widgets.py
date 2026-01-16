@@ -11,6 +11,7 @@ from .utils import (
     get_status_color, get_status_icon_name, get_grade_style,
     get_symbolic_icon, has_icon, get_icon_fallback, StatusColors
 )
+from .i18n import tr
 
 
 class StatusIndicator(QLabel):
@@ -51,25 +52,33 @@ class NavButton(QToolButton):
     Navigation button with icon above text.
     Used in the sidebar for page navigation.
     """
-    
+
     def __init__(self, icon_name: str, text: str, parent=None):
         super().__init__(parent)
         self.setCheckable(True)
         self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.setFixedSize(80, 64)
-        
+        self._fallback = None
+
         if has_icon(icon_name):
             icon = get_symbolic_icon(icon_name)
             self.setIcon(icon)
             self.setIconSize(QSize(24, 24))
         else:
             # Fallback: show emoji/text above label
-            fallback = get_icon_fallback(icon_name)
+            self._fallback = get_icon_fallback(icon_name)
             self.setToolButtonStyle(Qt.ToolButtonTextOnly)
-            self.setText(f"{fallback}\n{text}")
+            self.setText(f"{self._fallback}\n{text}")
             return
-        
+
         self.setText(text)
+
+    def set_label(self, text: str):
+        """Update the button label text."""
+        if self._fallback:
+            self.setText(f"{self._fallback}\n{text}")
+        else:
+            self.setText(text)
 
 
 class DashboardSubjectCard(QGroupBox):
@@ -286,21 +295,21 @@ class TermToggle(QFrame):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        
+
         self._btn1 = QToolButton()
-        self._btn1.setText("1° Term")
+        self._btn1.setText(tr("1° Term"))
         self._btn1.setCheckable(True)
         self._btn1.setChecked(self._current_term == 1)
         self._btn1.clicked.connect(lambda: self._set_term(1))
         self._btn1.setMinimumWidth(70)
-        
+
         self._btn2 = QToolButton()
-        self._btn2.setText("2° Term")
+        self._btn2.setText(tr("2° Term"))
         self._btn2.setCheckable(True)
         self._btn2.setChecked(self._current_term == 2)
         self._btn2.clicked.connect(lambda: self._set_term(2))
         self._btn2.setMinimumWidth(70)
-        
+
         layout.addWidget(self._btn1)
         layout.addWidget(self._btn2)
     

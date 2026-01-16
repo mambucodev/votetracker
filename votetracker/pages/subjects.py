@@ -14,6 +14,7 @@ from ..database import Database
 from ..utils import calc_average, round_report_card, get_symbolic_icon
 from ..widgets import SubjectCard
 from ..dialogs import AddSubjectDialog, EditSubjectDialog
+from ..i18n import tr
 
 
 class SubjectsPage(QWidget):
@@ -30,26 +31,26 @@ class SubjectsPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
-        
+
         # Header
         header = QHBoxLayout()
-        title = QLabel("Subjects")
-        title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        header.addWidget(title)
+        self._title = QLabel(tr("Subjects"))
+        self._title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        header.addWidget(self._title)
         header.addStretch()
-        
-        add_btn = QPushButton("New Subject")
-        add_btn.setIcon(get_symbolic_icon("list-add"))
-        add_btn.clicked.connect(self._add_subject)
-        header.addWidget(add_btn)
-        
+
+        self._add_btn = QPushButton(tr("Add Subject"))
+        self._add_btn.setIcon(get_symbolic_icon("list-add"))
+        self._add_btn.clicked.connect(self._add_subject)
+        header.addWidget(self._add_btn)
+
         layout.addLayout(header)
-        
+
         # Content
         self._content_widget = QWidget()
         content_layout = QVBoxLayout(self._content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Grid in scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -61,24 +62,29 @@ class SubjectsPage(QWidget):
         self._grid.setAlignment(Qt.AlignTop)
         scroll.setWidget(scroll_widget)
         content_layout.addWidget(scroll)
-        
+
         # Placeholder
-        self._placeholder = QLabel("No subjects yet")
+        self._placeholder = QLabel(tr("No votes recorded yet"))
         self._placeholder.setStyleSheet("color: gray; font-weight: bold;")
         self._placeholder.setAlignment(Qt.AlignCenter)
         self._placeholder.hide()
         content_layout.addWidget(self._placeholder)
-        
+
         layout.addWidget(self._content_widget, 1)
     
     def refresh(self):
         """Refresh subjects list."""
+        # Update labels for language changes
+        self._title.setText(tr("Subjects"))
+        self._add_btn.setText(tr("Add Subject"))
+        self._placeholder.setText(tr("No votes recorded yet"))
+
         # Clear grid
         while self._grid.count():
             item = self._grid.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-        
+
         subjects = self._db.get_subjects()
         
         if not subjects:
@@ -116,7 +122,7 @@ class SubjectsPage(QWidget):
     def _add_subject(self):
         """Add a new subject."""
         dialog = AddSubjectDialog(self)
-        
+
         if dialog.exec() == QDialog.Accepted:
             name = dialog.get_name()
             if name:
@@ -124,7 +130,7 @@ class SubjectsPage(QWidget):
                     self.subject_changed.emit()
                 else:
                     QMessageBox.warning(
-                        self, "Error", "Subject already exists."
+                        self, tr("Error"), "Subject already exists."
                     )
     
     def _edit_subject(self, subject_name: str):

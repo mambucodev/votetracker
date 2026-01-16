@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt, QDate
 
 from .database import Database
 from .utils import get_symbolic_icon
+from .i18n import tr, PRESET_SUBJECTS, get_translated_subjects
 
 
 class AddVoteDialog(QDialog):
@@ -562,3 +563,155 @@ class ShortcutsHelpDialog(QDialog):
             self.accept()
         else:
             super().keyPressEvent(event)
+
+
+class OnboardingWizard(QDialog):
+    """First-run wizard to set up school year and subjects."""
+
+    def __init__(self, db: Database, parent=None):
+        super().__init__(parent)
+        self._db = db
+        self._selected_subjects = set()
+        # Get translated subject names (displayed) and map to English keys (stored)
+        self._translated_subjects = get_translated_subjects()
+        # Map translated name -> English key
+        self._subject_map = {tr(s): s for s in PRESET_SUBJECTS}
+
+        self.setWindowTitle(tr("Welcome to VoteTracker!"))
+        self.setMinimumSize(500, 400)
+        self.setModal(True)
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(32, 32, 32, 32)
+        layout.setSpacing(20)
+
+        # Welcome header
+        title = QLabel(tr("Welcome to VoteTracker!"))
+        title.setStyleSheet("font-size: 24px; font-weight: bold;")
+        title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title)
+
+        subtitle = QLabel(tr("Let's set up your grade tracker in a few simple steps."))
+        subtitle.setStyleSheet("font-size: 14px; color: gray;")
+        subtitle.setAlignment(Qt.AlignCenter)
+        layout.addWidget(subtitle)
+
+        layout.addSpacing(10)
+
+        # School year info
+        year_group = QGroupBox(tr("School Year"))
+        year_layout = QVBoxLayout(year_group)
+        year_layout.setContentsMargins(16, 16, 16, 16)
+
+        active_year = self._db.get_active_school_year()
+        year_name = active_year["name"] if active_year else "-"
+        year_label = QLabel(f"{tr('Current school year:')} <b>{year_name}</b>")
+        year_layout.addWidget(year_label)
+
+        year_hint = QLabel(tr("You can manage school years later in Settings."))
+        year_hint.setStyleSheet("color: gray; font-size: 11px;")
+        year_layout.addWidget(year_hint)
+
+        layout.addWidget(year_group)
+
+        # Subject selection
+        subjects_group = QGroupBox(tr("Add Subjects"))
+        subjects_layout = QVBoxLayout(subjects_group)
+        subjects_layout.setContentsMargins(16, 16, 16, 16)
+        subjects_layout.setSpacing(8)
+
+        subjects_hint = QLabel(tr("Select the subjects you want to track:"))
+        subjects_layout.addWidget(subjects_hint)
+
+        # Grid of checkboxes
+        from PySide6.QtWidgets import QCheckBox, QGridLayout, QScrollArea
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.NoFrame)
+        scroll.setMaximumHeight(150)
+
+        grid_widget = QWidget()
+        grid = QGridLayout(grid_widget)
+        grid.setSpacing(8)
+
+        self._checkboxes = {}
+        existing_subjects = set(self._db.get_subjects())
+
+        for i, translated_name in enumerate(self._translated_subjects):
+            cb = QCheckBox(translated_name)
+            # Check if this subject (by English key) already exists
+            english_key = self._subject_map.get(translated_name, translated_name)
+            if english_key in existing_subjects or translated_name in existing_subjects:
+                cb.setChecked(True)
+                cb.setEnabled(False)
+                cb.setStyleSheet("color: gray;")
+            cb.toggled.connect(lambda checked, s=translated_name: self._on_subject_toggled(s, checked))
+            self._checkboxes[translated_name] = cb
+            grid.addWidget(cb, i // 3, i % 3)
+
+        scroll.setWidget(grid_widget)
+        subjects_layout.addWidget(scroll)
+
+        # Custom subject input
+        custom_layout = QHBoxLayout()
+        self._custom_input = QLineEdit()
+        self._custom_input.setPlaceholderText(tr("Add custom subject..."))
+        self._custom_input.returnPressed.connect(self._add_custom_subject)
+
+        add_btn = QPushButton(tr("Add"))
+        add_btn.clicked.connect(self._add_custom_subject)
+
+        custom_layout.addWidget(self._custom_input)
+        custom_layout.addWidget(add_btn)
+        subjects_layout.addLayout(custom_layout)
+
+        self._custom_list = QLabel("")
+        self._custom_list.setStyleSheet("color: #27ae60; font-size: 11px;")
+        subjects_layout.addWidget(self._custom_list)
+
+        layout.addWidget(subjects_group, 1)
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        start_btn = QPushButton(tr("Get Started"))
+        start_btn.setStyleSheet("font-size: 14px; padding: 8px 24px;")
+        start_btn.setDefault(True)
+        start_btn.clicked.connect(self._finish)
+
+        btn_layout.addWidget(start_btn)
+        layout.addLayout(btn_layout)
+
+    def _on_subject_toggled(self, subject: str, checked: bool):
+        if checked:
+            self._selected_subjects.add(subject)
+        else:
+            self._selected_subjects.discard(subject)
+
+    def _add_custom_subject(self):
+        name = self._custom_input.text().strip()
+        if name and name not in self._selected_subjects:
+            self._selected_subjects.add(name)
+            self._custom_input.clear()
+            self._update_custom_list()
+
+    def _update_custom_list(self):
+        custom = [s for s in self._selected_subjects if s not in self._translated_subjects]
+        if custom:
+            self._custom_list.setText(tr("Custom:") + " " + ", ".join(sorted(custom)))
+        else:
+            self._custom_list.setText("")
+
+    def _finish(self):
+        # Add selected subjects (store with translated names)
+        existing = set(self._db.get_subjects())
+        for subject in self._selected_subjects:
+            if subject not in existing:
+                self._db.add_subject(subject)
+
+        # Mark onboarding complete
+        self._db.set_setting("onboarding_complete", "1")
+        self.accept()

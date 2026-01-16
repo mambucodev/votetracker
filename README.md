@@ -28,6 +28,8 @@ A modern school grade management application built with Python and PySide6 (Qt6)
 - **Undo/Redo** - Ctrl+Z / Ctrl+Shift+Z for grade operations
 - **Keyboard Shortcuts** - Full keyboard navigation (see below)
 - **PDF Export** - Export report cards to clean, minimal PDFs
+- **Localization** - English and Italian language support (auto-detects system language)
+- **Onboarding** - First-run wizard to set up subjects
 - **Cross-platform** - Works on Linux, Windows, and macOS
 - **Native Theme** - Uses system Qt theme (Breeze on KDE, native elsewhere)
 
@@ -130,6 +132,7 @@ votetracker/
 │   ├── __main__.py      # Entry point
 │   ├── database.py      # SQLite manager
 │   ├── undo.py          # Undo/redo manager
+│   ├── i18n.py          # Internationalization
 │   ├── utils.py         # Helpers and colors
 │   ├── widgets.py       # Custom Qt widgets
 │   ├── dialogs.py       # Dialog windows

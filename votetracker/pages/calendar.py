@@ -13,6 +13,7 @@ from PySide6.QtGui import QKeyEvent, QPainter, QBrush
 from ..database import Database
 from ..utils import calc_average, get_status_color, get_grade_style, StatusColors
 from ..widgets import TermToggle
+from ..i18n import tr
 
 
 class GradeCalendar(QCalendarWidget):
@@ -93,9 +94,9 @@ class CalendarPage(QWidget):
 
         # Header
         header = QHBoxLayout()
-        title = QLabel("Calendar")
-        title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        header.addWidget(title)
+        self._title = QLabel(tr("Calendar"))
+        self._title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        header.addWidget(self._title)
         header.addStretch()
 
         # Term toggle
@@ -121,12 +122,12 @@ class CalendarPage(QWidget):
         # Details panel
         details_container = QVBoxLayout()
 
-        self._date_label = QLabel("Select a date")
+        self._date_label = QLabel(tr("Select a date"))
         self._date_label.setStyleSheet("font-size: 14px; font-weight: bold;")
         details_container.addWidget(self._date_label)
 
         # Grades list in scroll area
-        self._grades_group = QGroupBox("Grades")
+        self._grades_group = QGroupBox(tr("Grades"))
         grades_layout = QVBoxLayout(self._grades_group)
         grades_layout.setContentsMargins(12, 12, 12, 12)
 
@@ -154,14 +155,18 @@ class CalendarPage(QWidget):
 
         # Legend
         legend = QHBoxLayout()
-        legend.addWidget(QLabel("Legend:"))
+        self._legend_label = QLabel(tr("Legend:"))
+        legend.addWidget(self._legend_label)
         legend.addSpacing(10)
 
-        for label, color in [("Passing (6+)", "#27ae60"), ("Warning (5.5-6)", "#f39c12"), ("Failing (<5.5)", "#e74c3c")]:
+        self._legend_items = []
+        for label_key, color in [("Passing (6+)", "#27ae60"), ("Warning (5.5-6)", "#f39c12"), ("Failing (<5.5)", "#e74c3c")]:
             dot = QLabel("●")
             dot.setStyleSheet(f"color: {color}; font-size: 14px;")
             legend.addWidget(dot)
-            legend.addWidget(QLabel(label))
+            lbl = QLabel(tr(label_key))
+            self._legend_items.append((label_key, lbl))
+            legend.addWidget(lbl)
             legend.addSpacing(15)
 
         legend.addStretch()
@@ -193,7 +198,7 @@ class CalendarPage(QWidget):
 
         if not votes:
             self._date_label.setText(display_date)
-            placeholder = QLabel("No grades on this date")
+            placeholder = QLabel(tr("No grades on this date"))
             placeholder.setStyleSheet("color: gray;")
             self._grades_layout.addWidget(placeholder)
             self._avg_label.setText("")
@@ -224,7 +229,7 @@ class CalendarPage(QWidget):
 
         # Type
         vote_type = vote.get("type", "Written")
-        type_label = QLabel(vote_type)
+        type_label = QLabel(tr(vote_type))
         if vote_type == "Written":
             type_label.setStyleSheet(f"color: {StatusColors.WRITTEN.name()}; font-size: 11px;")
         elif vote_type == "Oral":
@@ -254,6 +259,13 @@ class CalendarPage(QWidget):
 
     def refresh(self):
         """Refresh calendar data."""
+        # Update labels for language changes
+        self._title.setText(tr("Calendar"))
+        self._grades_group.setTitle(tr("Grades"))
+        self._legend_label.setText(tr("Legend:"))
+        for key, lbl in self._legend_items:
+            lbl.setText(tr(key))
+
         # Update term toggle
         self._term_toggle.set_term(self._db.get_current_term())
         self._current_term = self._term_toggle.get_term()
