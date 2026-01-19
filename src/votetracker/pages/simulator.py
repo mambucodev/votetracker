@@ -5,7 +5,7 @@ Calculate required grades to reach target averages.
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
-    QFormLayout, QComboBox, QDoubleSpinBox
+    QFormLayout, QComboBox, QDoubleSpinBox, QRadioButton, QButtonGroup
 )
 from PySide6.QtCore import Qt
 
@@ -55,6 +55,31 @@ class SimulatorPage(QWidget):
         self._target_label = QLabel(tr("Target Average") + ":")
         input_layout.addRow(self._target_label, self._target_spin)
 
+        # Vote type filter
+        self._type_label = QLabel(tr("Vote Type") + ":")
+        type_layout = QVBoxLayout()
+        type_layout.setSpacing(4)
+
+        self._type_button_group = QButtonGroup()
+
+        self._both_radio = QRadioButton(tr("Both"))
+        self._both_radio.setChecked(True)
+        self._both_radio.toggled.connect(self._calculate)
+        self._type_button_group.addButton(self._both_radio)
+        type_layout.addWidget(self._both_radio)
+
+        self._oral_radio = QRadioButton(tr("Oral only"))
+        self._oral_radio.toggled.connect(self._calculate)
+        self._type_button_group.addButton(self._oral_radio)
+        type_layout.addWidget(self._oral_radio)
+
+        self._written_radio = QRadioButton(tr("Written only"))
+        self._written_radio.toggled.connect(self._calculate)
+        self._type_button_group.addButton(self._written_radio)
+        type_layout.addWidget(self._written_radio)
+
+        input_layout.addRow(self._type_label, type_layout)
+
         content.addWidget(self._input_group)
 
         # Result group
@@ -100,6 +125,10 @@ class SimulatorPage(QWidget):
         self._input_group.setTitle(tr("Grade Needed"))
         self._subject_label.setText(tr("Subject") + ":")
         self._target_label.setText(tr("Target Average") + ":")
+        self._type_label.setText(tr("Vote Type") + ":")
+        self._both_radio.setText(tr("Both"))
+        self._oral_radio.setText(tr("Oral only"))
+        self._written_radio.setText(tr("Written only"))
         self._result_group.setTitle(tr("Calculate"))
 
         current = self._subject_combo.currentText()
@@ -123,16 +152,25 @@ class SimulatorPage(QWidget):
         if not subject:
             self._current_avg_label.setText(tr("Average") + ": -")
             self._votes_count_label.setText(tr("Total Votes") + ": 0")
-            self._result_label.setText(tr("Subject"))
+            self._result_label.setText(tr("Select a subject"))
+            self._result_label.setStyleSheet("font-size: 14px; color: #7f8c8d;")
             self._clear_scenarios()
             return
 
         votes = self._db.get_votes(subject)
 
+        # Filter votes by type based on radio button selection
+        if self._oral_radio.isChecked():
+            votes = [v for v in votes if v.get("type") == "Oral"]
+        elif self._written_radio.isChecked():
+            votes = [v for v in votes if v.get("type") == "Written"]
+        # If both_radio is checked, use all votes (no filter)
+
         if not votes:
             self._current_avg_label.setText(tr("Average") + ": -")
             self._votes_count_label.setText(tr("Total Votes") + ": 0")
-            self._result_label.setText(tr("Add Vote"))
+            self._result_label.setText(tr("No votes yet"))
+            self._result_label.setStyleSheet("font-size: 14px; color: #7f8c8d;")
             self._clear_scenarios()
             return
 
@@ -148,18 +186,18 @@ class SimulatorPage(QWidget):
         required = (target * (num_votes + 1)) - (avg * num_votes)
 
         if required <= 0:
-            self._result_label.setText("✓")
+            self._result_label.setText(f"✓ {tr('Target already reached')}")
             self._result_label.setStyleSheet(
-                "color: #27ae60; font-size: 16px; font-weight: bold;"
+                "color: #27ae60; font-size: 14px; font-weight: bold;"
             )
         elif required > 10:
-            self._result_label.setText("✗")
+            self._result_label.setText(f"✗ {tr('Impossible to reach')}")
             self._result_label.setStyleSheet(
-                "color: #e74c3c; font-size: 16px; font-weight: bold;"
+                "color: #e74c3c; font-size: 14px; font-weight: bold;"
             )
         else:
-            self._result_label.setText(f"<b>{required:.1f}</b>")
-            self._result_label.setStyleSheet("font-size: 16px;")
+            self._result_label.setText(f"{tr('You need at least:')} <b style='font-size: 18px;'>{required:.1f}</b>")
+            self._result_label.setStyleSheet("font-size: 14px;")
         
         # Update scenarios
         self._clear_scenarios()

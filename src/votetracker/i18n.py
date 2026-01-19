@@ -77,6 +77,15 @@ TRANSLATIONS = {
         "Target Average": "Target Average",
         "Calculate": "Calculate",
         "Grade Needed": "Grade Needed",
+        "Vote Type": "Vote Type",
+        "Both": "Both",
+        "Oral only": "Oral only",
+        "Written only": "Written only",
+        "You need at least:": "You need at least:",
+        "No votes yet": "No votes yet",
+        "Select a subject": "Select a subject",
+        "Target already reached": "Target already reached",
+        "Impossible to reach": "Impossible to reach",
 
         # Calendar
         "Select a date": "Select a date",
@@ -244,6 +253,15 @@ TRANSLATIONS = {
         "Target Average": "Media Obiettivo",
         "Calculate": "Calcola",
         "Grade Needed": "Voto Necessario",
+        "Vote Type": "Tipo Voto",
+        "Both": "Entrambi",
+        "Oral only": "Solo orale",
+        "Written only": "Solo scritto",
+        "You need at least:": "Hai bisogno di almeno:",
+        "No votes yet": "Nessun voto ancora",
+        "Select a subject": "Seleziona una materia",
+        "Target already reached": "Obiettivo già raggiunto",
+        "Impossible to reach": "Impossibile da raggiungere",
 
         # Calendar
         "Select a date": "Seleziona una data",
