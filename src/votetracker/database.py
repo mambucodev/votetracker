@@ -6,7 +6,8 @@ Handles SQLite database operations for subjects, votes, school years, and settin
 import os
 import sys
 import sqlite3
-from typing import Optional, List, Dict, Any
+import base64
+from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 
 
@@ -245,7 +246,104 @@ class Database:
     def set_current_term(self, term: int):
         """Set the current term (1 or 2)."""
         self.set_setting("current_term", str(term))
-    
+
+    # ========================================================================
+    # CLASSEVIVA CREDENTIALS
+    # ========================================================================
+
+    def save_classeviva_credentials(self, username: str, password: str):
+        """Store ClasseViva credentials with base64 encoding (NOT secure encryption)."""
+        # Encode credentials to base64 for basic obfuscation
+        encoded_user = base64.b64encode(username.encode()).decode()
+        encoded_pass = base64.b64encode(password.encode()).decode()
+
+        self.set_setting("classeviva_username", encoded_user)
+        self.set_setting("classeviva_password", encoded_pass)
+
+    def get_classeviva_credentials(self) -> Tuple[Optional[str], Optional[str]]:
+        """Retrieve stored ClasseViva credentials."""
+        encoded_user = self.get_setting("classeviva_username")
+        encoded_pass = self.get_setting("classeviva_password")
+
+        if not encoded_user or not encoded_pass:
+            return None, None
+
+        try:
+            username = base64.b64decode(encoded_user.encode()).decode()
+            password = base64.b64decode(encoded_pass.encode()).decode()
+            return username, password
+        except Exception:
+            return None, None
+
+    def clear_classeviva_credentials(self):
+        """Remove stored ClasseViva credentials."""
+        self.set_setting("classeviva_username", "")
+        self.set_setting("classeviva_password", "")
+
+    def has_classeviva_credentials(self) -> bool:
+        """Check if credentials are stored."""
+        user, pwd = self.get_classeviva_credentials()
+        return user is not None and pwd is not None
+
+    # ClasseViva sync settings
+    def get_last_sync_time(self) -> Optional[str]:
+        """Get the last ClasseViva sync timestamp."""
+        return self.get_setting("classeviva_last_sync")
+
+    def set_last_sync_time(self, timestamp: str):
+        """Set the last ClasseViva sync timestamp."""
+        self.set_setting("classeviva_last_sync", timestamp)
+
+    def get_auto_sync_enabled(self) -> bool:
+        """Check if auto-sync is enabled."""
+        return self.get_setting("classeviva_auto_sync") == "1"
+
+    def set_auto_sync_enabled(self, enabled: bool):
+        """Enable or disable auto-sync."""
+        self.set_setting("classeviva_auto_sync", "1" if enabled else "0")
+
+    def get_sync_interval(self) -> int:
+        """Get the auto-sync interval in minutes."""
+        return int(self.get_setting("classeviva_sync_interval", "60"))
+
+    def set_sync_interval(self, minutes: int):
+        """Set the auto-sync interval in minutes."""
+        self.set_setting("classeviva_sync_interval", str(minutes))
+
+    # ========================================================================
+    # CLASSEVIVA SUBJECT MAPPINGS
+    # ========================================================================
+
+    def save_subject_mapping(self, cv_subject: str, vt_subject: str):
+        """Save a ClasseViva to VoteTracker subject mapping."""
+        self.set_setting(f"cv_mapping_{cv_subject}", vt_subject)
+
+    def get_subject_mapping(self, cv_subject: str) -> Optional[str]:
+        """Get the VoteTracker subject for a ClasseViva subject."""
+        return self.get_setting(f"cv_mapping_{cv_subject}")
+
+    def get_all_subject_mappings(self) -> Dict[str, str]:
+        """Get all ClasseViva subject mappings."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT key, value FROM settings WHERE key LIKE 'cv_mapping_%'")
+            mappings = {}
+            for row in cursor.fetchall():
+                cv_subject = row[0].replace("cv_mapping_", "")
+                mappings[cv_subject] = row[1]
+            return mappings
+
+    def clear_subject_mapping(self, cv_subject: str):
+        """Remove a subject mapping."""
+        self.set_setting(f"cv_mapping_{cv_subject}", "")
+
+    def clear_all_subject_mappings(self):
+        """Remove all subject mappings."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM settings WHERE key LIKE 'cv_mapping_%'")
+            conn.commit()
+
     # ========================================================================
     # SUBJECTS
     # ========================================================================
@@ -428,7 +526,52 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM votes WHERE id = ?", (vote_id,))
             conn.commit()
-    
+
+    def vote_exists(
+        self,
+        subject: str,
+        grade: float,
+        date: str,
+        vote_type: str,
+        school_year_id: int = None
+    ) -> bool:
+        """
+        Check if a vote with the same characteristics already exists.
+        Used for duplicate prevention when importing from ClasseViva.
+
+        Args:
+            subject: Subject name
+            grade: Grade value
+            date: Date string
+            vote_type: Vote type (Oral/Written/Practical)
+            school_year_id: Optional school year ID (defaults to active year)
+
+        Returns:
+            True if vote exists, False otherwise
+        """
+        subject_id = self.get_subject_id(subject)
+        if not subject_id:
+            return False  # Subject doesn't exist, so vote can't exist
+
+        # Use active school year if not specified
+        if school_year_id is None:
+            active = self.get_active_school_year()
+            school_year_id = active["id"] if active else None
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM votes
+                WHERE subject_id = ?
+                AND school_year_id = ?
+                AND grade = ?
+                AND date = ?
+                AND type = ?
+            """, (subject_id, school_year_id, grade, date, vote_type))
+
+            count = cursor.fetchone()[0]
+            return count > 0
+
     def get_subjects_with_votes(
         self, 
         school_year_id: int = None,

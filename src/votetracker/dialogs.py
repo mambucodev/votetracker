@@ -3,17 +3,20 @@ Dialog classes for VoteTracker.
 Contains all popup dialogs for adding/editing data.
 """
 
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Tuple
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QPushButton, QLineEdit, QComboBox, QDoubleSpinBox,
-    QDateEdit, QGroupBox, QMessageBox, QSpinBox, QWidget
+    QDateEdit, QGroupBox, QMessageBox, QSpinBox, QWidget, QScrollArea,
+    QCheckBox, QTableWidget, QTableWidgetItem, QHeaderView
 )
 from PySide6.QtCore import Qt, QDate
+from PySide6.QtGui import QColor
 
 from .database import Database
 from .utils import get_symbolic_icon
 from .i18n import tr, PRESET_SUBJECTS, get_translated_subjects
+from .subject_matcher import get_auto_suggestions
 
 
 class AddVoteDialog(QDialog):
@@ -715,3 +718,193 @@ class OnboardingWizard(QDialog):
         # Mark onboarding complete
         self._db.set_setting("onboarding_complete", "1")
         self.accept()
+
+
+class SubjectMappingDialog(QDialog):
+    """Dialog for mapping ClasseViva subjects to VoteTracker subjects."""
+
+    def __init__(self, cv_subjects: List[str], db: Database, parent=None):
+        super().__init__(parent)
+        self._cv_subjects = cv_subjects
+        self._db = db
+        self._mappings = {}  # cv_subject -> vt_subject
+
+        self.setWindowTitle(tr("Map ClasseViva Subjects"))
+        self.setMinimumWidth(700)
+        self.setMinimumHeight(500)
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        # Header
+        header = QLabel(
+            tr("Map ClasseViva subjects to VoteTracker subjects") + "\n" +
+            tr("We've auto-suggested matches based on subject names.")
+        )
+        header.setWordWrap(True)
+        header.setStyleSheet("font-size: 12px; margin-bottom: 8px;")
+        layout.addWidget(header)
+
+        # Table
+        self._table = QTableWidget()
+        self._table.setColumnCount(4)
+        self._table.setHorizontalHeaderLabels([
+            tr("ClasseViva Subject"),
+            tr("→"),
+            tr("VoteTracker Subject"),
+            ""
+        ])
+        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
+        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
+        self._table.setColumnWidth(1, 40)
+        self._table.setColumnWidth(3, 80)
+        self._table.verticalHeader().setVisible(False)
+
+        # Get existing VoteTracker subjects
+        vt_subjects = self._db.get_subjects()
+
+        # Populate table with suggestions
+        self._table.setRowCount(len(self._cv_subjects))
+        for i, cv_subject in enumerate(self._cv_subjects):
+            # ClasseViva subject (read-only)
+            cv_item = QTableWidgetItem(cv_subject)
+            cv_item.setFlags(cv_item.flags() & ~Qt.ItemIsEditable)
+            self._table.setItem(i, 0, cv_item)
+
+            # Arrow
+            arrow_item = QTableWidgetItem("→")
+            arrow_item.setFlags(arrow_item.flags() & ~Qt.ItemIsEditable)
+            arrow_item.setTextAlignment(Qt.AlignCenter)
+            self._table.setItem(i, 1, arrow_item)
+
+            # VoteTracker subject (dropdown)
+            combo = QComboBox()
+            combo.setEditable(True)
+
+            # Get auto-suggestion
+            suggestion = get_auto_suggestions(cv_subject, vt_subjects)
+
+            # Add options to combo
+            combo.addItem(tr("-- Create New Subject --"), None)
+            for vt_subj in vt_subjects:
+                combo.addItem(vt_subj, vt_subj)
+
+            # Set default selection based on suggestion
+            if suggestion["action"] == "map" and suggestion["suggested_match"]:
+                # High confidence match - select it
+                index = combo.findData(suggestion["suggested_match"])
+                if index >= 0:
+                    combo.setCurrentIndex(index)
+                    # Highlight as auto-matched
+                    cv_item.setBackground(QColor(39, 174, 96, 30))  # Light green
+            elif suggestion["action"] == "create" and suggestion["suggested_new"]:
+                # Suggest creating new canonical name
+                combo.setEditText(suggestion["suggested_new"])
+                cv_item.setBackground(QColor(52, 152, 219, 30))  # Light blue
+            elif suggestion["suggested_match"]:
+                # Low confidence - show suggestion but require manual confirmation
+                index = combo.findData(suggestion["suggested_match"])
+                if index >= 0:
+                    combo.setCurrentIndex(index)
+                cv_item.setBackground(QColor(243, 156, 18, 30))  # Light orange
+            else:
+                # No suggestion - manual mapping required
+                if suggestion["suggested_new"]:
+                    combo.setEditText(suggestion["suggested_new"])
+                cv_item.setBackground(QColor(231, 76, 60, 30))  # Light red
+
+            self._table.setCellWidget(i, 2, combo)
+
+            # Store reference for later retrieval
+            combo.setProperty("cv_subject", cv_subject)
+
+            # Confidence indicator
+            if suggestion["confidence"] > 0:
+                conf_text = f"{int(suggestion['confidence'] * 100)}%"
+                conf_item = QTableWidgetItem(conf_text)
+                conf_item.setFlags(conf_item.flags() & ~Qt.ItemIsEditable)
+                conf_item.setTextAlignment(Qt.AlignCenter)
+
+                # Color code confidence
+                if suggestion["confidence"] > 0.8:
+                    conf_item.setForeground(QColor(39, 174, 96))  # Green
+                elif suggestion["confidence"] > 0.6:
+                    conf_item.setForeground(QColor(243, 156, 18))  # Orange
+                else:
+                    conf_item.setForeground(QColor(149, 165, 166))  # Gray
+
+                self._table.setItem(i, 3, conf_item)
+
+        layout.addWidget(self._table, 1)
+
+        # Legend
+        legend_layout = QHBoxLayout()
+        legend_layout.setSpacing(16)
+
+        def add_legend(color, text):
+            box = QLabel("  ")
+            box.setStyleSheet(f"background-color: rgba{color}; border: 1px solid #ccc;")
+            box.setFixedSize(20, 20)
+            legend_layout.addWidget(box)
+            legend_layout.addWidget(QLabel(text))
+
+        add_legend((39, 174, 96, 30), tr("High confidence"))
+        add_legend((243, 156, 18, 30), tr("Low confidence"))
+        add_legend((52, 152, 219, 30), tr("Create new"))
+        add_legend((231, 76, 60, 30), tr("Manual"))
+        legend_layout.addStretch()
+
+        layout.addLayout(legend_layout)
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+
+        cancel_btn = QPushButton(tr("Cancel"))
+        cancel_btn.setIcon(get_symbolic_icon("dialog-cancel"))
+        cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(cancel_btn)
+
+        btn_layout.addStretch()
+
+        save_btn = QPushButton(tr("Save Mappings"))
+        save_btn.setIcon(get_symbolic_icon("document-save"))
+        save_btn.setDefault(True)
+        save_btn.clicked.connect(self._save_mappings)
+        btn_layout.addWidget(save_btn)
+
+        layout.addLayout(btn_layout)
+
+    def _save_mappings(self):
+        """Save the mappings and close dialog."""
+        for i in range(self._table.rowCount()):
+            cv_subject = self._table.item(i, 0).text()
+            combo = self._table.cellWidget(i, 2)
+
+            # Get selected or entered value
+            vt_subject = None
+            if combo.currentData() is not None:
+                # Existing subject selected
+                vt_subject = combo.currentData()
+            else:
+                # New subject entered
+                vt_subject = combo.currentText().strip()
+
+            if vt_subject:
+                self._mappings[cv_subject] = vt_subject
+                # Save mapping to database
+                self._db.save_subject_mapping(cv_subject, vt_subject)
+                # Ensure the VoteTracker subject exists
+                if vt_subject not in self._db.get_subjects():
+                    self._db.add_subject(vt_subject)
+
+        self.accept()
+
+    def get_mappings(self) -> Dict[str, str]:
+        """Get the subject mappings."""
+        return self._mappings

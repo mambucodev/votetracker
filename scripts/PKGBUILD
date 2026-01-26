@@ -1,11 +1,11 @@
 # Maintainer: Your Name <your@email.com>
 pkgname=votetracker
-pkgver=2.4.2
+pkgver=2.5.0
 pkgrel=1
 pkgdesc="School grade management application"
 arch=('any')
 license=('MIT')
-depends=('python' 'pyside6' 'python-reportlab')
+depends=('python' 'pyside6' 'python-reportlab' 'python-requests')
 
 # No source - we use local files
 source=()
