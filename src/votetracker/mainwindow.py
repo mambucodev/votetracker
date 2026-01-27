@@ -61,7 +61,7 @@ class MainWindow(QMainWindow):
         self._nav_keys = [
             ("go-home", "Dashboard"),
             ("view-list-details", "Votes"),
-            ("folder", "Subjects"),
+            ("bookmarks", "Subjects"),
             ("office-chart-line", "Simulator"),
             ("view-calendar", "Calendar"),
             ("office-report", "Report"),

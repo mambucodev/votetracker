@@ -91,8 +91,12 @@ def get_status_icon_name(average: float) -> str:
 ICON_FALLBACKS = {
     # Navigation
     "go-home": "🏠",
+    "user-home": "🏠",
+    "view-dashboard": "📊",
+    "dashboard-show": "📊",
     "view-list-details": "📋",
     "folder": "📁",
+    "bookmarks": "🔖",
     "office-chart-line": "📈",
     "x-office-document": "📄",
     "text-x-generic": "📄",
@@ -126,7 +130,7 @@ def get_symbolic_icon(name: str) -> QIcon:
     Try to get symbolic icon from theme, fallback to regular.
     Returns null icon if not found (use has_icon to check).
     """
-    # Try symbolic version first
+    # Try symbolic version first - they adapt to theme colors
     icon = QIcon.fromTheme(f"{name}-symbolic")
     if icon.isNull():
         icon = QIcon.fromTheme(name)
