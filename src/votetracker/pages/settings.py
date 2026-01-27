@@ -15,7 +15,7 @@ from PySide6.QtGui import QKeyEvent
 
 from ..database import Database, get_db_path
 from ..utils import get_symbolic_icon
-from ..dialogs import ManageSchoolYearsDialog, ShortcutsHelpDialog, SubjectMappingDialog
+from ..dialogs import ManageSchoolYearsDialog, ShortcutsHelpDialog, SubjectMappingDialog, ManageSubjectMappingsDialog
 from ..i18n import tr, get_language, set_language
 from ..classeviva import ClasseVivaClient, convert_classeviva_to_votetracker
 from datetime import datetime
@@ -37,82 +37,95 @@ class SettingsPage(QWidget):
         self._setup_ui()
     
     def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-        
+        # Main layout with scroll area
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Title bar (not scrolled)
+        title_widget = QWidget()
+        title_layout = QVBoxLayout(title_widget)
+        title_layout.setContentsMargins(20, 20, 20, 12)
         title = QLabel("Settings")
         title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        layout.addWidget(title)
-        
-        # Data location
-        data_group = QGroupBox("Data Location")
-        data_layout = QVBoxLayout(data_group)
-        data_layout.setContentsMargins(12, 12, 12, 12)
-        path_label = QLabel(get_db_path())
-        path_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        data_layout.addWidget(path_label)
-        layout.addWidget(data_group)
-        
-        # School years management
-        years_group = QGroupBox("School Years")
-        years_layout = QHBoxLayout(years_group)
-        years_layout.setContentsMargins(12, 12, 12, 12)
-        
-        self._years_label = QLabel("...")
-        years_layout.addWidget(self._years_label)
-        years_layout.addStretch()
-        
-        manage_btn = QPushButton("Manage Years")
-        manage_btn.setIcon(get_symbolic_icon("configure"))
-        manage_btn.clicked.connect(self._manage_years)
-        years_layout.addWidget(manage_btn)
-        
-        layout.addWidget(years_group)
+        title_layout.addWidget(title)
+        main_layout.addWidget(title_widget)
 
-        # Help section
-        help_group = QGroupBox("Help")
-        help_layout = QHBoxLayout(help_group)
-        help_layout.setContentsMargins(12, 12, 12, 12)
+        # Scroll area for content
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        shortcuts_btn = QPushButton("Keyboard Shortcuts")
-        shortcuts_btn.setIcon(get_symbolic_icon("input-keyboard"))
-        shortcuts_btn.clicked.connect(self._show_shortcuts)
-        help_layout.addWidget(shortcuts_btn)
-        help_layout.addStretch()
+        # Content widget
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(20, 8, 20, 20)
+        layout.setSpacing(16)
 
-        layout.addWidget(help_group)
+        # =====================================================================
+        # GENERAL SETTINGS
+        # =====================================================================
+        general_group = QGroupBox(tr("General"))
+        general_layout = QVBoxLayout(general_group)
+        general_layout.setContentsMargins(12, 12, 12, 12)
+        general_layout.setSpacing(12)
 
         # Language
-        lang_group = QGroupBox(tr("Language"))
-        lang_layout = QHBoxLayout(lang_group)
-        lang_layout.setContentsMargins(12, 12, 12, 12)
-
+        lang_row = QHBoxLayout()
+        lang_row.addWidget(QLabel(tr("Language") + ":"))
         self._lang_combo = QComboBox()
         self._lang_combo.addItem("English", "en")
         self._lang_combo.addItem("Italiano", "it")
-        # Set current language
         current = get_language()
         idx = self._lang_combo.findData(current)
         if idx >= 0:
             self._lang_combo.setCurrentIndex(idx)
         self._lang_combo.currentIndexChanged.connect(self._on_language_changed)
-        lang_layout.addWidget(self._lang_combo)
-        lang_layout.addStretch()
+        lang_row.addWidget(self._lang_combo)
+        lang_row.addStretch()
+        general_layout.addLayout(lang_row)
 
-        layout.addWidget(lang_group)
+        # School Years
+        years_row = QHBoxLayout()
+        self._years_label = QLabel("...")
+        years_row.addWidget(self._years_label)
+        years_row.addStretch()
+        manage_years_btn = QPushButton(tr("Manage Years"))
+        manage_years_btn.setIcon(get_symbolic_icon("configure"))
+        manage_years_btn.clicked.connect(self._manage_years)
+        years_row.addWidget(manage_years_btn)
+        general_layout.addLayout(years_row)
 
-        # Tabs
-        tabs = QTabWidget()
-        
-        # Import tab
-        import_tab = QWidget()
-        import_layout = QVBoxLayout(import_tab)
-        import_layout.setContentsMargins(12, 12, 12, 12)
-        import_layout.setSpacing(8)
-        
-        import_layout.addWidget(QLabel("Paste JSON array to import votes:"))
-        
+        # Current Term indicator
+        term_row = QHBoxLayout()
+        self._term_label = QLabel("...")
+        term_row.addWidget(self._term_label)
+        term_row.addStretch()
+        general_layout.addLayout(term_row)
+
+        layout.addWidget(general_group)
+
+        # =====================================================================
+        # DATA MANAGEMENT
+        # =====================================================================
+        data_group = QGroupBox(tr("Data Management"))
+        data_layout = QVBoxLayout(data_group)
+        data_layout.setContentsMargins(12, 12, 12, 12)
+        data_layout.setSpacing(12)
+
+        # Database location
+        db_label = QLabel(tr("Database:") + " " + get_db_path())
+        db_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        db_label.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+        db_label.setWordWrap(True)
+        data_layout.addWidget(db_label)
+
+        # Import section
+        import_label = QLabel(tr("Import Votes (JSON)"))
+        import_label.setStyleSheet("font-weight: bold;")
+        data_layout.addWidget(import_label)
+
         self._json_input = QPlainTextEdit()
         self._json_input.setPlaceholderText(
             '[\n'
@@ -120,60 +133,66 @@ class SettingsPage(QWidget):
             '"term": 1, "date": "2024-01-15", "description": "Test"}\n'
             ']'
         )
-        import_layout.addWidget(self._json_input, 1)
-        
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(8)
-        
-        import_btn = QPushButton("Import")
+        self._json_input.setMaximumHeight(100)
+        data_layout.addWidget(self._json_input)
+
+        import_btn_layout = QHBoxLayout()
+        import_btn_layout.setSpacing(8)
+
+        import_btn = QPushButton(tr("Import"))
         import_btn.setIcon(get_symbolic_icon("document-import"))
         import_btn.clicked.connect(self._import_json)
-        
-        import_file_btn = QPushButton("Import from File")
+        import_btn_layout.addWidget(import_btn)
+
+        import_file_btn = QPushButton(tr("Import from File"))
         import_file_btn.setIcon(get_symbolic_icon("document-open"))
         import_file_btn.clicked.connect(self._import_from_file)
-        
-        btn_layout.addWidget(import_btn)
-        btn_layout.addWidget(import_file_btn)
-        btn_layout.addStretch()
-        import_layout.addLayout(btn_layout)
-        
+        import_btn_layout.addWidget(import_file_btn)
+
+        import_btn_layout.addStretch()
+        data_layout.addLayout(import_btn_layout)
+
         self._import_status = QLabel("")
-        import_layout.addWidget(self._import_status)
-        
-        tabs.addTab(import_tab, "Import")
-        
-        # Export tab
-        export_tab = QWidget()
-        export_layout = QVBoxLayout(export_tab)
-        export_layout.setContentsMargins(12, 12, 12, 12)
-        export_layout.setSpacing(8)
-        
-        export_layout.addWidget(QLabel("Export your votes as JSON for backup."))
-        
-        export_btn = QPushButton("Export to File")
+        data_layout.addWidget(self._import_status)
+
+        # Export section
+        export_label = QLabel(tr("Export Votes"))
+        export_label.setStyleSheet("font-weight: bold; margin-top: 8px;")
+        data_layout.addWidget(export_label)
+
+        export_btn = QPushButton(tr("Export to File"))
         export_btn.setIcon(get_symbolic_icon("document-export"))
         export_btn.clicked.connect(self._export_to_file)
-        export_layout.addWidget(export_btn)
-        
-        self._export_preview = QPlainTextEdit()
-        self._export_preview.setReadOnly(True)
-        export_layout.addWidget(self._export_preview, 1)
-        
-        tabs.addTab(export_tab, "Export")
+        data_layout.addWidget(export_btn)
 
-        # ClasseViva tab
-        cv_tab = QWidget()
-        cv_tab_layout = QVBoxLayout(cv_tab)
-        cv_tab_layout.setContentsMargins(0, 0, 0, 0)
+        # Clear data section
+        clear_label = QLabel(tr("Clear Data"))
+        clear_label.setStyleSheet("font-weight: bold; margin-top: 8px; color: #e74c3c;")
+        data_layout.addWidget(clear_label)
 
-        # Scroll area for ClasseViva content
-        cv_scroll = QScrollArea()
-        cv_scroll.setWidgetResizable(True)
-        cv_scroll.setFrameShape(QScrollArea.NoFrame)
+        clear_btn_layout = QHBoxLayout()
+        clear_btn_layout.setSpacing(8)
 
-        cv_content = QWidget()
-        cv_layout = QVBoxLayout(cv_content)
+        clear_term_btn = QPushButton(tr("Delete Current Term"))
+        clear_term_btn.setIcon(get_symbolic_icon("edit-delete"))
+        clear_term_btn.clicked.connect(self._clear_term_votes)
+        clear_btn_layout.addWidget(clear_term_btn)
+
+        clear_year_btn = QPushButton(tr("Delete Current Year"))
+        clear_year_btn.setIcon(get_symbolic_icon("edit-delete"))
+        clear_year_btn.clicked.connect(self._clear_year_votes)
+        clear_btn_layout.addWidget(clear_year_btn)
+
+        clear_btn_layout.addStretch()
+        data_layout.addLayout(clear_btn_layout)
+
+        layout.addWidget(data_group)
+
+        # =====================================================================
+        # CLASSEVIVA INTEGRATION
+        # =====================================================================
+        cv_group = QGroupBox(tr("ClasseViva Integration"))
+        cv_layout = QVBoxLayout(cv_group)
         cv_layout.setContentsMargins(12, 12, 12, 12)
         cv_layout.setSpacing(12)
 
@@ -322,36 +341,55 @@ class SettingsPage(QWidget):
         options_layout.addLayout(term_layout)
 
         cv_layout.addWidget(options_group)
-        cv_layout.addStretch()
 
-        cv_scroll.setWidget(cv_content)
-        cv_tab_layout.addWidget(cv_scroll)
+        # Subject Mappings section
+        mappings_group = QGroupBox(tr("Subject Mappings"))
+        mappings_layout = QVBoxLayout(mappings_group)
+        mappings_layout.setContentsMargins(12, 12, 12, 12)
+        mappings_layout.setSpacing(8)
 
-        tabs.addTab(cv_tab, tr("ClasseViva"))
+        mappings_hint = QLabel(tr("View and edit how ClasseViva subjects are mapped to your VoteTracker subjects."))
+        mappings_hint.setWordWrap(True)
+        mappings_hint.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+        mappings_layout.addWidget(mappings_hint)
 
-        # Danger zone
-        danger_tab = QWidget()
-        danger_layout = QVBoxLayout(danger_tab)
-        danger_layout.setContentsMargins(12, 12, 12, 12)
-        danger_layout.setSpacing(8)
-        
-        danger_layout.addWidget(QLabel("Danger Zone"))
-        
-        clear_term_btn = QPushButton("Delete Current Term Votes")
-        clear_term_btn.setIcon(get_symbolic_icon("edit-delete"))
-        clear_term_btn.clicked.connect(self._clear_term_votes)
-        danger_layout.addWidget(clear_term_btn)
-        
-        clear_year_btn = QPushButton("Delete Current Year Votes")
-        clear_year_btn.setIcon(get_symbolic_icon("edit-delete"))
-        clear_year_btn.clicked.connect(self._clear_year_votes)
-        danger_layout.addWidget(clear_year_btn)
-        
-        danger_layout.addStretch()
-        
-        tabs.addTab(danger_tab, "Other")
-        
-        layout.addWidget(tabs, 1)
+        manage_mappings_btn = QPushButton(tr("Manage Subject Mappings"))
+        manage_mappings_btn.setIcon(get_symbolic_icon("configure"))
+        manage_mappings_btn.clicked.connect(self._manage_subject_mappings)
+        mappings_layout.addWidget(manage_mappings_btn)
+
+        cv_layout.addWidget(mappings_group)
+
+        layout.addWidget(cv_group)
+
+        # =====================================================================
+        # HELP & INFO
+        # =====================================================================
+        help_group = QGroupBox(tr("Help & Information"))
+        help_layout = QVBoxLayout(help_group)
+        help_layout.setContentsMargins(12, 12, 12, 12)
+        help_layout.setSpacing(12)
+
+        # Keyboard shortcuts
+        shortcuts_btn = QPushButton(tr("Keyboard Shortcuts"))
+        shortcuts_btn.setIcon(get_symbolic_icon("input-keyboard"))
+        shortcuts_btn.clicked.connect(self._show_shortcuts)
+        help_layout.addWidget(shortcuts_btn)
+
+        # Version info
+        from .. import __version__
+        version_label = QLabel(f"VoteTracker v{__version__}")
+        version_label.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+        help_layout.addWidget(version_label)
+
+        layout.addWidget(help_group)
+
+        # Add stretch at the end
+        layout.addStretch()
+
+        # Set scroll widget
+        scroll.setWidget(content)
+        main_layout.addWidget(scroll)
     
     def refresh(self):
         """Refresh settings display."""
@@ -359,14 +397,12 @@ class SettingsPage(QWidget):
         years = self._db.get_school_years()
         active = self._db.get_active_school_year()
         self._years_label.setText(
-            f"{len(years)} year(s), active: {active['name'] if active else '-'}"
+            f"{tr('School years')}: {len(years)}, {tr('Active')}: {active['name'] if active else '-'}"
         )
 
-        # Update export preview
-        votes = self._db.export_votes()
-        self._export_preview.setPlainText(
-            json.dumps(votes, ensure_ascii=False, indent=2)
-        )
+        # Update term label
+        current_term = self._db.get_current_term()
+        self._term_label.setText(f"{tr('Current term')}: {current_term}")
 
         # Load ClasseViva settings
         self._load_cv_credentials()
@@ -590,6 +626,11 @@ class SettingsPage(QWidget):
         self._cv_clear_creds_btn.setEnabled(False)
         self._cv_status_label.setText(tr("Not connected"))
         self._cv_status_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
+
+    def _manage_subject_mappings(self):
+        """Open the subject mappings management dialog."""
+        dialog = ManageSubjectMappingsDialog(self._db, self)
+        dialog.exec()
 
     def _import_from_classeviva(self):
         """Import grades from ClasseViva."""
