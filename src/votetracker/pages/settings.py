@@ -410,9 +410,12 @@ class SettingsPage(QWidget):
         # Load ClasseViva settings
         self._load_cv_credentials()
 
-        # Load auto-login setting
+        # Load auto-login setting (block signals to prevent triggering save)
         auto_login = self._db.get_setting("classeviva_auto_login") == "1"
+        self._cv_auto_login.blockSignals(True)
         self._cv_auto_login.setChecked(auto_login)
+        self._cv_auto_login.blockSignals(False)
+        print(f"Loaded auto-login setting: {auto_login}")
 
         # Load last import time
         last_sync = self._db.get_last_sync_time()
@@ -588,20 +591,41 @@ class SettingsPage(QWidget):
     def _load_cv_credentials(self):
         """Load saved ClasseViva credentials if they exist."""
         username, password = self._db.get_classeviva_credentials()
+
+        # Block signals to prevent triggering handlers during load
+        self._cv_save_creds.blockSignals(True)
+
         if username and password:
             self._cv_username.setText(username)
             self._cv_password.setText(password)
             self._cv_save_creds.setChecked(True)
             self._cv_clear_creds_btn.setEnabled(True)
+            # Enable auto-login checkbox since credentials are saved
+            self._cv_auto_login.setEnabled(True)
+        else:
+            # Disable auto-login if no credentials
+            self._cv_auto_login.setEnabled(False)
+            # Also uncheck it
+            self._cv_auto_login.blockSignals(True)
+            self._cv_auto_login.setChecked(False)
+            self._cv_auto_login.blockSignals(False)
+
+        self._cv_save_creds.blockSignals(False)
 
     def _on_save_creds_changed(self, state):
         """Handle save credentials checkbox change."""
-        self._cv_creds_warning.setVisible(state == Qt.Checked)
+        is_checked = state == Qt.Checked
+        self._cv_creds_warning.setVisible(is_checked)
+        # Auto-login requires saved credentials
+        self._cv_auto_login.setEnabled(is_checked)
+        if not is_checked:
+            self._cv_auto_login.setChecked(False)
 
     def _on_auto_login_changed(self, state):
         """Handle auto-login checkbox change."""
         enabled = state == Qt.Checked
         self._db.set_setting("classeviva_auto_login", "1" if enabled else "0")
+        print(f"Auto-login setting saved: {enabled}")
 
     def _test_cv_connection(self):
         """Test connection to ClasseViva."""

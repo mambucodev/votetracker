@@ -121,23 +121,22 @@ class MainWindow(QMainWindow):
 
         sidebar_layout.addWidget(year_frame)
 
-        # Sync button (compact, only when logged in)
+        # Sync button (compact)
         from PySide6.QtWidgets import QPushButton, QToolButton
         self._sync_btn = QToolButton()
         self._sync_btn.setIcon(get_symbolic_icon("view-refresh"))
         self._sync_btn.setText(tr("Sync"))
         self._sync_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self._sync_btn.clicked.connect(self._manual_sync)
-        self._sync_btn.setToolTip(tr("Sync grades from ClasseViva"))
+        self._sync_btn.setToolTip(tr("Sync grades from ClasseViva (login required)"))
         self._sync_btn.setFixedHeight(32)
-        self._sync_btn.setVisible(False)  # Hidden by default, shown when logged in
+        self._sync_btn.setEnabled(False)  # Disabled until logged in
         sidebar_layout.addWidget(self._sync_btn)
 
         self._sync_status = QLabel("")
         self._sync_status.setAlignment(Qt.AlignCenter)
         self._sync_status.setStyleSheet("font-size: 9px; color: gray;")
         self._sync_status.setWordWrap(True)
-        self._sync_status.setVisible(False)  # Hidden by default
         sidebar_layout.addWidget(self._sync_status)
 
         main_layout.addWidget(sidebar)
@@ -251,22 +250,21 @@ class MainWindow(QMainWindow):
         return True
 
     def _show_sync_controls(self, status: str = ""):
-        """Show sync button and status."""
-        self._sync_btn.setVisible(True)
-        self._sync_status.setVisible(True)
+        """Enable sync button and show status."""
+        self._sync_btn.setEnabled(True)
+        self._sync_btn.setToolTip(tr("Sync grades from ClasseViva"))
         if status:
             self._sync_status.setText(status)
 
     def _hide_sync_controls(self):
-        """Hide sync button and status."""
-        self._sync_btn.setVisible(False)
-        self._sync_status.setVisible(False)
+        """Disable sync button and clear status."""
+        self._sync_btn.setEnabled(False)
+        self._sync_btn.setToolTip(tr("Sync grades from ClasseViva (login required)"))
+        self._sync_status.setText("")
 
     def _update_sync_status(self, status: str):
         """Update sync status label."""
         self._sync_status.setText(status)
-        if status:
-            self._sync_status.setVisible(True)
 
     def _start_auto_sync_if_enabled(self):
         """Start auto-sync timer if enabled in settings."""
