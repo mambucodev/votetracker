@@ -127,13 +127,14 @@ ICON_FALLBACKS = {
 
 def get_symbolic_icon(name: str) -> QIcon:
     """
-    Try to get symbolic icon from theme, fallback to regular.
+    Get icon from theme (using regular icons for proper color states).
     Returns null icon if not found (use has_icon to check).
     """
-    # Try symbolic version first - they adapt to theme colors
-    icon = QIcon.fromTheme(f"{name}-symbolic")
+    # Use regular icons - they have proper color states for buttons
+    icon = QIcon.fromTheme(name)
     if icon.isNull():
-        icon = QIcon.fromTheme(name)
+        # Fallback to symbolic if regular not available
+        icon = QIcon.fromTheme(f"{name}-symbolic")
     return icon
 
 

@@ -169,10 +169,10 @@ class MainWindow(QMainWindow):
     def _switch_page(self, index: int):
         """Switch to a page by index."""
         self._stack.setCurrentIndex(index)
-        
+
         for i, btn in enumerate(self._nav_buttons):
             btn.setChecked(i == index)
-        
+
         self._refresh_current_page()
     
     def _refresh_current_page(self):

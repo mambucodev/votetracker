@@ -64,6 +64,8 @@ class NavButton(QToolButton):
             icon = get_symbolic_icon(icon_name)
             self.setIcon(icon)
             self.setIconSize(QSize(24, 24))
+            # Force autoRaise mode for proper icon color handling
+            self.setAutoRaise(True)
         else:
             # Fallback: show emoji/text above label
             self._fallback = get_icon_fallback(icon_name)
