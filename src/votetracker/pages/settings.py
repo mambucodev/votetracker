@@ -32,8 +32,6 @@ class SettingsPage(QWidget):
         super().__init__(parent)
         self._db = db
         self._cv_client = ClasseVivaClient()
-        self._auto_sync_timer = None
-        self._sync_worker = None
         self._setup_ui()
     
     def _setup_ui(self):
@@ -223,6 +221,11 @@ class SettingsPage(QWidget):
         self._cv_save_creds.stateChanged.connect(self._on_save_creds_changed)
         account_layout.addWidget(self._cv_save_creds)
 
+        # Auto-login checkbox
+        self._cv_auto_login = QCheckBox(tr("Auto-login on app startup"))
+        self._cv_auto_login.stateChanged.connect(self._on_auto_login_changed)
+        account_layout.addWidget(self._cv_auto_login)
+
         self._cv_creds_warning = QLabel(tr("Credentials stored with basic encoding. Not fully secure."))
         self._cv_creds_warning.setStyleSheet("color: #e67e22; font-size: 11px;")
         self._cv_creds_warning.setWordWrap(True)
@@ -407,6 +410,10 @@ class SettingsPage(QWidget):
         # Load ClasseViva settings
         self._load_cv_credentials()
 
+        # Load auto-login setting
+        auto_login = self._db.get_setting("classeviva_auto_login") == "1"
+        self._cv_auto_login.setChecked(auto_login)
+
         # Load last import time
         last_sync = self._db.get_last_sync_time()
         if last_sync:
@@ -424,9 +431,16 @@ class SettingsPage(QWidget):
         if index >= 0:
             self._cv_sync_interval.setCurrentIndex(index)
 
-        # Start auto-sync if enabled
+        # Update sync label if enabled
         if auto_sync_enabled:
-            self._start_auto_sync()
+            self._cv_auto_sync_status.setText(tr("Auto-sync: Active"))
+            self._cv_auto_sync_status.setStyleSheet("color: #27ae60;")
+            self._cv_next_sync_label.setVisible(True)
+            self._update_next_sync_label()
+        else:
+            self._cv_auto_sync_status.setText(tr("Auto-sync: Disabled"))
+            self._cv_auto_sync_status.setStyleSheet("color: #95a5a6;")
+            self._cv_next_sync_label.setVisible(False)
     
     def _manage_years(self):
         """Open school years management dialog."""
@@ -583,6 +597,11 @@ class SettingsPage(QWidget):
     def _on_save_creds_changed(self, state):
         """Handle save credentials checkbox change."""
         self._cv_creds_warning.setVisible(state == Qt.Checked)
+
+    def _on_auto_login_changed(self, state):
+        """Handle auto-login checkbox change."""
+        enabled = state == Qt.Checked
+        self._db.set_setting("classeviva_auto_login", "1" if enabled else "0")
 
     def _test_cv_connection(self):
         """Test connection to ClasseViva."""
@@ -753,13 +772,16 @@ class SettingsPage(QWidget):
         enabled = state == Qt.Checked
         self._db.set_auto_sync_enabled(enabled)
 
+        # Get main window to start/stop auto-sync
+        main_window = self.window()
         if enabled:
-            self._start_auto_sync()
+            main_window.start_auto_sync()
             self._cv_auto_sync_status.setText(tr("Auto-sync: Active"))
             self._cv_auto_sync_status.setStyleSheet("color: #27ae60;")
             self._cv_next_sync_label.setVisible(True)
+            self._update_next_sync_label()
         else:
-            self._stop_auto_sync()
+            main_window.stop_auto_sync()
             self._cv_auto_sync_status.setText(tr("Auto-sync: Disabled"))
             self._cv_auto_sync_status.setStyleSheet("color: #95a5a6;")
             self._cv_next_sync_label.setVisible(False)
@@ -770,36 +792,15 @@ class SettingsPage(QWidget):
         self._db.set_sync_interval(minutes)
 
         # Restart timer if auto-sync is enabled
+        main_window = self.window()
         if self._cv_auto_sync_enabled.isChecked():
-            self._start_auto_sync()
-
-    def _start_auto_sync(self):
-        """Start the auto-sync timer."""
-        if self._auto_sync_timer is None:
-            self._auto_sync_timer = QTimer(self)
-            self._auto_sync_timer.timeout.connect(self._auto_sync_tick)
-
-        interval = self._db.get_sync_interval()
-        self._auto_sync_timer.start(interval * 60 * 1000)  # Convert minutes to ms
-        self._update_next_sync_label()
-
-    def _stop_auto_sync(self):
-        """Stop the auto-sync timer."""
-        if self._auto_sync_timer:
-            self._auto_sync_timer.stop()
-
-    def _auto_sync_tick(self):
-        """Perform automatic sync."""
-        # Only sync if we have valid credentials
-        if self._cv_client.is_authenticated() or self._db.has_classeviva_credentials():
-            self._import_from_classeviva()
-        self._update_next_sync_label()
+            main_window.start_auto_sync()
+            self._update_next_sync_label()
 
     def _update_next_sync_label(self):
         """Update the 'next sync in' label."""
-        if self._auto_sync_timer and self._auto_sync_timer.isActive():
-            interval = self._db.get_sync_interval()
-            self._cv_next_sync_label.setText(f"{tr('Next sync in')}: {interval} {tr('30 minutes').split()[1]}")  # Get 'minutes' word
+        interval = self._db.get_sync_interval()
+        self._cv_next_sync_label.setText(f"{tr('Next sync in')}: {interval} {tr('30 minutes').split()[1]}")  # Get 'minutes' word
 
     # ========================================================================
     # KEYBOARD SHORTCUTS
