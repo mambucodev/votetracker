@@ -908,3 +908,198 @@ class SubjectMappingDialog(QDialog):
     def get_mappings(self) -> Dict[str, str]:
         """Get the subject mappings."""
         return self._mappings
+
+
+class ManageSubjectMappingsDialog(QDialog):
+    """Dialog for viewing and editing existing ClasseViva subject mappings."""
+
+    def __init__(self, db: Database, parent=None):
+        super().__init__(parent)
+        self._db = db
+        self._changed = False
+
+        self.setWindowTitle(tr("Manage ClasseViva Subject Mappings"))
+        self.setMinimumWidth(700)
+        self.setMinimumHeight(400)
+        self._setup_ui()
+        self._load_mappings()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        # Header
+        header = QLabel(
+            tr("View and edit how ClasseViva subjects are mapped to VoteTracker subjects.")
+        )
+        header.setWordWrap(True)
+        header.setStyleSheet("font-size: 12px; margin-bottom: 8px;")
+        layout.addWidget(header)
+
+        # Table
+        self._table = QTableWidget()
+        self._table.setColumnCount(3)
+        self._table.setHorizontalHeaderLabels([
+            tr("ClasseViva Subject"),
+            tr("VoteTracker Subject"),
+            ""
+        ])
+        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
+        self._table.setColumnWidth(2, 80)
+        self._table.verticalHeader().setVisible(False)
+
+        layout.addWidget(self._table, 1)
+
+        # Info label
+        self._info_label = QLabel("")
+        self._info_label.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+        layout.addWidget(self._info_label)
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+
+        clear_all_btn = QPushButton(tr("Clear All Mappings"))
+        clear_all_btn.setIcon(get_symbolic_icon("edit-delete"))
+        clear_all_btn.clicked.connect(self._clear_all_mappings)
+        btn_layout.addWidget(clear_all_btn)
+
+        btn_layout.addStretch()
+
+        close_btn = QPushButton(tr("Close"))
+        close_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(close_btn)
+
+        layout.addLayout(btn_layout)
+
+    def _load_mappings(self):
+        """Load all existing mappings into the table."""
+        mappings = self._db.get_all_subject_mappings()
+        vt_subjects = self._db.get_subjects()
+
+        self._table.setRowCount(len(mappings))
+
+        for i, (cv_subject, vt_subject) in enumerate(sorted(mappings.items())):
+            # ClasseViva subject (read-only)
+            cv_item = QTableWidgetItem(cv_subject)
+            cv_item.setFlags(cv_item.flags() & ~Qt.ItemIsEditable)
+            self._table.setItem(i, 0, cv_item)
+
+            # VoteTracker subject (dropdown)
+            combo = QComboBox()
+            combo.setEditable(True)
+
+            # Add current and other subjects
+            for vt_subj in vt_subjects:
+                combo.addItem(vt_subj, vt_subj)
+
+            # Set current mapping
+            index = combo.findText(vt_subject)
+            if index >= 0:
+                combo.setCurrentIndex(index)
+            else:
+                # Subject might not exist anymore, just set the text
+                combo.setEditText(vt_subject)
+
+            # Connect change signal
+            combo.currentTextChanged.connect(
+                lambda text, cv=cv_subject: self._on_mapping_changed(cv, text)
+            )
+
+            self._table.setCellWidget(i, 1, combo)
+
+            # Delete button
+            delete_btn = QPushButton(tr("Delete"))
+            delete_btn.setIcon(get_symbolic_icon("edit-delete"))
+            delete_btn.clicked.connect(
+                lambda checked, cv=cv_subject: self._delete_mapping(cv)
+            )
+            self._table.setCellWidget(i, 2, delete_btn)
+
+        # Update info label
+        if len(mappings) == 0:
+            self._info_label.setText(tr("No mappings yet. Import grades from ClasseViva to create mappings."))
+        else:
+            self._info_label.setText(tr("{count} mapping(s)").format(count=len(mappings)))
+
+    def _on_mapping_changed(self, cv_subject: str, new_vt_subject: str):
+        """Handle when a mapping is changed."""
+        new_vt_subject = new_vt_subject.strip()
+        if not new_vt_subject:
+            return
+
+        current_mapping = self._db.get_subject_mapping(cv_subject)
+        if current_mapping != new_vt_subject:
+            # Ensure the subject exists
+            if new_vt_subject not in self._db.get_subjects():
+                reply = QMessageBox.question(
+                    self,
+                    tr("Create New Subject"),
+                    tr("Subject '{name}' doesn't exist. Create it?").format(name=new_vt_subject),
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes
+                )
+                if reply == QMessageBox.Yes:
+                    self._db.add_subject(new_vt_subject)
+                else:
+                    # Revert change
+                    self._reload_row(cv_subject)
+                    return
+
+            # Save new mapping
+            self._db.save_subject_mapping(cv_subject, new_vt_subject)
+            self._changed = True
+
+    def _delete_mapping(self, cv_subject: str):
+        """Delete a subject mapping."""
+        reply = QMessageBox.question(
+            self,
+            tr("Confirm Deletion"),
+            tr("Delete mapping for '{subject}'?").format(subject=cv_subject) + "\n" +
+            tr("This won't delete any grades, but future imports will ask for mapping again."),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            self._db.clear_subject_mapping(cv_subject)
+            self._changed = True
+            self._load_mappings()
+
+    def _clear_all_mappings(self):
+        """Clear all subject mappings."""
+        mappings = self._db.get_all_subject_mappings()
+        if len(mappings) == 0:
+            return
+
+        reply = QMessageBox.warning(
+            self,
+            tr("Confirm Clear All"),
+            tr("Delete ALL {count} subject mappings?").format(count=len(mappings)) + "\n" +
+            tr("This won't delete any grades, but future imports will ask for mapping again."),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            self._db.clear_all_subject_mappings()
+            self._changed = True
+            self._load_mappings()
+
+    def _reload_row(self, cv_subject: str):
+        """Reload a specific row after reverting changes."""
+        for i in range(self._table.rowCount()):
+            item = self._table.item(i, 0)
+            if item and item.text() == cv_subject:
+                current_mapping = self._db.get_subject_mapping(cv_subject)
+                combo = self._table.cellWidget(i, 1)
+                if combo and current_mapping:
+                    combo.setCurrentText(current_mapping)
+                break
+
+    def was_changed(self) -> bool:
+        """Check if any changes were made."""
+        return self._changed
