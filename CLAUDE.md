@@ -738,7 +738,8 @@ gh release create v2.6.0 --title "v2.6.0 - Subject Mapping Management" --notes-f
 
 ## Version History
 
-- **2.5.0** - Added ClasseViva integration with smart subject mapping and management dialog
+- **2.6.0** - Subject mapping management dialog and Settings page restructure
+- **2.5.0** - Added ClasseViva integration with smart subject mapping
 - **2.4.0** - Added simulator vote type filter
 - **2.3.0** - Added school years and terms
 - **2.2.0** - Added undo/redo system
