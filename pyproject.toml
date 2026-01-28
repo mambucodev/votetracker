@@ -32,6 +32,9 @@ dependencies = [
     "requests>=2.31.0",
 ]
 
+[project.optional-dependencies]
+axios = ["axios>=0.4.0"]
+
 [project.scripts]
 votetracker = "votetracker.__main__:main"
 

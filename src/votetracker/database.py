@@ -431,6 +431,196 @@ class Database:
             conn.commit()
 
     # ========================================================================
+    # SYNC PROVIDER (GENERIC)
+    # ========================================================================
+    # Provider-agnostic methods for managing multiple sync providers
+    # (ClasseViva, Axios, etc.)
+
+    def get_active_provider(self) -> Optional[str]:
+        """
+        Get the currently active sync provider.
+
+        Returns:
+            Provider ID (e.g., "classeviva", "axios") or None
+        """
+        # Migrate existing ClasseViva users
+        active = self.get_setting("active_sync_provider")
+        if not active and self.has_classeviva_credentials():
+            # Auto-migrate: existing CV users get CV set as active
+            self.set_active_provider("classeviva")
+            return "classeviva"
+        return active
+
+    def set_active_provider(self, provider_id: Optional[str]):
+        """
+        Set the active sync provider.
+
+        Args:
+            provider_id: Provider ID or None to disable sync
+        """
+        self.set_setting("active_sync_provider", provider_id or "")
+
+    def save_provider_credentials(self, provider_id: str, credentials: Dict[str, str]):
+        """
+        Save credentials for a provider.
+
+        Args:
+            provider_id: Provider identifier
+            credentials: Dict of field_name -> value pairs
+        """
+        for field_name, value in credentials.items():
+            # Encode for basic obfuscation
+            encoded_value = base64.b64encode(value.encode()).decode()
+            self.set_setting(f"{provider_id}_{field_name}", encoded_value)
+
+    def get_provider_credentials(self, provider_id: str, field_names: List[str]) -> Dict[str, Optional[str]]:
+        """
+        Get credentials for a provider.
+
+        Args:
+            provider_id: Provider identifier
+            field_names: List of credential field names
+
+        Returns:
+            Dict of field_name -> value (None if not found)
+        """
+        credentials = {}
+        for field_name in field_names:
+            encoded_value = self.get_setting(f"{provider_id}_{field_name}")
+            if encoded_value:
+                try:
+                    credentials[field_name] = base64.b64decode(encoded_value.encode()).decode()
+                except Exception:
+                    credentials[field_name] = None
+            else:
+                credentials[field_name] = None
+        return credentials
+
+    def clear_provider_credentials(self, provider_id: str, field_names: List[str]):
+        """
+        Clear credentials for a provider.
+
+        Args:
+            provider_id: Provider identifier
+            field_names: List of credential field names to clear
+        """
+        for field_name in field_names:
+            self.set_setting(f"{provider_id}_{field_name}", "")
+
+    def has_provider_credentials(self, provider_id: str, field_names: List[str]) -> bool:
+        """
+        Check if all required credentials are stored for a provider.
+
+        Args:
+            provider_id: Provider identifier
+            field_names: List of required credential field names
+
+        Returns:
+            True if all fields have values
+        """
+        credentials = self.get_provider_credentials(provider_id, field_names)
+        return all(credentials.values())
+
+    def save_provider_subject_mapping(self, provider_id: str, source_subject: str, target_subject: str):
+        """
+        Save a subject mapping for a provider.
+
+        Args:
+            provider_id: Provider identifier
+            source_subject: Provider's subject name
+            target_subject: VoteTracker subject name
+        """
+        self.set_setting(f"{provider_id}_mapping_{source_subject}", target_subject)
+
+    def get_provider_subject_mapping(self, provider_id: str, source_subject: str) -> Optional[str]:
+        """
+        Get the VoteTracker subject for a provider's subject.
+
+        Args:
+            provider_id: Provider identifier
+            source_subject: Provider's subject name
+
+        Returns:
+            VoteTracker subject name or None
+        """
+        return self.get_setting(f"{provider_id}_mapping_{source_subject}")
+
+    def get_all_provider_subject_mappings(self, provider_id: str) -> Dict[str, str]:
+        """
+        Get all subject mappings for a provider.
+
+        Args:
+            provider_id: Provider identifier
+
+        Returns:
+            Dict of source_subject -> target_subject
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            prefix = f"{provider_id}_mapping_"
+            cursor.execute("SELECT key, value FROM settings WHERE key LIKE ?", (f"{prefix}%",))
+            mappings = {}
+            for row in cursor.fetchall():
+                source_subject = row[0].replace(prefix, "")
+                mappings[source_subject] = row[1]
+            return mappings
+
+    def clear_provider_subject_mapping(self, provider_id: str, source_subject: str):
+        """
+        Remove a subject mapping for a provider.
+
+        Args:
+            provider_id: Provider identifier
+            source_subject: Provider's subject name
+        """
+        self.set_setting(f"{provider_id}_mapping_{source_subject}", "")
+
+    def clear_all_provider_subject_mappings(self, provider_id: str):
+        """
+        Remove all subject mappings for a provider.
+
+        Args:
+            provider_id: Provider identifier
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM settings WHERE key LIKE ?", (f"{provider_id}_mapping_%",))
+            conn.commit()
+
+    # Provider sync settings
+    def get_provider_last_sync(self, provider_id: str) -> Optional[str]:
+        """Get last sync timestamp for provider."""
+        return self.get_setting(f"{provider_id}_last_sync")
+
+    def set_provider_last_sync(self, provider_id: str, timestamp: str):
+        """Set last sync timestamp for provider."""
+        self.set_setting(f"{provider_id}_last_sync", timestamp)
+
+    def get_provider_auto_sync_enabled(self, provider_id: str) -> bool:
+        """Check if auto-sync is enabled for provider."""
+        return self.get_setting(f"{provider_id}_auto_sync") == "1"
+
+    def set_provider_auto_sync_enabled(self, provider_id: str, enabled: bool):
+        """Enable/disable auto-sync for provider."""
+        self.set_setting(f"{provider_id}_auto_sync", "1" if enabled else "0")
+
+    def get_provider_sync_interval(self, provider_id: str) -> int:
+        """Get auto-sync interval in minutes for provider."""
+        return int(self.get_setting(f"{provider_id}_sync_interval", "60"))
+
+    def set_provider_sync_interval(self, provider_id: str, minutes: int):
+        """Set auto-sync interval in minutes for provider."""
+        self.set_setting(f"{provider_id}_sync_interval", str(minutes))
+
+    def get_provider_auto_login(self, provider_id: str) -> bool:
+        """Check if auto-login is enabled for provider."""
+        return self.get_setting(f"{provider_id}_auto_login") == "1"
+
+    def set_provider_auto_login(self, provider_id: str, enabled: bool):
+        """Enable/disable auto-login for provider."""
+        self.set_setting(f"{provider_id}_auto_login", "1" if enabled else "0")
+
+    # ========================================================================
     # SUBJECTS
     # ========================================================================
     
