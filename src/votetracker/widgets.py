@@ -12,6 +12,7 @@ from .utils import (
     get_symbolic_icon, has_icon, get_icon_fallback, StatusColors
 )
 from .i18n import tr
+from .constants import NAV_BUTTON_WIDTH, NAV_BUTTON_HEIGHT
 
 
 class StatusIndicator(QLabel):
@@ -58,7 +59,7 @@ class NavButton(QToolButton):
         super().__init__(parent)
         self.setCheckable(True)
         self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        self.setFixedSize(80, 64)
+        self.setFixedSize(NAV_BUTTON_WIDTH, NAV_BUTTON_HEIGHT)
 
         # Always use icons now (no emoji fallbacks)
         icon = get_symbolic_icon(icon_name)

@@ -20,6 +20,11 @@ from .pages import (
 from .dialogs import ShortcutsHelpDialog, OnboardingWizard
 from .i18n import init_language, tr
 from .classeviva import ClasseVivaClient
+from .constants import (
+    SIDEBAR_WIDTH, NAV_BUTTON_WIDTH, NAV_BUTTON_HEIGHT,
+    MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT,
+    MARGIN_SMALL, MARGIN_MEDIUM, SPACING_SMALL
+)
 
 
 class MainWindow(QMainWindow):
@@ -39,7 +44,7 @@ class MainWindow(QMainWindow):
         init_language(self._db)
 
         self.setWindowTitle("VoteTracker")
-        self.setMinimumSize(1000, 700)
+        self.setMinimumSize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
 
         self._setup_ui()
         self._connect_signals()
@@ -97,10 +102,10 @@ class MainWindow(QMainWindow):
         
         # Sidebar
         sidebar = QFrame()
-        sidebar.setFixedWidth(96)
+        sidebar.setFixedWidth(SIDEBAR_WIDTH)
         sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(8, 12, 8, 12)
-        sidebar_layout.setSpacing(4)
+        sidebar_layout.setContentsMargins(MARGIN_SMALL, MARGIN_MEDIUM, MARGIN_SMALL, MARGIN_MEDIUM)
+        sidebar_layout.setSpacing(SPACING_SMALL)
         sidebar_layout.setAlignment(Qt.AlignTop)
         
         # Navigation buttons

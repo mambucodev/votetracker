@@ -5,6 +5,10 @@ Contains calculation helpers, color utilities, and icon helpers.
 
 from typing import List, Dict
 from PySide6.QtGui import QColor, QIcon
+from .constants import (
+    PASSING_GRADE, GRADE_INSUFFICIENT,
+    COLOR_FAIL, COLOR_SUFFICIENT, COLOR_GOOD
+)
 
 
 # ============================================================================
@@ -40,10 +44,10 @@ def round_report_card(average: float) -> int:
 class StatusColors:
     """Color constants for grade status indicators."""
 
-    FAILING = QColor("#e74c3c")      # Red - below 5.5
-    WARNING = QColor("#f39c12")      # Yellow/Orange - 5.5 to 6
-    PASSING = QColor("#27ae60")      # Green - 6 and above
-    
+    FAILING = QColor(COLOR_FAIL)         # Red - below 5.5
+    WARNING = QColor(COLOR_SUFFICIENT)   # Yellow/Orange - 5.5 to 6
+    PASSING = QColor(COLOR_GOOD)         # Green - 6 and above
+
     WRITTEN = QColor("#a855f7")      # Purple for written grades
     ORAL = QColor("#06b6d4")         # Cyan for oral grades
     PRACTICAL = QColor("#f97316")    # Orange for practical grades
@@ -51,9 +55,9 @@ class StatusColors:
 
 def get_status_color(average: float) -> QColor:
     """Get the status color based on average grade."""
-    if average < 5.5:
+    if average < GRADE_INSUFFICIENT:
         return StatusColors.FAILING
-    elif average < 6:
+    elif average < PASSING_GRADE:
         return StatusColors.WARNING
     return StatusColors.PASSING
 
@@ -76,9 +80,9 @@ def get_grade_style(grade: float) -> str:
 
 def get_status_icon_name(average: float) -> str:
     """Get Breeze theme icon name based on average."""
-    if average < 5.5:
+    if average < GRADE_INSUFFICIENT:
         return "data-error"
-    elif average < 6:
+    elif average < PASSING_GRADE:
         return "data-warning"
     return "data-success"
 
