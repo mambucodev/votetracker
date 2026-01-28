@@ -14,6 +14,7 @@ from ..database import Database
 from ..utils import calc_average, get_status_color
 from ..widgets import TermToggle
 from ..i18n import tr
+from ..enhanced_charts import InteractiveBarChart, InteractiveDistributionChart, GradeTrendChart
 
 
 class BarChart(QFrame):
@@ -237,16 +238,26 @@ class StatisticsPage(QWidget):
         self._dist_group = QGroupBox(tr("Grade Distribution"))
         dist_layout = QVBoxLayout(self._dist_group)
         dist_layout.setContentsMargins(16, 16, 16, 16)
-        self._distribution_chart = DistributionChart()
-        self._distribution_chart.setMinimumHeight(150)
+        self._distribution_chart = InteractiveDistributionChart()
+        self._distribution_chart.setMinimumHeight(200)
         dist_layout.addWidget(self._distribution_chart)
         scroll_layout.addWidget(self._dist_group)
+
+        # Grade trend over time
+        self._trend_group = QGroupBox(tr("Grade Trend Over Time"))
+        trend_layout = QVBoxLayout(self._trend_group)
+        trend_layout.setContentsMargins(16, 16, 16, 16)
+        self._trend_chart = GradeTrendChart()
+        self._trend_chart.setMinimumHeight(250)
+        trend_layout.addWidget(self._trend_chart)
+        scroll_layout.addWidget(self._trend_group)
 
         # Subject comparison
         self._subjects_group = QGroupBox(tr("Subject Averages"))
         subjects_layout = QVBoxLayout(self._subjects_group)
         subjects_layout.setContentsMargins(16, 16, 16, 16)
-        self._subjects_chart = BarChart()
+        self._subjects_chart = InteractiveBarChart()
+        self._subjects_chart.setMinimumHeight(250)
         subjects_layout.addWidget(self._subjects_chart)
         scroll_layout.addWidget(self._subjects_group)
 
@@ -303,6 +314,7 @@ class StatisticsPage(QWidget):
         self._title.setText(tr("Statistics"))
         self._summary_group.setTitle(tr("Summary"))
         self._dist_group.setTitle(tr("Grade Distribution"))
+        self._trend_group.setTitle(tr("Grade Trend Over Time"))
         self._subjects_group.setTitle(tr("Subject Averages"))
         self._best_group.setTitle(tr("Best Subjects"))
         self._worst_group.setTitle(tr("Subjects to Improve"))
@@ -353,6 +365,9 @@ class StatisticsPage(QWidget):
         # Distribution chart
         self._distribution_chart.set_data(grades)
 
+        # Trend chart
+        self._trend_chart.set_data(votes)
+
         # Subject averages chart
         subjects = self._db.get_subjects_with_votes(term=self._current_term)
         subject_data = []
@@ -360,7 +375,27 @@ class StatisticsPage(QWidget):
             subj_votes = self._db.get_votes(subject=subj, term=self._current_term)
             avg = calc_average(subj_votes)
             color = get_status_color(avg).name()
-            subject_data.append((subj, avg, color))
+
+            # Calculate detailed stats for tooltip
+            vote_count = len(subj_votes)
+            written_votes = [v for v in subj_votes if v.get("type") == "Written"]
+            oral_votes = [v for v in subj_votes if v.get("type") == "Oral"]
+            practical_votes = [v for v in subj_votes if v.get("type") == "Practical"]
+
+            w_avg = calc_average(written_votes) if written_votes else 0
+            o_avg = calc_average(oral_votes) if oral_votes else 0
+            p_avg = calc_average(practical_votes) if practical_votes else 0
+
+            detail_parts = [f"Total grades: {vote_count}"]
+            if written_votes:
+                detail_parts.append(f"Written: {w_avg:.2f} ({len(written_votes)} grades)")
+            if oral_votes:
+                detail_parts.append(f"Oral: {o_avg:.2f} ({len(oral_votes)} grades)")
+            if practical_votes:
+                detail_parts.append(f"Practical: {p_avg:.2f} ({len(practical_votes)} grades)")
+
+            detail = "<br>".join(detail_parts)
+            subject_data.append((subj, avg, color, detail))
 
         # Sort by average descending
         subject_data.sort(key=lambda x: x[1], reverse=True)
