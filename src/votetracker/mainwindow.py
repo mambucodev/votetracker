@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QFrame, QStackedWidget
 )
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtGui import QKeyEvent, QIcon
 
 from .database import Database
 from .undo import UndoManager
@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
         init_language(self._db)
 
         self.setWindowTitle("VoteTracker")
+        self.setWindowIcon(QIcon.fromTheme("votetracker"))
         self.setMinimumSize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
 
         self._setup_ui()
