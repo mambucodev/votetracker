@@ -21,9 +21,11 @@ package() {
     # Install Python package
     install -dm755 "$pkgdir/usr/lib/python$_pyver/site-packages/votetracker"
     install -dm755 "$pkgdir/usr/lib/python$_pyver/site-packages/votetracker/pages"
+    install -dm755 "$pkgdir/usr/lib/python$_pyver/site-packages/votetracker/providers"
 
     install -Dm644 src/votetracker/*.py -t "$pkgdir/usr/lib/python$_pyver/site-packages/votetracker/"
     install -Dm644 src/votetracker/pages/*.py -t "$pkgdir/usr/lib/python$_pyver/site-packages/votetracker/pages/"
+    install -Dm644 src/votetracker/providers/*.py -t "$pkgdir/usr/lib/python$_pyver/site-packages/votetracker/providers/"
 
     # Install launcher script
     install -dm755 "$pkgdir/usr/bin"
