@@ -7,8 +7,11 @@ import os
 import sys
 import sqlite3
 import base64
+import logging
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 def get_data_dir() -> str:
@@ -187,7 +190,12 @@ class Database:
             conn.commit()
     
     def add_school_year(self, start_year: int) -> bool:
-        """Add a new school year."""
+        """
+        Add a new school year.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
         year_name = f"{start_year}/{start_year + 1}"
         try:
             with self._get_connection() as conn:
@@ -198,32 +206,52 @@ class Database:
                 )
                 conn.commit()
                 return True
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
+            logger.warning(f"School year {year_name} already exists")
+            return False
+        except sqlite3.Error as e:
+            logger.error(f"Database error adding school year {year_name}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error adding school year {year_name}: {e}")
             return False
     
     def delete_school_year(self, year_id: int) -> bool:
-        """Delete a school year and all associated votes."""
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            # Check if it's the only year
-            cursor.execute("SELECT COUNT(*) FROM school_years")
-            if cursor.fetchone()[0] <= 1:
-                return False
-            
-            # Check if it's active
-            cursor.execute("SELECT is_active FROM school_years WHERE id = ?", (year_id,))
-            row = cursor.fetchone()
-            if row and row[0] == 1:
-                # Activate another year first
-                cursor.execute(
-                    "UPDATE school_years SET is_active = 1 WHERE id != ? LIMIT 1",
-                    (year_id,)
-                )
-            
-            cursor.execute("DELETE FROM votes WHERE school_year_id = ?", (year_id,))
-            cursor.execute("DELETE FROM school_years WHERE id = ?", (year_id,))
-            conn.commit()
-            return True
+        """
+        Delete a school year and all associated votes.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                # Check if it's the only year
+                cursor.execute("SELECT COUNT(*) FROM school_years")
+                if cursor.fetchone()[0] <= 1:
+                    logger.warning("Cannot delete the only school year")
+                    return False
+
+                # Check if it's active
+                cursor.execute("SELECT is_active FROM school_years WHERE id = ?", (year_id,))
+                row = cursor.fetchone()
+                if row and row[0] == 1:
+                    # Activate another year first
+                    cursor.execute(
+                        "UPDATE school_years SET is_active = 1 WHERE id != ? LIMIT 1",
+                        (year_id,)
+                    )
+
+                cursor.execute("DELETE FROM votes WHERE school_year_id = ?", (year_id,))
+                cursor.execute("DELETE FROM school_years WHERE id = ?", (year_id,))
+                conn.commit()
+                return True
+        except sqlite3.Error as e:
+            logger.error(f"Database error deleting school year {year_id}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error deleting school year {year_id}: {e}")
+            return False
     
     # ========================================================================
     # SETTINGS
@@ -371,19 +399,36 @@ class Database:
             row = cursor.fetchone()
             return row["id"] if row else None
     
-    def add_subject(self, name: str) -> bool:
-        """Add a new subject."""
+    def add_subject(self, name: str) -> Optional[int]:
+        """
+        Add a new subject.
+
+        Returns:
+            int: Subject ID if successful, None otherwise
+        """
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("INSERT INTO subjects (name) VALUES (?)", (name,))
                 conn.commit()
-                return True
+                return cursor.lastrowid
         except sqlite3.IntegrityError:
-            return False
+            logger.warning(f"Subject '{name}' already exists")
+            return self.get_subject_id(name)
+        except sqlite3.Error as e:
+            logger.error(f"Database error adding subject '{name}': {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error adding subject '{name}': {e}")
+            return None
     
     def rename_subject(self, old_name: str, new_name: str) -> bool:
-        """Rename a subject."""
+        """
+        Rename a subject.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -393,20 +438,41 @@ class Database:
                 )
                 conn.commit()
                 return cursor.rowcount > 0
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
+            logger.error(f"Failed to rename subject (integrity error): {e}")
+            return False
+        except sqlite3.Error as e:
+            logger.error(f"Database error renaming subject '{old_name}' to '{new_name}': {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error renaming subject '{old_name}' to '{new_name}': {e}")
             return False
     
-    def delete_subject(self, name: str):
-        """Delete a subject and all associated votes."""
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id FROM subjects WHERE name = ?", (name,))
-            row = cursor.fetchone()
-            if row:
-                subject_id = row["id"]
-                cursor.execute("DELETE FROM votes WHERE subject_id = ?", (subject_id,))
-                cursor.execute("DELETE FROM subjects WHERE id = ?", (subject_id,))
-                conn.commit()
+    def delete_subject(self, name: str) -> bool:
+        """
+        Delete a subject and all associated votes.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM subjects WHERE name = ?", (name,))
+                row = cursor.fetchone()
+                if row:
+                    subject_id = row["id"]
+                    cursor.execute("DELETE FROM votes WHERE subject_id = ?", (subject_id,))
+                    cursor.execute("DELETE FROM subjects WHERE id = ?", (subject_id,))
+                    conn.commit()
+                    return True
+                return False
+        except sqlite3.Error as e:
+            logger.error(f"Database error deleting subject '{name}': {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error deleting subject '{name}': {e}")
+            return False
     
     # ========================================================================
     # VOTES
@@ -462,31 +528,48 @@ class Database:
         term: int = None,
         weight: float = 1.0,
         school_year_id: int = None
-    ) -> int:
-        """Add a new vote. Returns the new vote ID."""
-        # Ensure subject exists
-        subject_id = self.get_subject_id(subject)
-        if not subject_id:
-            self.add_subject(subject)
+    ) -> Optional[int]:
+        """
+        Add a new vote.
+
+        Returns:
+            int: Vote ID if successful, None otherwise
+        """
+        try:
+            # Ensure subject exists
             subject_id = self.get_subject_id(subject)
+            if not subject_id:
+                subject_id = self.add_subject(subject)
+                if not subject_id:
+                    logger.error(f"Failed to create subject '{subject}'")
+                    return None
 
-        # Use active school year if not specified
-        if school_year_id is None:
-            active = self.get_active_school_year()
-            school_year_id = active["id"] if active else None
+            # Use active school year if not specified
+            if school_year_id is None:
+                active = self.get_active_school_year()
+                school_year_id = active["id"] if active else None
 
-        # Use current term if not specified
-        if term is None:
-            term = self.get_current_term()
+            # Use current term if not specified
+            if term is None:
+                term = self.get_current_term()
 
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO votes (subject_id, school_year_id, grade, type, term, date, description, weight)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (subject_id, school_year_id, grade, vote_type, term, date, description, weight))
-            conn.commit()
-            return cursor.lastrowid
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO votes (subject_id, school_year_id, grade, type, term, date, description, weight)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (subject_id, school_year_id, grade, vote_type, term, date, description, weight))
+                conn.commit()
+                return cursor.lastrowid
+        except sqlite3.IntegrityError as e:
+            logger.error(f"Failed to add vote (integrity error): {e}")
+            return None
+        except sqlite3.Error as e:
+            logger.error(f"Database error adding vote: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error adding vote: {e}")
+            return None
     
     def update_vote(
         self,
@@ -498,21 +581,36 @@ class Database:
         description: str,
         term: int,
         weight: float = 1.0
-    ):
-        """Update an existing vote."""
-        subject_id = self.get_subject_id(subject)
-        if not subject_id:
-            self.add_subject(subject)
+    ) -> bool:
+        """
+        Update an existing vote.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
             subject_id = self.get_subject_id(subject)
-        
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE votes
-                SET subject_id = ?, grade = ?, type = ?, term = ?, date = ?, description = ?, weight = ?
-                WHERE id = ?
-            """, (subject_id, grade, vote_type, term, date, description, weight, vote_id))
-            conn.commit()
+            if not subject_id:
+                subject_id = self.add_subject(subject)
+                if not subject_id:
+                    logger.error(f"Failed to create subject '{subject}'")
+                    return False
+
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE votes
+                    SET subject_id = ?, grade = ?, type = ?, term = ?, date = ?, description = ?, weight = ?
+                    WHERE id = ?
+                """, (subject_id, grade, vote_type, term, date, description, weight, vote_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            logger.error(f"Database error updating vote {vote_id}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error updating vote {vote_id}: {e}")
+            return False
     
     def get_vote(self, vote_id: int) -> Optional[Dict[str, Any]]:
         """Get a single vote by ID."""
@@ -528,12 +626,25 @@ class Database:
             row = cursor.fetchone()
             return dict(row) if row else None
 
-    def delete_vote(self, vote_id: int):
-        """Delete a vote by ID."""
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM votes WHERE id = ?", (vote_id,))
-            conn.commit()
+    def delete_vote(self, vote_id: int) -> bool:
+        """
+        Delete a vote by ID.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM votes WHERE id = ?", (vote_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            logger.error(f"Database error deleting vote {vote_id}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error deleting vote {vote_id}: {e}")
+            return False
 
     def vote_exists(
         self,
@@ -679,48 +790,73 @@ class Database:
     # IMPORT / EXPORT
     # ========================================================================
     
-    def import_votes(self, votes: List[Dict[str, Any]], school_year_id: int = None):
-        """Import votes from a list of dictionaries."""
-        for vote in votes:
-            # Support both English and Italian field names
-            subject = vote.get("subject") or vote.get("materia", "Unknown")
-            grade = vote.get("grade") or vote.get("voto", 0)
-            vote_type = vote.get("type") or vote.get("tipo", "Written")
-            date = vote.get("date") or vote.get("data", "")
-            description = vote.get("description") or vote.get("desc", "")
-            weight = vote.get("weight") or vote.get("peso", 1.0)
-            term = vote.get("term") or vote.get("quadrimestre", 1)
-            
-            # Map Italian type names
-            type_map = {"Scritto": "Written", "Orale": "Oral", "Pratico": "Practical"}
-            vote_type = type_map.get(vote_type, vote_type)
-            
-            self.add_vote(
-                subject, grade, vote_type, date, description,
-                term=term, weight=weight, school_year_id=school_year_id
-            )
+    def import_votes(self, votes: List[Dict[str, Any]], school_year_id: int = None) -> bool:
+        """
+        Import votes from a list of dictionaries.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            for vote in votes:
+                # Support both English and Italian field names
+                subject = vote.get("subject") or vote.get("materia", "Unknown")
+                grade = vote.get("grade") or vote.get("voto", 0)
+                vote_type = vote.get("type") or vote.get("tipo", "Written")
+                date = vote.get("date") or vote.get("data", "")
+                description = vote.get("description") or vote.get("desc", "")
+                weight = vote.get("weight") or vote.get("peso", 1.0)
+                term = vote.get("term") or vote.get("quadrimestre", 1)
+
+                # Map Italian type names
+                type_map = {"Scritto": "Written", "Orale": "Oral", "Pratico": "Practical"}
+                vote_type = type_map.get(vote_type, vote_type)
+
+                result = self.add_vote(
+                    subject, grade, vote_type, date, description,
+                    term=term, weight=weight, school_year_id=school_year_id
+                )
+                if result is None:
+                    logger.warning(f"Failed to import vote for {subject}")
+            return True
+        except Exception as e:
+            logger.error(f"Error importing votes: {e}")
+            return False
     
     def export_votes(self, school_year_id: int = None, term: int = None) -> List[Dict[str, Any]]:
         """Export votes to a list of dictionaries."""
         return self.get_votes(school_year_id=school_year_id, term=term)
     
-    def clear_votes(self, school_year_id: int = None, term: int = None):
-        """Clear votes with optional filters."""
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            
-            if school_year_id is None:
-                active = self.get_active_school_year()
-                school_year_id = active["id"] if active else None
-            
-            if term is not None:
-                cursor.execute(
-                    "DELETE FROM votes WHERE school_year_id = ? AND term = ?",
-                    (school_year_id, term)
-                )
-            else:
-                cursor.execute(
-                    "DELETE FROM votes WHERE school_year_id = ?",
-                    (school_year_id,)
-                )
-            conn.commit()
+    def clear_votes(self, school_year_id: int = None, term: int = None) -> bool:
+        """
+        Clear votes with optional filters.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+
+                if school_year_id is None:
+                    active = self.get_active_school_year()
+                    school_year_id = active["id"] if active else None
+
+                if term is not None:
+                    cursor.execute(
+                        "DELETE FROM votes WHERE school_year_id = ? AND term = ?",
+                        (school_year_id, term)
+                    )
+                else:
+                    cursor.execute(
+                        "DELETE FROM votes WHERE school_year_id = ?",
+                        (school_year_id,)
+                    )
+                conn.commit()
+                return True
+        except sqlite3.Error as e:
+            logger.error(f"Database error clearing votes: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error clearing votes: {e}")
+            return False
