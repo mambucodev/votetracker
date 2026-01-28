@@ -580,6 +580,71 @@ class Database:
             count = cursor.fetchone()[0]
             return count > 0
 
+    def get_grade_statistics(self) -> Dict[str, Any]:
+        """
+        Get aggregated grade statistics in a single query.
+
+        Returns dict with:
+            - overall_avg: Overall weighted average across all subjects
+            - failing_count: Number of subjects with average < 6
+            - total_votes: Total number of votes
+            - subject_avgs: Dict of {subject_name: average}
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Get active year and current term
+            active_year = self.get_active_school_year()
+            if not active_year:
+                return {
+                    'overall_avg': 0.0,
+                    'failing_count': 0,
+                    'total_votes': 0,
+                    'subject_avgs': {}
+                }
+
+            current_term = self.get_current_term()
+
+            # Single query with aggregation - calculates weighted average per subject
+            cursor.execute("""
+                SELECT
+                    s.name,
+                    SUM(v.grade * v.weight) / SUM(v.weight) as weighted_avg,
+                    COUNT(*) as vote_count
+                FROM votes v
+                JOIN subjects s ON v.subject_id = s.id
+                WHERE v.school_year_id = ? AND v.term = ?
+                GROUP BY s.id, s.name
+                HAVING COUNT(*) > 0
+            """, (active_year['id'], current_term))
+
+            subject_stats = cursor.fetchall()
+
+            if not subject_stats:
+                return {
+                    'overall_avg': 0.0,
+                    'failing_count': 0,
+                    'total_votes': 0,
+                    'subject_avgs': {}
+                }
+
+            # Calculate overall average (mean of subject averages)
+            subject_avgs_dict = {row['name']: row['weighted_avg'] for row in subject_stats}
+            overall_avg = sum(subject_avgs_dict.values()) / len(subject_avgs_dict)
+
+            # Count failing subjects
+            failing_count = sum(1 for avg in subject_avgs_dict.values() if avg < 6.0)
+
+            # Total votes
+            total_votes = sum(row['vote_count'] for row in subject_stats)
+
+            return {
+                'overall_avg': overall_avg,
+                'failing_count': failing_count,
+                'total_votes': total_votes,
+                'subject_avgs': subject_avgs_dict
+            }
+
     def get_subjects_with_votes(
         self, 
         school_year_id: int = None,

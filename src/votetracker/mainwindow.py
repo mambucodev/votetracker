@@ -243,26 +243,20 @@ class MainWindow(QMainWindow):
             pages[idx].refresh()
     
     def _refresh_all(self):
-        """Refresh all data displays."""
-        votes = self._db.get_votes()
-        avg = calc_average(votes)
-        subjects = self._db.get_subjects_with_votes()
-        
-        failing = sum(
-            1 for s in subjects 
-            if calc_average(self._db.get_votes(s)) < 6
-        )
-        
+        """Refresh all data displays using optimized single-query approach."""
+        # Single database query instead of N+2 queries
+        stats = self._db.get_grade_statistics()
+
         # Update quick stats
-        if votes:
-            self._quick_avg.setText(f"Avg: <b>{avg:.1f}</b>")
-            self._quick_avg.setStyleSheet(get_grade_style(avg))
+        if stats['total_votes'] > 0:
+            self._quick_avg.setText(f"Avg: <b>{stats['overall_avg']:.1f}</b>")
+            self._quick_avg.setStyleSheet(get_grade_style(stats['overall_avg']))
         else:
             self._quick_avg.setText("Avg: -")
             self._quick_avg.setStyleSheet("")
-        
-        self._quick_failing.setText(f"Fail: <b>{failing}</b>")
-        color = "#e74c3c" if failing > 0 else "#27ae60"
+
+        self._quick_failing.setText(f"Fail: <b>{stats['failing_count']}</b>")
+        color = "#e74c3c" if stats['failing_count'] > 0 else "#27ae60"
         self._quick_failing.setStyleSheet(f"color: {color};")
         
         self._refresh_current_page()
