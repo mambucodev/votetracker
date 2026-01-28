@@ -42,14 +42,34 @@ class Database:
         # Caches for frequently accessed data
         self._subject_cache = None
         self._year_cache = None
+        # Persistent database connection
+        self._connection = None
         self._init_db()
-    
+
     def _get_connection(self) -> sqlite3.Connection:
-        """Get a database connection with foreign keys enabled."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        return conn
+        """
+        Get a database connection (reused).
+
+        Creates and configures a persistent connection on first call,
+        then reuses it for all subsequent operations.
+        """
+        if self._connection is None:
+            self._connection = sqlite3.connect(self.db_path)
+            self._connection.row_factory = sqlite3.Row
+            self._connection.execute("PRAGMA foreign_keys = ON")
+            # Enable WAL mode for better concurrent access
+            self._connection.execute("PRAGMA journal_mode=WAL")
+        return self._connection
+
+    def close(self):
+        """Close the database connection."""
+        if self._connection:
+            self._connection.close()
+            self._connection = None
+
+    def __del__(self):
+        """Cleanup on deletion."""
+        self.close()
     
     def _init_db(self):
         """Initialize the database schema and run migrations."""

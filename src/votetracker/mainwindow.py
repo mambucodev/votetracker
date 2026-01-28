@@ -411,3 +411,9 @@ class MainWindow(QMainWindow):
                 return
 
         super().keyPressEvent(event)
+
+    def closeEvent(self, event):
+        """Handle window close event."""
+        # Close database connection
+        self._db.close()
+        event.accept()
