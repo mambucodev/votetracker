@@ -749,6 +749,73 @@ gh release create v2.6.0 --title "v2.6.0 - Subject Mapping Management" --notes-f
 
 ---
 
+## Testing Workflow
+
+**⚠️ CRITICAL: NEVER commit code without proper testing**
+
+### Required Testing Process
+
+**For EVERY code change, follow this exact order:**
+
+1. **Write automated test script** (if applicable)
+   - Create test script to verify the specific functionality
+   - Test should cover edge cases and the exact user scenario
+   - Run the script to verify the fix works programmatically
+
+2. **Run the actual application**
+   - Execute `python -m src.votetracker` for the user to test
+   - Let the user interact with the real UI and verify the fix
+   - Check exit code: `0` = user closed it safely, non-zero = crash
+   - **DO NOT re-run unless asked or if exit code indicates crash**
+
+3. **User approval required**
+   - User MUST test and confirm the fix works
+   - Do NOT assume automated tests are sufficient
+   - Do NOT commit until user explicitly confirms
+
+4. **Only then commit**
+   - After user approval, create proper commit message
+   - Follow commit message format guidelines
+   - Reference the issue that was fixed
+
+### Test Script Guidelines
+
+- Use test scripts for YOUR troubleshooting, not as replacement for user testing
+- Test scripts help verify logic but don't replace real UI interaction
+- Always run the actual app for user testing before committing
+
+### Example Workflow
+
+```bash
+# 1. Make code changes
+vim src/votetracker/pages/settings.py
+
+# 2. Create and run test script for troubleshooting
+python test_feature.py
+
+# 3. Run app for user testing
+python -m src.votetracker
+
+# 4. Wait for user approval
+# User tests... User says "looks good!"
+
+# 5. Now commit
+git add src/votetracker/pages/settings.py
+git commit -m "fix: Description of what was fixed"
+
+# 6. Clean up test script
+rm test_feature.py
+```
+
+### What NOT to Do
+
+❌ Commit before running the app for user testing
+❌ Assume your test script proves the fix works
+❌ Re-run the app when user closed it (exit code 0)
+❌ Skip user approval and commit immediately
+
+---
+
 ## Remember
 
 **⚠️ ALWAYS UPDATE THIS FILE WHEN:**
