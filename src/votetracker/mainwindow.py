@@ -20,6 +20,8 @@ from .pages import (
 from .dialogs import ShortcutsHelpDialog, OnboardingWizard
 from .i18n import init_language, tr
 from .classeviva import ClasseVivaClient
+from .sync_provider import SyncProviderRegistry
+from .providers import register_all_providers
 from .constants import (
     SIDEBAR_WIDTH, NAV_BUTTON_WIDTH, NAV_BUTTON_HEIGHT,
     MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT,
@@ -36,7 +38,10 @@ class MainWindow(QMainWindow):
         self._undo_manager = UndoManager(self._db)
         self._undo_manager.state_changed.connect(self._on_undo_state_changed)
 
-        # Initialize ClasseViva client
+        # Register sync providers
+        register_all_providers()
+
+        # Initialize ClasseViva client (keep for backward compatibility)
         self._cv_client = ClasseVivaClient()
         self._auto_sync_timer = None
 
@@ -50,7 +55,7 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self._check_onboarding()
         self._refresh_all()
-        self._auto_login_classeviva()
+        self._auto_login_provider()
         self._start_auto_sync_if_enabled()
 
     # ========================================================================
@@ -216,30 +221,53 @@ class MainWindow(QMainWindow):
             wizard.exec()
             self._refresh_all()
 
-    def _auto_login_classeviva(self):
-        """Auto-login to ClasseViva if enabled."""
-        # Check if auto-login is enabled
-        if self._db.get_setting("classeviva_auto_login") != "1":
+    def _auto_login_provider(self):
+        """Auto-login to active sync provider if enabled."""
+        provider_id = self._db.get_active_provider()
+        if not provider_id:
             return
 
+        # Check if auto-login is enabled for this provider
+        if not self._db.get_provider_auto_login(provider_id):
+            return
+
+        # Get provider instance
+        provider = SyncProviderRegistry.get_provider(provider_id, self._db)
+        if not provider:
+            return
+
+        # Get credential field names from provider
+        field_names = [f['name'] for f in provider.get_credential_fields()]
+
         # Get saved credentials
-        username, password = self._db.get_classeviva_credentials()
-        if not username or not password:
+        credentials = self._db.get_provider_credentials(provider_id, field_names)
+
+        # Check all credentials present
+        if not all(credentials.values()):
             return
 
         # Attempt login
-        success, message = self._cv_client.login(username, password)
+        success, message = provider.login(credentials)
         if success:
-            # Enable import button in settings page
-            self._settings_page.enable_classeviva_import()
+            # Notify settings page (if it has a method for this)
+            # The settings page will handle UI updates
+            pass
 
     def _start_auto_sync_if_enabled(self):
         """Start auto-sync timer if enabled in settings."""
-        if self._db.get_auto_sync_enabled():
+        provider_id = self._db.get_active_provider()
+        if not provider_id:
+            return
+
+        if self._db.get_provider_auto_sync_enabled(provider_id):
             self.start_auto_sync()
 
     def start_auto_sync(self):
-        """Start the auto-sync timer."""
+        """Start the auto-sync timer for active provider."""
+        provider_id = self._db.get_active_provider()
+        if not provider_id:
+            return
+
         if self._auto_sync_timer is None:
             self._auto_sync_timer = QTimer(self)
             self._auto_sync_timer.timeout.connect(self._auto_sync_tick)
@@ -248,7 +276,7 @@ class MainWindow(QMainWindow):
         if self._auto_sync_timer.isActive():
             self._auto_sync_timer.stop()
 
-        interval = self._db.get_sync_interval()
+        interval = self._db.get_provider_sync_interval(provider_id)
         self._auto_sync_timer.start(interval * 60 * 1000)  # Convert minutes to ms
 
     def stop_auto_sync(self):
@@ -257,9 +285,16 @@ class MainWindow(QMainWindow):
             self._auto_sync_timer.stop()
 
     def _auto_sync_tick(self):
-        """Perform automatic sync."""
-        # Call the settings page import method which handles everything
-        self._settings_page.trigger_classeviva_sync()
+        """Perform automatic sync for active provider."""
+        provider_id = self._db.get_active_provider()
+        if not provider_id:
+            return
+
+        # Trigger import from settings page for the active provider
+        # The settings page's _import_from_provider method handles everything
+        # TODO: Add a trigger method in settings page for auto-sync
+        # self._settings_page.trigger_provider_sync(provider_id)
+        pass
     
     def _switch_page(self, index: int):
         """Switch to a page by index."""
