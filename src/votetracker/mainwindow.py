@@ -201,15 +201,17 @@ class MainWindow(QMainWindow):
             self._auto_sync_timer = QTimer(self)
             self._auto_sync_timer.timeout.connect(self._auto_sync_tick)
 
+        # Stop if already running to avoid duplicate timers
+        if self._auto_sync_timer.isActive():
+            self._auto_sync_timer.stop()
+
         interval = self._db.get_sync_interval()
         self._auto_sync_timer.start(interval * 60 * 1000)  # Convert minutes to ms
-        print(f"Auto-sync started with {interval} minute interval")
 
     def stop_auto_sync(self):
         """Stop the auto-sync timer."""
         if self._auto_sync_timer:
             self._auto_sync_timer.stop()
-            print("Auto-sync stopped")
 
     def _auto_sync_tick(self):
         """Perform automatic sync."""
