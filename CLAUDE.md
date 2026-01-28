@@ -70,6 +70,7 @@ votetracker/
 │   ├── widgets.py            # Custom Qt widgets
 │   ├── undo.py               # Undo/redo manager
 │   ├── utils.py              # Utility functions
+│   ├── constants.py          # Application constants
 │   ├── i18n.py               # Internationalization
 │   ├── classeviva.py         # ClasseViva API client
 │   ├── subject_matcher.py    # Smart subject matching/mapping
@@ -83,6 +84,9 @@ votetracker/
 │       ├── report_card.py    # Report card with PDF export
 │       ├── statistics.py     # Statistics and charts
 │       └── settings.py       # Settings and data management
+├── tests/                    # Unit tests
+│   ├── test_database.py      # Database operations tests
+│   └── test_utils.py         # Utility functions tests
 ├── scripts/                  # Build and install scripts
 │   ├── build.py              # PyInstaller build script
 │   ├── install.sh            # Linux install script
@@ -158,6 +162,12 @@ votetracker/
       - `delete_vote(vote_id)` - Delete vote
       - `vote_exists(subject, grade, date, vote_type, school_year_id)` - Check duplicate
       - `get_subjects_with_votes(school_year_id, term)` - Get subjects that have votes
+    - Grade Goals:
+      - `set_grade_goal(subject, target_grade, school_year_id, term)` - Set or update grade goal
+      - `get_grade_goal(subject, school_year_id, term)` - Get grade goal for subject
+      - `delete_grade_goal(subject, school_year_id, term)` - Delete grade goal
+      - `get_all_grade_goals(school_year_id, term)` - Get all goals for year/term
+      - `calculate_needed_grade(subject, target, school_year_id, term, new_weight)` - Calculate grade needed to reach target
     - Import/Export:
       - `import_votes(votes, school_year_id)` - Import from JSON
       - `export_votes(school_year_id, term)` - Export to JSON
@@ -239,6 +249,17 @@ votetracker/
   - `format_grade(grade)` - Format grade to 2 decimals
   - `calculate_average(votes, weights)` - Calculate weighted average
   - `round_italian(value)` - Italian rounding (0.5 rounds up)
+
+#### `src/votetracker/constants.py`
+**Purpose:** Application-wide constants
+- **Constants:**
+  - Grade constants: PASSING_GRADE, MIN_GRADE, MAX_GRADE, GRADE_EXCELLENT, GRADE_GOOD, GRADE_SUFFICIENT, GRADE_INSUFFICIENT
+  - UI dimensions: SIDEBAR_WIDTH, NAV_BUTTON_WIDTH, NAV_BUTTON_HEIGHT, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT
+  - Layout constants: MARGIN_SMALL, MARGIN_MEDIUM, MARGIN_LARGE, SPACING_SMALL, SPACING_MEDIUM, SPACING_LARGE
+  - Color constants: COLOR_EXCELLENT, COLOR_GOOD, COLOR_SUFFICIENT, COLOR_FAIL
+  - Vote types: VOTE_TYPE_WRITTEN, VOTE_TYPE_ORAL, VOTE_TYPE_PRACTICAL
+  - Chart constants: CHART_BAR_WIDTH, CHART_POINT_SIZE, CHART_LINE_WIDTH
+  - Database constants: CACHE_ENABLED, MAX_UNDO_HISTORY
 
 #### `src/votetracker/i18n.py`
 **Purpose:** Internationalization (i18n)
@@ -418,6 +439,7 @@ votetracker/
 - **school_years**: id, name, start_year, is_active
 - **subjects**: id, name
 - **votes**: id, subject_id, school_year_id, grade, type, term, date, description, weight, created_at
+- **grade_goals**: id, subject_id, school_year_id, term, target_grade, created_at
 - **settings**: key, value (stores ClasseViva credentials, mappings, sync settings, etc.)
 
 ### ClasseViva Subject Mappings
@@ -738,6 +760,7 @@ gh release create v2.6.0 --title "v2.6.0 - Subject Mapping Management" --notes-f
 
 ## Version History
 
+- **2.7.0** - Performance enhancements: database indices, connection pooling, caching, grade goals foundation, constants extraction, comprehensive unit tests
 - **2.6.0** - Subject mapping management dialog and Settings page restructure
 - **2.5.0** - Added ClasseViva integration with smart subject mapping
 - **2.4.0** - Added simulator vote type filter
