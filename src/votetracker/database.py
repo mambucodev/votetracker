@@ -39,6 +39,9 @@ class Database:
     
     def __init__(self):
         self.db_path = get_db_path()
+        # Caches for frequently accessed data
+        self._subject_cache = None
+        self._year_cache = None
         self._init_db()
     
     def _get_connection(self) -> sqlite3.Connection:
@@ -173,16 +176,26 @@ class Database:
     # SCHOOL YEARS
     # ========================================================================
     
-    def get_school_years(self) -> List[Dict[str, Any]]:
-        """Get all school years ordered by start year descending."""
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT id, name, start_year, is_active 
-                FROM school_years 
-                ORDER BY start_year DESC
-            """)
-            return [dict(row) for row in cursor.fetchall()]
+    def get_school_years(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
+        """
+        Get all school years ordered by start year descending (cached).
+
+        Args:
+            force_refresh: If True, bypass cache and fetch from database
+
+        Returns:
+            List of school year dictionaries
+        """
+        if force_refresh or self._year_cache is None:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT id, name, start_year, is_active
+                    FROM school_years
+                    ORDER BY start_year DESC
+                """)
+                self._year_cache = [dict(row) for row in cursor.fetchall()]
+        return [dict(y) for y in self._year_cache]  # Return deep copy
     
     def get_active_school_year(self) -> Optional[Dict[str, Any]]:
         """Get the currently active school year."""
@@ -220,6 +233,7 @@ class Database:
                     (year_name, start_year)
                 )
                 conn.commit()
+                self._year_cache = None  # Invalidate cache
                 return True
         except sqlite3.IntegrityError as e:
             logger.warning(f"School year {year_name} already exists")
@@ -260,6 +274,7 @@ class Database:
                 cursor.execute("DELETE FROM votes WHERE school_year_id = ?", (year_id,))
                 cursor.execute("DELETE FROM school_years WHERE id = ?", (year_id,))
                 conn.commit()
+                self._year_cache = None  # Invalidate cache
                 return True
         except sqlite3.Error as e:
             logger.error(f"Database error deleting school year {year_id}: {e}")
@@ -399,12 +414,22 @@ class Database:
     # SUBJECTS
     # ========================================================================
     
-    def get_subjects(self) -> List[str]:
-        """Get all subject names ordered alphabetically."""
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT name FROM subjects ORDER BY name")
-            return [row["name"] for row in cursor.fetchall()]
+    def get_subjects(self, force_refresh: bool = False) -> List[str]:
+        """
+        Get all subject names ordered alphabetically (cached).
+
+        Args:
+            force_refresh: If True, bypass cache and fetch from database
+
+        Returns:
+            List of subject names
+        """
+        if force_refresh or self._subject_cache is None:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM subjects ORDER BY name")
+                self._subject_cache = [row["name"] for row in cursor.fetchall()]
+        return self._subject_cache.copy()  # Return copy to prevent external mutation
     
     def get_subject_id(self, name: str) -> Optional[int]:
         """Get subject ID by name."""
@@ -426,7 +451,9 @@ class Database:
                 cursor = conn.cursor()
                 cursor.execute("INSERT INTO subjects (name) VALUES (?)", (name,))
                 conn.commit()
-                return cursor.lastrowid
+                result = cursor.lastrowid
+                self._subject_cache = None  # Invalidate cache
+                return result
         except sqlite3.IntegrityError:
             logger.warning(f"Subject '{name}' already exists")
             return self.get_subject_id(name)
@@ -452,7 +479,10 @@ class Database:
                     (new_name, old_name)
                 )
                 conn.commit()
-                return cursor.rowcount > 0
+                result = cursor.rowcount > 0
+                if result:
+                    self._subject_cache = None  # Invalidate cache
+                return result
         except sqlite3.IntegrityError as e:
             logger.error(f"Failed to rename subject (integrity error): {e}")
             return False
@@ -480,6 +510,7 @@ class Database:
                     cursor.execute("DELETE FROM votes WHERE subject_id = ?", (subject_id,))
                     cursor.execute("DELETE FROM subjects WHERE id = ?", (subject_id,))
                     conn.commit()
+                    self._subject_cache = None  # Invalidate cache
                     return True
                 return False
         except sqlite3.Error as e:
