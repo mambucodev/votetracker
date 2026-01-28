@@ -87,65 +87,28 @@ def get_status_icon_name(average: float) -> str:
 # ICON HELPERS
 # ============================================================================
 
-# Fallback text/emoji for systems without Breeze icons
-ICON_FALLBACKS = {
-    # Navigation
-    "go-home": "🏠",
-    "user-home": "🏠",
-    "view-dashboard": "📊",
-    "dashboard-show": "📊",
-    "view-list-details": "📋",
-    "folder": "📁",
-    "bookmarks": "🔖",
-    "office-chart-line": "📈",
-    "x-office-document": "📄",
-    "text-x-generic": "📄",
-    "application-pdf": "📄",
-    "office-report": "📄",
-    "view-statistics": "📊",
-    "input-keyboard": "⌨️",
-    "configure": "⚙️",
-    # Actions
-    "list-add": "+",
-    "edit-delete": "✕",
-    "document-edit": "✎",
-    "edit-rename": "✎",
-    "document-save": "💾",
-    "document-import": "📥",
-    "document-export": "📤",
-    "document-open": "📂",
-    "dialog-cancel": "✕",
-    # Arrows
-    "go-previous": "◀",
-    "go-next": "▶",
-    # Status
-    "data-success": "●",
-    "data-warning": "●",
-    "data-error": "●",
-}
+# Import the new icon provider system
+from .icon_provider import get_icon as _get_icon, has_icon as _has_icon, get_icon_fallback as _get_icon_fallback
 
 
 def get_symbolic_icon(name: str) -> QIcon:
     """
-    Get icon from theme (using regular icons for proper color states).
-    Returns null icon if not found (use has_icon to check).
+    Get icon using the new cross-platform icon provider.
+    Now optimized for Windows with no emoji fallbacks.
+
+    Returns a QIcon that's never null.
     """
-    # Use regular icons - they have proper color states for buttons
-    icon = QIcon.fromTheme(name)
-    if icon.isNull():
-        # Fallback to symbolic if regular not available
-        icon = QIcon.fromTheme(f"{name}-symbolic")
-    return icon
+    return _get_icon(name)
 
 
 def has_icon(name: str) -> bool:
-    """Check if a theme icon is available."""
-    return not get_symbolic_icon(name).isNull()
+    """Check if an icon is available (always True with new system)."""
+    return _has_icon(name)
 
 
 def get_icon_fallback(name: str) -> str:
-    """Get fallback text/emoji for an icon."""
-    return ICON_FALLBACKS.get(name, "•")
+    """Get text fallback for an icon (no emojis, just simple text)."""
+    return _get_icon_fallback(name)
 
 
 # ============================================================================

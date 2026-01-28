@@ -51,6 +51,7 @@ class NavButton(QToolButton):
     """
     Navigation button with icon above text.
     Used in the sidebar for page navigation.
+    Optimized for Windows with proper icon rendering.
     """
 
     def __init__(self, icon_name: str, text: str, parent=None):
@@ -58,29 +59,20 @@ class NavButton(QToolButton):
         self.setCheckable(True)
         self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.setFixedSize(80, 64)
-        self._fallback = None
 
-        if has_icon(icon_name):
-            icon = get_symbolic_icon(icon_name)
-            self.setIcon(icon)
-            self.setIconSize(QSize(24, 24))
-            # Force autoRaise mode for proper icon color handling
-            self.setAutoRaise(True)
-        else:
-            # Fallback: show emoji/text above label
-            self._fallback = get_icon_fallback(icon_name)
-            self.setToolButtonStyle(Qt.ToolButtonTextOnly)
-            self.setText(f"{self._fallback}\n{text}")
-            return
+        # Always use icons now (no emoji fallbacks)
+        icon = get_symbolic_icon(icon_name)
+        self.setIcon(icon)
+        self.setIconSize(QSize(24, 24))
+
+        # Force autoRaise mode for proper icon color handling
+        self.setAutoRaise(True)
 
         self.setText(text)
 
     def set_label(self, text: str):
         """Update the button label text."""
-        if self._fallback:
-            self.setText(f"{self._fallback}\n{text}")
-        else:
-            self.setText(text)
+        self.setText(text)
 
 
 class DashboardSubjectCard(QGroupBox):
