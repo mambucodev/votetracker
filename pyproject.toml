@@ -7,7 +7,7 @@ name = "votetracker"
 version = "2.7.0"
 description = "School grade management application"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 requires-python = ">=3.8"
 authors = [
     {name = "VoteTracker"}
@@ -17,7 +17,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: X11 Applications :: Qt",
     "Intended Audience :: Education",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -40,7 +39,7 @@ votetracker = "votetracker.__main__:main"
 votetracker-gui = "votetracker.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/votetracker"
+Homepage = "https://github.com/mambucodev/votetracker"
 
 [tool.setuptools.packages.find]
 where = ["src"]
