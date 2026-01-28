@@ -857,6 +857,21 @@ class SettingsPage(QWidget):
         self._cv_next_sync_label.setText(f"{tr('Next sync in')}: {interval} {tr('30 minutes').split()[1]}")  # Get 'minutes' word
 
     # ========================================================================
+    # PUBLIC INTERFACE (for MainWindow)
+    # ========================================================================
+
+    def enable_classeviva_import(self):
+        """Enable the ClasseViva import button (called after successful login)."""
+        self._cv_import_btn.setEnabled(True)
+
+    def trigger_classeviva_sync(self):
+        """
+        Trigger a ClasseViva import operation.
+        This is the public interface for auto-sync functionality.
+        """
+        self._import_from_classeviva()
+
+    # ========================================================================
     # KEYBOARD SHORTCUTS
     # ========================================================================
 

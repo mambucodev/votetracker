@@ -47,7 +47,47 @@ class MainWindow(QMainWindow):
         self._refresh_all()
         self._auto_login_classeviva()
         self._start_auto_sync_if_enabled()
-    
+
+    # ========================================================================
+    # PAGE PROPERTIES (for backward compatibility)
+    # ========================================================================
+
+    @property
+    def _dashboard_page(self):
+        return self._pages[0]
+
+    @property
+    def _votes_page(self):
+        return self._pages[1]
+
+    @property
+    def _subjects_page(self):
+        return self._pages[2]
+
+    @property
+    def _simulator_page(self):
+        return self._pages[3]
+
+    @property
+    def _calendar_page(self):
+        return self._pages[4]
+
+    @property
+    def _report_card_page(self):
+        return self._pages[5]
+
+    @property
+    def _statistics_page(self):
+        return self._pages[6]
+
+    @property
+    def _settings_page(self):
+        return self._pages[7]
+
+    # ========================================================================
+    # UI SETUP
+    # ========================================================================
+
     def _setup_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
@@ -131,25 +171,23 @@ class MainWindow(QMainWindow):
         
         # Content stack
         self._stack = QStackedWidget()
-        
-        self._dashboard_page = DashboardPage(self._db)
-        self._votes_page = VotesPage(self._db, self._undo_manager)
-        self._subjects_page = SubjectsPage(self._db)
-        self._simulator_page = SimulatorPage(self._db)
-        self._calendar_page = CalendarPage(self._db)
-        self._report_card_page = ReportCardPage(self._db)
-        self._statistics_page = StatisticsPage(self._db)
-        self._settings_page = SettingsPage(self._db)
 
-        self._stack.addWidget(self._dashboard_page)
-        self._stack.addWidget(self._votes_page)
-        self._stack.addWidget(self._subjects_page)
-        self._stack.addWidget(self._simulator_page)
-        self._stack.addWidget(self._calendar_page)
-        self._stack.addWidget(self._report_card_page)
-        self._stack.addWidget(self._statistics_page)
-        self._stack.addWidget(self._settings_page)
-        
+        # Create all pages in order (single source of truth)
+        self._pages = [
+            DashboardPage(self._db),
+            VotesPage(self._db, self._undo_manager),
+            SubjectsPage(self._db),
+            SimulatorPage(self._db),
+            CalendarPage(self._db),
+            ReportCardPage(self._db),
+            StatisticsPage(self._db),
+            SettingsPage(self._db)
+        ]
+
+        # Add all pages to stack
+        for page in self._pages:
+            self._stack.addWidget(page)
+
         main_layout.addWidget(self._stack, 1)
         
         # Initialize year selector
@@ -188,7 +226,7 @@ class MainWindow(QMainWindow):
         success, message = self._cv_client.login(username, password)
         if success:
             # Enable import button in settings page
-            self._settings_page._cv_import_btn.setEnabled(True)
+            self._settings_page.enable_classeviva_import()
 
     def _start_auto_sync_if_enabled(self):
         """Start auto-sync timer if enabled in settings."""
@@ -216,7 +254,7 @@ class MainWindow(QMainWindow):
     def _auto_sync_tick(self):
         """Perform automatic sync."""
         # Call the settings page import method which handles everything
-        self._settings_page._import_from_classeviva()
+        self._settings_page.trigger_classeviva_sync()
     
     def _switch_page(self, index: int):
         """Switch to a page by index."""
@@ -229,20 +267,9 @@ class MainWindow(QMainWindow):
     
     def _refresh_current_page(self):
         """Refresh the currently visible page."""
-        idx = self._stack.currentIndex()
-        pages = [
-            self._dashboard_page,
-            self._votes_page,
-            self._subjects_page,
-            self._simulator_page,
-            self._calendar_page,
-            self._report_card_page,
-            self._statistics_page,
-            self._settings_page
-        ]
-
-        if hasattr(pages[idx], 'refresh'):
-            pages[idx].refresh()
+        page = self._pages[self._stack.currentIndex()]
+        if hasattr(page, 'refresh'):
+            page.refresh()
     
     def _refresh_all(self):
         """Refresh all data displays using optimized single-query approach."""
