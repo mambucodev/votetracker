@@ -140,7 +140,15 @@ class Database:
                 cursor.execute(
                     "INSERT INTO settings (key, value) VALUES ('current_term', '1')"
                 )
-            
+
+            # Create indices for performance
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_votes_subject ON votes(subject_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_votes_year ON votes(school_year_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_votes_term ON votes(term)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_votes_date ON votes(date)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_votes_composite ON votes(subject_id, school_year_id, term)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key)")
+
             conn.commit()
     
     # ========================================================================
