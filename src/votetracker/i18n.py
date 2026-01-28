@@ -135,6 +135,19 @@ TRANSLATIONS = {
         "Network error": "Network error",
         "Session expired - please log in again": "Session expired - please log in again",
 
+        # Sync Provider Selection
+        "Sync Provider": "Sync Provider",
+        "Sync Integration": "Sync Integration",
+        "Online Sync": "Online Sync",
+        "Select a sync provider to automatically import grades:": "Select a sync provider to automatically import grades:",
+        "No sync provider (manual data entry only)": "No sync provider (manual data entry only)",
+        "Axios": "Axios",
+        "Customer ID (School Tax Code)": "Customer ID (School Tax Code)",
+        "Student ID": "Student ID",
+        "Auto-login on app startup": "Auto-login on app startup",
+        "Subject Mappings": "Subject Mappings",
+        "View and edit how {provider} subjects are mapped to your VoteTracker subjects.": "View and edit how {provider} subjects are mapped to your VoteTracker subjects.",
+
         # Calendar
         "Select a date": "Select a date",
         "No grades on this date": "No grades on this date",
@@ -373,6 +386,19 @@ TRANSLATIONS = {
         "Connection timeout": "Timeout connessione",
         "Network error": "Errore di rete",
         "Session expired - please log in again": "Sessione scaduta - accedi nuovamente",
+
+        # Sync Provider Selection
+        "Sync Provider": "Provider di Sincronizzazione",
+        "Sync Integration": "Integrazione Sincronizzazione",
+        "Online Sync": "Sincronizzazione Online",
+        "Select a sync provider to automatically import grades:": "Seleziona un provider di sincronizzazione per importare automaticamente i voti:",
+        "No sync provider (manual data entry only)": "Nessun provider (solo inserimento manuale)",
+        "Axios": "Axios",
+        "Customer ID (School Tax Code)": "ID Cliente (Codice Fiscale Scuola)",
+        "Student ID": "ID Studente",
+        "Auto-login on app startup": "Accesso automatico all'avvio",
+        "Subject Mappings": "Mappature Materie",
+        "View and edit how {provider} subjects are mapped to your VoteTracker subjects.": "Visualizza e modifica come le materie di {provider} sono mappate alle tue materie VoteTracker.",
 
         # Calendar
         "Select a date": "Seleziona una data",
