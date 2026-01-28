@@ -2,7 +2,7 @@
 Name=VoteTracker
 Comment=School grade management
 Exec=votetracker
-Icon=x-office-spreadsheet
+Icon=votetracker
 Terminal=false
 Type=Application
 Categories=Education;Office;

@@ -38,4 +38,10 @@ EOF
 
     # Install .desktop file
     install -Dm644 scripts/votetracker.desktop "$pkgdir/usr/share/applications/votetracker.desktop"
+
+    # Install icons
+    for size in 16 24 32 48 64 128 256 512; do
+        install -Dm644 "icons/icon-${size}.png" \
+            "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/votetracker.png"
+    done
 }

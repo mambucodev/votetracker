@@ -1,5 +1,9 @@
 # VoteTracker
 
+<p align="center">
+  <img src="icons/icon-256.png" alt="VoteTracker Icon" width="128" height="128">
+</p>
+
 > **100% Vibe Coded**
 >
 > This project is entirely written and maintained by AI. Not a single line of code was written by a human. Built with [Claude Code](https://claude.ai/code).
