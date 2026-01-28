@@ -144,6 +144,21 @@ class Database:
                     "INSERT INTO settings (key, value) VALUES ('current_term', '1')"
                 )
 
+            # Grade goals table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS grade_goals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    subject_id INTEGER NOT NULL,
+                    school_year_id INTEGER NOT NULL,
+                    term INTEGER NOT NULL,
+                    target_grade REAL NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+                    FOREIGN KEY (school_year_id) REFERENCES school_years(id) ON DELETE CASCADE,
+                    UNIQUE(subject_id, school_year_id, term)
+                )
+            """)
+
             # Create indices for performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_votes_subject ON votes(subject_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_votes_year ON votes(school_year_id)")
@@ -860,3 +875,182 @@ class Database:
         except Exception as e:
             logger.error(f"Unexpected error clearing votes: {e}")
             return False
+
+    # ========================================================================
+    # GRADE GOALS
+    # ========================================================================
+
+    def set_grade_goal(self, subject: str, target_grade: float, school_year_id: int = None, term: int = None) -> bool:
+        """
+        Set or update grade goal for a subject.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            subject_id = self.get_subject_id(subject)
+            if not subject_id:
+                logger.error(f"Subject '{subject}' does not exist")
+                return False
+
+            # Use active school year if not specified
+            if school_year_id is None:
+                active = self.get_active_school_year()
+                school_year_id = active["id"] if active else None
+
+            # Use current term if not specified
+            if term is None:
+                term = self.get_current_term()
+
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT OR REPLACE INTO grade_goals
+                    (subject_id, school_year_id, term, target_grade, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (subject_id, school_year_id, term, target_grade, datetime.now().isoformat()))
+                conn.commit()
+                return True
+        except sqlite3.Error as e:
+            logger.error(f"Database error setting grade goal: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error setting grade goal: {e}")
+            return False
+
+    def get_grade_goal(self, subject: str, school_year_id: int = None, term: int = None) -> Optional[float]:
+        """
+        Get grade goal for a subject.
+
+        Returns:
+            float: Target grade if exists, None otherwise
+        """
+        try:
+            subject_id = self.get_subject_id(subject)
+            if not subject_id:
+                return None
+
+            # Use active school year if not specified
+            if school_year_id is None:
+                active = self.get_active_school_year()
+                school_year_id = active["id"] if active else None
+
+            # Use current term if not specified
+            if term is None:
+                term = self.get_current_term()
+
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT target_grade FROM grade_goals
+                    WHERE subject_id = ? AND school_year_id = ? AND term = ?
+                """, (subject_id, school_year_id, term))
+                result = cursor.fetchone()
+                return result['target_grade'] if result else None
+        except sqlite3.Error as e:
+            logger.error(f"Database error getting grade goal: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error getting grade goal: {e}")
+            return None
+
+    def delete_grade_goal(self, subject: str, school_year_id: int = None, term: int = None) -> bool:
+        """
+        Delete grade goal for a subject.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            subject_id = self.get_subject_id(subject)
+            if not subject_id:
+                return False
+
+            # Use active school year if not specified
+            if school_year_id is None:
+                active = self.get_active_school_year()
+                school_year_id = active["id"] if active else None
+
+            # Use current term if not specified
+            if term is None:
+                term = self.get_current_term()
+
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    DELETE FROM grade_goals
+                    WHERE subject_id = ? AND school_year_id = ? AND term = ?
+                """, (subject_id, school_year_id, term))
+                conn.commit()
+                return cursor.rowcount > 0
+        except sqlite3.Error as e:
+            logger.error(f"Database error deleting grade goal: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error deleting grade goal: {e}")
+            return False
+
+    def get_all_grade_goals(self, school_year_id: int = None, term: int = None) -> Dict[str, float]:
+        """
+        Get all grade goals for current year/term.
+
+        Returns:
+            Dict mapping subject names to target grades
+        """
+        try:
+            # Use active school year if not specified
+            if school_year_id is None:
+                active = self.get_active_school_year()
+                school_year_id = active["id"] if active else None
+
+            # Use current term if not specified
+            if term is None:
+                term = self.get_current_term()
+
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT s.name, g.target_grade
+                    FROM grade_goals g
+                    JOIN subjects s ON g.subject_id = s.id
+                    WHERE g.school_year_id = ? AND g.term = ?
+                """, (school_year_id, term))
+                return {row['name']: row['target_grade'] for row in cursor.fetchall()}
+        except sqlite3.Error as e:
+            logger.error(f"Database error getting all grade goals: {e}")
+            return {}
+        except Exception as e:
+            logger.error(f"Unexpected error getting all grade goals: {e}")
+            return {}
+
+    def calculate_needed_grade(self, subject: str, target_avg: float, school_year_id: int = None, term: int = None, weight: float = 1.0) -> Optional[float]:
+        """
+        Calculate what grade is needed next to reach target average.
+
+        Returns:
+            float: Needed grade, or None if already at/above target or no votes exist
+        """
+        try:
+            votes = self.get_votes(subject, school_year_id, term)
+            if not votes:
+                return target_avg  # First vote should be target
+
+            # Calculate current weighted sum
+            total_weighted = sum(v['grade'] * v['weight'] for v in votes)
+            total_weight = sum(v['weight'] for v in votes)
+
+            current_avg = total_weighted / total_weight if total_weight > 0 else 0
+
+            if current_avg >= target_avg:
+                return None  # Already at goal
+
+            # Calculate needed grade
+            # Formula: (current_sum + needed_grade * weight) / (total_weight + weight) = target
+            # Solve for needed_grade
+            needed = (target_avg * (total_weight + weight)) - total_weighted
+            needed = needed / weight
+
+            return min(needed, 10.0)  # Cap at max grade
+        except Exception as e:
+            logger.error(f"Error calculating needed grade: {e}")
+            return None
