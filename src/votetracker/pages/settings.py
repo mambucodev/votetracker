@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QTabWidget, QPlainTextEdit, QFileDialog, QMessageBox,
     QComboBox, QLineEdit, QCheckBox, QProgressBar, QScrollArea, QDialog
 )
-from PySide6.QtCore import Qt, Signal, QTimer, QThread
+from PySide6.QtCore import Qt, Signal, QTimer, QThread, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QKeyEvent
 
 from ..database import Database, get_db_path
@@ -407,12 +407,8 @@ class SettingsPage(QWidget):
         current_term = self._db.get_current_term()
         self._term_label.setText(f"{tr('Current term')}: {current_term}")
 
-        # Load ClasseViva settings
+        # Load ClasseViva settings (includes credentials and auto-login state)
         self._load_cv_credentials()
-
-        # Load auto-login setting
-        auto_login = self._db.get_setting("classeviva_auto_login") == "1"
-        self._cv_auto_login.setChecked(auto_login)
 
         # Load last import time
         last_sync = self._db.get_last_sync_time()
@@ -585,22 +581,73 @@ class SettingsPage(QWidget):
     # CLASSEVIVA METHODS
     # ========================================================================
 
+    def _flash_import_button(self, success: bool):
+        """Flash the import button with green (success) or red (failure).
+
+        Args:
+            success: True for green flash, False for red flash
+        """
+        color = "#27ae60" if success else "#e74c3c"  # Green or red
+
+        # Save original style
+        original_style = self._cv_import_btn.styleSheet()
+
+        # Apply flash style with border and text color
+        flash_style = f"""
+            QPushButton {{
+                border: 2px solid {color};
+                color: {color};
+                font-weight: bold;
+            }}
+        """
+        self._cv_import_btn.setStyleSheet(flash_style)
+
+        # Reset to original style after 800ms
+        QTimer.singleShot(800, lambda: self._cv_import_btn.setStyleSheet(original_style))
+
     def _load_cv_credentials(self):
         """Load saved ClasseViva credentials if they exist."""
         username, password = self._db.get_classeviva_credentials()
+
+        # Block signals to prevent triggering handlers during load
+        self._cv_save_creds.blockSignals(True)
+        self._cv_auto_login.blockSignals(True)
+
         if username and password:
             self._cv_username.setText(username)
             self._cv_password.setText(password)
             self._cv_save_creds.setChecked(True)
             self._cv_clear_creds_btn.setEnabled(True)
+            # Enable auto-login checkbox since credentials are saved
+            self._cv_auto_login.setEnabled(True)
+            # Load and set auto-login state while signals are blocked
+            auto_login = self._db.get_setting("classeviva_auto_login") == "1"
+            self._cv_auto_login.setChecked(auto_login)
+        else:
+            # Disable and uncheck auto-login if no credentials
+            self._cv_auto_login.setEnabled(False)
+            self._cv_auto_login.setChecked(False)
+
+        self._cv_save_creds.blockSignals(False)
+        self._cv_auto_login.blockSignals(False)
 
     def _on_save_creds_changed(self, state):
         """Handle save credentials checkbox change."""
-        self._cv_creds_warning.setVisible(state == Qt.Checked)
+        # stateChanged signal sends int, need to compare with int value
+        is_checked = state == Qt.CheckState.Checked.value
+        self._cv_creds_warning.setVisible(is_checked)
+        # Auto-login requires saved credentials
+        self._cv_auto_login.setEnabled(is_checked)
+        if not is_checked:
+            # Block signals to avoid overwriting the saved auto-login preference
+            self._cv_auto_login.blockSignals(True)
+            self._cv_auto_login.setChecked(False)
+            self._cv_auto_login.blockSignals(False)
 
     def _on_auto_login_changed(self, state):
         """Handle auto-login checkbox change."""
-        enabled = state == Qt.Checked
+        # stateChanged signal sends int, need to compare with int value
+        enabled = state == Qt.CheckState.Checked.value
         self._db.set_setting("classeviva_auto_login", "1" if enabled else "0")
 
     def _test_cv_connection(self):
@@ -661,12 +708,14 @@ class SettingsPage(QWidget):
             if not username or not password:
                 self._cv_import_status.setText(tr("Invalid credentials"))
                 self._cv_import_status.setStyleSheet("color: #e74c3c;")
+                self._flash_import_button(False)
                 return
 
             success, message = self._cv_client.login(username, password)
             if not success:
                 self._cv_import_status.setText(message)
                 self._cv_import_status.setStyleSheet("color: #e74c3c;")
+                self._flash_import_button(False)
                 return
 
         # Show progress
@@ -683,6 +732,7 @@ class SettingsPage(QWidget):
             self._cv_import_status.setStyleSheet("color: #e74c3c;")
             self._cv_progress.setVisible(False)
             self._cv_import_btn.setEnabled(True)
+            self._flash_import_button(False)
             return
 
         # Convert to VoteTracker format
@@ -760,6 +810,9 @@ class SettingsPage(QWidget):
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
             self._db.set_last_sync_time(timestamp)
             self._cv_last_import_label.setText(f"{tr('Last import')}: {timestamp}")
+
+            # Flash button green for success
+            self._flash_import_button(True)
         else:
             if skipped_count > 0:
                 self._cv_import_status.setText(tr("Skipped {count} duplicates").format(count=skipped_count) + " - " + tr("No votes yet"))
@@ -769,7 +822,8 @@ class SettingsPage(QWidget):
 
     def _on_auto_sync_toggled(self, state):
         """Handle auto-sync checkbox toggle."""
-        enabled = state == Qt.Checked
+        # stateChanged signal sends int, need to compare with int value
+        enabled = state == Qt.CheckState.Checked.value
         self._db.set_auto_sync_enabled(enabled)
 
         # Get main window to start/stop auto-sync

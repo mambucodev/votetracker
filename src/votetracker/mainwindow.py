@@ -121,25 +121,6 @@ class MainWindow(QMainWindow):
 
         sidebar_layout.addWidget(year_frame)
 
-        # Sync button (compact, only when logged in)
-        from PySide6.QtWidgets import QPushButton, QToolButton
-        self._sync_btn = QToolButton()
-        self._sync_btn.setIcon(get_symbolic_icon("view-refresh"))
-        self._sync_btn.setText(tr("Sync"))
-        self._sync_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self._sync_btn.clicked.connect(self._manual_sync)
-        self._sync_btn.setToolTip(tr("Sync grades from ClasseViva"))
-        self._sync_btn.setFixedHeight(32)
-        self._sync_btn.setVisible(False)  # Hidden by default, shown when logged in
-        sidebar_layout.addWidget(self._sync_btn)
-
-        self._sync_status = QLabel("")
-        self._sync_status.setAlignment(Qt.AlignCenter)
-        self._sync_status.setStyleSheet("font-size: 9px; color: gray;")
-        self._sync_status.setWordWrap(True)
-        self._sync_status.setVisible(False)  # Hidden by default
-        sidebar_layout.addWidget(self._sync_status)
-
         main_layout.addWidget(sidebar)
         
         # Separator
@@ -206,67 +187,8 @@ class MainWindow(QMainWindow):
         # Attempt login
         success, message = self._cv_client.login(username, password)
         if success:
-            print(f"ClasseViva auto-login successful: {message}")
-            self._show_sync_controls(tr("Ready"))
-        else:
-            print(f"ClasseViva auto-login failed: {message}")
-            self._hide_sync_controls()
-
-    def _manual_sync(self):
-        """Manually trigger ClasseViva sync."""
-        # Disable button during sync
-        self._sync_btn.setEnabled(False)
-        self._update_sync_status(tr("Syncing..."))
-
-        # Perform sync
-        success = self._perform_sync()
-
-        # Re-enable button and update status
-        self._sync_btn.setEnabled(True)
-        if success:
-            self._update_sync_status(tr("Synced"))
-        else:
-            self._update_sync_status(tr("Failed"))
-
-    def _perform_sync(self):
-        """Perform ClasseViva sync with authentication handling."""
-        # Check if logged in
-        if not self._cv_client.is_authenticated():
-            # Try to login with saved credentials
-            username, password = self._db.get_classeviva_credentials()
-            if username and password:
-                success, message = self._cv_client.login(username, password)
-                if not success:
-                    print(f"Sync failed: Login failed - {message}")
-                    return False
-                else:
-                    # Login succeeded, show sync controls
-                    self._show_sync_controls()
-            else:
-                print("Sync failed: No credentials available")
-                return False
-
-        # Import grades via settings page (it has all the logic)
-        self._settings_page._import_from_classeviva()
-        return True
-
-    def _show_sync_controls(self, status: str = ""):
-        """Show sync button and status."""
-        self._sync_btn.setVisible(True)
-        self._sync_status.setVisible(True)
-        if status:
-            self._sync_status.setText(status)
-
-    def _hide_sync_controls(self):
-        """Hide sync button and status."""
-        self._sync_btn.setVisible(False)
-        self._sync_status.setVisible(False)
-
-    def _update_sync_status(self, status: str):
-        """Update sync status label."""
-        self._sync_status.setText(status)
-        if status:
-            self._sync_status.setVisible(True)
+            # Enable import button in settings page
+            self._settings_page._cv_import_btn.setEnabled(True)
 
     def _start_auto_sync_if_enabled(self):
         """Start auto-sync timer if enabled in settings."""
@@ -291,16 +213,8 @@ class MainWindow(QMainWindow):
 
     def _auto_sync_tick(self):
         """Perform automatic sync."""
-        print("Auto-sync tick triggered")
-        self._update_sync_status(tr("Auto-syncing..."))
-        success = self._perform_sync()
-        if success:
-            self._update_sync_status(tr("Auto-synced"))
-            # Notify user if enabled
-            if self._db.get_setting("classeviva_show_notifications") == "1":
-                print("Auto-sync completed successfully")
-        else:
-            self._update_sync_status(tr("Auto-sync failed"))
+        # Call the settings page import method which handles everything
+        self._settings_page._import_from_classeviva()
     
     def _switch_page(self, index: int):
         """Switch to a page by index."""
