@@ -8,7 +8,8 @@ import json
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QTabWidget, QPlainTextEdit, QFileDialog, QMessageBox,
-    QComboBox, QLineEdit, QCheckBox, QProgressBar, QScrollArea, QDialog
+    QComboBox, QLineEdit, QCheckBox, QProgressBar, QScrollArea, QDialog,
+    QRadioButton, QButtonGroup, QStackedWidget
 )
 from PySide6.QtCore import Qt, Signal, QTimer, QThread, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QKeyEvent
@@ -18,6 +19,8 @@ from ..utils import get_symbolic_icon
 from ..dialogs import ManageSchoolYearsDialog, ShortcutsHelpDialog, SubjectMappingDialog, ManageSubjectMappingsDialog
 from ..i18n import tr, get_language, set_language
 from ..classeviva import ClasseVivaClient, convert_classeviva_to_votetracker
+from ..sync_provider import SyncProviderRegistry
+from ..providers import register_all_providers
 from datetime import datetime
 
 
@@ -31,7 +34,13 @@ class SettingsPage(QWidget):
     def __init__(self, db: Database, parent=None):
         super().__init__(parent)
         self._db = db
-        self._cv_client = ClasseVivaClient()
+        self._cv_client = ClasseVivaClient()  # Keep for backward compatibility
+
+        # Initialize provider system
+        register_all_providers()
+        self._provider_instances = {}  # provider_id -> provider instance
+        self._active_provider_id = None
+
         self._setup_ui()
     
     def _setup_ui(self):
@@ -187,8 +196,81 @@ class SettingsPage(QWidget):
         layout.addWidget(data_group)
 
         # =====================================================================
-        # CLASSEVIVA INTEGRATION
+        # SYNC INTEGRATION (Provider-based)
         # =====================================================================
+        sync_group = QGroupBox(tr("Sync Integration"))
+        sync_layout = QVBoxLayout(sync_group)
+        sync_layout.setContentsMargins(12, 12, 12, 12)
+        sync_layout.setSpacing(12)
+
+        # Provider selection section
+        provider_select_group = QGroupBox(tr("Sync Provider"))
+        provider_select_layout = QVBoxLayout(provider_select_group)
+        provider_select_layout.setContentsMargins(12, 12, 12, 12)
+        provider_select_layout.setSpacing(8)
+
+        select_hint = QLabel(tr("Select a sync provider to automatically import grades:"))
+        select_hint.setWordWrap(True)
+        select_hint.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+        provider_select_layout.addWidget(select_hint)
+
+        # Radio buttons for provider selection
+        self._provider_button_group = QButtonGroup(self)
+        self._provider_radios = {}  # provider_id -> QRadioButton
+
+        # None option
+        none_radio = QRadioButton(tr("No sync provider (manual data entry only)"))
+        self._provider_button_group.addButton(none_radio, 0)
+        self._provider_radios["none"] = none_radio
+        provider_select_layout.addWidget(none_radio)
+
+        # Add radio button for each registered provider
+        available_providers = SyncProviderRegistry.get_available_providers()
+        for idx, (provider_id, provider_name) in enumerate(available_providers, start=1):
+            radio = QRadioButton(provider_name)
+            self._provider_button_group.addButton(radio, idx)
+            self._provider_radios[provider_id] = radio
+            provider_select_layout.addWidget(radio)
+
+        # Connect signal
+        self._provider_button_group.buttonClicked.connect(self._on_provider_changed)
+
+        sync_layout.addWidget(provider_select_group)
+
+        # Stacked widget for provider-specific settings
+        self._provider_stack = QStackedWidget()
+
+        # Create a page for each provider
+        self._provider_pages = {}  # provider_id -> widget index
+        self._provider_widgets = {}  # provider_id -> dict of UI elements
+
+        # Page 0: None (empty placeholder)
+        none_page = QWidget()
+        none_layout = QVBoxLayout(none_page)
+        none_label = QLabel(tr("No sync provider selected. Use manual data entry."))
+        none_label.setStyleSheet("color: #95a5a6; font-style: italic; padding: 20px;")
+        none_label.setAlignment(Qt.AlignCenter)
+        none_layout.addWidget(none_label)
+        self._provider_stack.addWidget(none_page)
+        self._provider_pages["none"] = 0
+
+        # Create a page for each registered provider
+        for idx, (provider_id, provider_name) in enumerate(available_providers, start=1):
+            provider = SyncProviderRegistry.get_provider(provider_id, self._db)
+            page_widget = self._create_provider_page(provider_id, provider)
+            self._provider_stack.addWidget(page_widget)
+            self._provider_pages[provider_id] = idx
+            self._provider_instances[provider_id] = provider
+
+        sync_layout.addWidget(self._provider_stack)
+
+        layout.addWidget(sync_group)
+
+        # Keep old ClasseViva section commented out for reference during transition
+        # =====================================================================
+        # OLD CLASSEVIVA INTEGRATION (replaced by provider system above)
+        # =====================================================================
+        """
         cv_group = QGroupBox(tr("ClasseViva Integration"))
         cv_layout = QVBoxLayout(cv_group)
         cv_layout.setContentsMargins(12, 12, 12, 12)
@@ -364,6 +446,8 @@ class SettingsPage(QWidget):
         cv_layout.addWidget(mappings_group)
 
         layout.addWidget(cv_group)
+        """
+        # End of old ClasseViva section
 
         # =====================================================================
         # HELP & INFO
@@ -393,7 +477,226 @@ class SettingsPage(QWidget):
         # Set scroll widget
         scroll.setWidget(content)
         main_layout.addWidget(scroll)
-    
+
+    def _create_provider_page(self, provider_id: str, provider):
+        """
+        Dynamically create a settings page for a provider.
+
+        Args:
+            provider_id: Provider identifier (e.g., "classeviva", "axios")
+            provider: Provider instance
+
+        Returns:
+            QWidget with provider-specific settings
+        """
+        page = QWidget()
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.setSpacing(12)
+
+        # Store UI elements for this provider
+        widgets = {}
+        self._provider_widgets[provider_id] = widgets
+
+        # =====================
+        # Account Section
+        # =====================
+        account_group = QGroupBox(tr("Account"))
+        account_layout = QVBoxLayout(account_group)
+        account_layout.setContentsMargins(12, 12, 12, 12)
+        account_layout.setSpacing(8)
+
+        # Create input fields dynamically from provider definition
+        widgets['credential_fields'] = {}
+        for field_def in provider.get_credential_fields():
+            field_name = field_def['name']
+            field_label = field_def['label']
+            field_type = field_def['type']
+            field_placeholder = field_def.get('placeholder', '')
+
+            field_layout = QHBoxLayout()
+            field_layout.addWidget(QLabel(tr(field_label) + ":"))
+
+            line_edit = QLineEdit()
+            line_edit.setPlaceholderText(field_placeholder)
+            if field_type == 'password':
+                line_edit.setEchoMode(QLineEdit.Password)
+
+            widgets['credential_fields'][field_name] = line_edit
+            field_layout.addWidget(line_edit, 1)
+            account_layout.addLayout(field_layout)
+
+        # Save credentials checkbox
+        save_creds_check = QCheckBox(tr("Save credentials"))
+        widgets['save_creds'] = save_creds_check
+        account_layout.addWidget(save_creds_check)
+
+        # Auto-login checkbox
+        auto_login_check = QCheckBox(tr("Auto-login on app startup"))
+        widgets['auto_login'] = auto_login_check
+        account_layout.addWidget(auto_login_check)
+
+        # Warning label
+        warning_label = QLabel(tr("Credentials stored with basic encoding. Not fully secure."))
+        warning_label.setStyleSheet("color: #e67e22; font-size: 11px;")
+        warning_label.setWordWrap(True)
+        warning_label.setVisible(False)
+        widgets['creds_warning'] = warning_label
+        account_layout.addWidget(warning_label)
+
+        # Test connection and clear buttons
+        btn_layout = QHBoxLayout()
+        test_btn = QPushButton(tr("Test Connection"))
+        test_btn.setIcon(get_symbolic_icon("network-transmit-receive"))
+        test_btn.clicked.connect(lambda: self._test_provider_connection(provider_id))
+        widgets['test_btn'] = test_btn
+        btn_layout.addWidget(test_btn)
+
+        clear_btn = QPushButton(tr("Clear saved credentials"))
+        clear_btn.setIcon(get_symbolic_icon("edit-delete"))
+        clear_btn.clicked.connect(lambda: self._clear_provider_credentials(provider_id))
+        clear_btn.setEnabled(False)
+        widgets['clear_btn'] = clear_btn
+        btn_layout.addWidget(clear_btn)
+
+        btn_layout.addStretch()
+        account_layout.addLayout(btn_layout)
+
+        # Status label
+        status_label = QLabel(tr("Not connected"))
+        status_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        widgets['status_label'] = status_label
+        account_layout.addWidget(status_label)
+
+        page_layout.addWidget(account_group)
+
+        # =====================
+        # Manual Import Section
+        # =====================
+        import_group = QGroupBox(tr("Manual Import"))
+        import_layout = QVBoxLayout(import_group)
+        import_layout.setContentsMargins(12, 12, 12, 12)
+        import_layout.setSpacing(8)
+
+        import_btn = QPushButton(tr("Import Grades Now"))
+        import_btn.setIcon(get_symbolic_icon("document-import"))
+        import_btn.clicked.connect(lambda: self._import_from_provider(provider_id))
+        import_btn.setEnabled(False)
+        widgets['import_btn'] = import_btn
+        import_layout.addWidget(import_btn)
+
+        progress_bar = QProgressBar()
+        progress_bar.setVisible(False)
+        progress_bar.setMaximum(0)  # Indeterminate
+        widgets['progress'] = progress_bar
+        import_layout.addWidget(progress_bar)
+
+        last_import_label = QLabel(f"{tr('Last import')}: {tr('Never')}")
+        last_import_label.setStyleSheet("font-size: 11px; color: #7f8c8d;")
+        widgets['last_import_label'] = last_import_label
+        import_layout.addWidget(last_import_label)
+
+        import_status_label = QLabel("")
+        widgets['import_status'] = import_status_label
+        import_layout.addWidget(import_status_label)
+
+        page_layout.addWidget(import_group)
+
+        # =====================
+        # Auto-Sync Section
+        # =====================
+        auto_sync_group = QGroupBox(tr("Automatic Sync"))
+        auto_sync_layout = QVBoxLayout(auto_sync_group)
+        auto_sync_layout.setContentsMargins(12, 12, 12, 12)
+        auto_sync_layout.setSpacing(8)
+
+        auto_sync_check = QCheckBox(tr("Enable automatic sync"))
+        auto_sync_check.stateChanged.connect(lambda state: self._on_provider_auto_sync_toggled(provider_id, state))
+        widgets['auto_sync_enabled'] = auto_sync_check
+        auto_sync_layout.addWidget(auto_sync_check)
+
+        interval_layout = QHBoxLayout()
+        interval_layout.addWidget(QLabel(tr("Sync interval") + ":"))
+        interval_combo = QComboBox()
+        interval_combo.addItem(tr("30 minutes"), 30)
+        interval_combo.addItem(tr("1 hour"), 60)
+        interval_combo.addItem(tr("2 hours"), 120)
+        interval_combo.addItem(tr("6 hours"), 360)
+        interval_combo.addItem(tr("12 hours"), 720)
+        interval_combo.addItem(tr("Daily"), 1440)
+        interval_combo.setCurrentIndex(1)  # Default: 1 hour
+        interval_combo.currentIndexChanged.connect(lambda idx: self._on_provider_sync_interval_changed(provider_id, idx))
+        widgets['sync_interval'] = interval_combo
+        interval_layout.addWidget(interval_combo)
+        interval_layout.addStretch()
+        auto_sync_layout.addLayout(interval_layout)
+
+        notifications_check = QCheckBox(tr("Show notification when new grades are imported"))
+        widgets['show_notifications'] = notifications_check
+        auto_sync_layout.addWidget(notifications_check)
+
+        auto_sync_status = QLabel(tr("Auto-sync: Disabled"))
+        auto_sync_status.setStyleSheet("color: #95a5a6;")
+        widgets['auto_sync_status'] = auto_sync_status
+        auto_sync_layout.addWidget(auto_sync_status)
+
+        page_layout.addWidget(auto_sync_group)
+
+        # =====================
+        # Options Section
+        # =====================
+        options_group = QGroupBox(tr("Options"))
+        options_layout = QVBoxLayout(options_group)
+        options_layout.setContentsMargins(12, 12, 12, 12)
+        options_layout.setSpacing(8)
+
+        skip_duplicates_check = QCheckBox(tr("Skip grades already in database"))
+        skip_duplicates_check.setChecked(True)
+        widgets['skip_duplicates'] = skip_duplicates_check
+        options_layout.addWidget(skip_duplicates_check)
+
+        current_year_check = QCheckBox(tr("Only import current school year"))
+        current_year_check.setChecked(True)
+        widgets['current_year_only'] = current_year_check
+        options_layout.addWidget(current_year_check)
+
+        term_layout = QHBoxLayout()
+        term_layout.addWidget(QLabel(tr("Import from term") + ":"))
+        term_combo = QComboBox()
+        term_combo.addItem(tr("Both"), 0)
+        term_combo.addItem(tr("Term 1"), 1)
+        term_combo.addItem(tr("Term 2"), 2)
+        widgets['term_filter'] = term_combo
+        term_layout.addWidget(term_combo)
+        term_layout.addStretch()
+        options_layout.addLayout(term_layout)
+
+        page_layout.addWidget(options_group)
+
+        # =====================
+        # Subject Mappings Section
+        # =====================
+        mappings_group = QGroupBox(tr("Subject Mappings"))
+        mappings_layout = QVBoxLayout(mappings_group)
+        mappings_layout.setContentsMargins(12, 12, 12, 12)
+        mappings_layout.setSpacing(8)
+
+        provider_name = provider.get_provider_name()
+        mappings_hint = QLabel(tr("View and edit how {provider} subjects are mapped to your VoteTracker subjects.").format(provider=provider_name))
+        mappings_hint.setWordWrap(True)
+        mappings_hint.setStyleSheet("color: #7f8c8d; font-size: 11px;")
+        mappings_layout.addWidget(mappings_hint)
+
+        manage_mappings_btn = QPushButton(tr("Manage Subject Mappings"))
+        manage_mappings_btn.setIcon(get_symbolic_icon("configure"))
+        manage_mappings_btn.clicked.connect(lambda: self._manage_provider_subject_mappings(provider_id))
+        mappings_layout.addWidget(manage_mappings_btn)
+
+        page_layout.addWidget(mappings_group)
+
+        page_layout.addStretch()
+        return page
+
     def refresh(self):
         """Refresh settings display."""
         # Update years label
@@ -407,36 +710,21 @@ class SettingsPage(QWidget):
         current_term = self._db.get_current_term()
         self._term_label.setText(f"{tr('Current term')}: {current_term}")
 
-        # Load ClasseViva settings (includes credentials and auto-login state)
-        self._load_cv_credentials()
+        # Load active provider and set radio button
+        active_provider_id = self._db.get_active_provider()
+        if not active_provider_id:
+            active_provider_id = "none"
 
-        # Load last import time
-        last_sync = self._db.get_last_sync_time()
-        if last_sync:
-            self._cv_last_import_label.setText(f"{tr('Last import')}: {last_sync}")
-        else:
-            self._cv_last_import_label.setText(f"{tr('Last import')}: {tr('Never')}")
+        # Set the correct radio button
+        if active_provider_id in self._provider_radios:
+            self._provider_radios[active_provider_id].setChecked(True)
+            page_index = self._provider_pages.get(active_provider_id, 0)
+            self._provider_stack.setCurrentIndex(page_index)
+            self._active_provider_id = active_provider_id
 
-        # Load auto-sync settings
-        auto_sync_enabled = self._db.get_auto_sync_enabled()
-        self._cv_auto_sync_enabled.setChecked(auto_sync_enabled)
-
-        # Load sync interval
-        interval = self._db.get_sync_interval()
-        index = self._cv_sync_interval.findData(interval)
-        if index >= 0:
-            self._cv_sync_interval.setCurrentIndex(index)
-
-        # Update sync label if enabled
-        if auto_sync_enabled:
-            self._cv_auto_sync_status.setText(tr("Auto-sync: Active"))
-            self._cv_auto_sync_status.setStyleSheet("color: #27ae60;")
-            self._cv_next_sync_label.setVisible(True)
-            self._update_next_sync_label()
-        else:
-            self._cv_auto_sync_status.setText(tr("Auto-sync: Disabled"))
-            self._cv_auto_sync_status.setStyleSheet("color: #95a5a6;")
-            self._cv_next_sync_label.setVisible(False)
+            # Load provider settings
+            if active_provider_id != "none":
+                self._load_provider_settings(active_provider_id)
     
     def _manage_years(self):
         """Open school years management dialog."""
@@ -874,6 +1162,259 @@ class SettingsPage(QWidget):
     # ========================================================================
     # KEYBOARD SHORTCUTS
     # ========================================================================
+
+    # ========================================================================
+    # SYNC PROVIDER METHODS (Generic)
+    # ========================================================================
+
+    def _on_provider_changed(self, button):
+        """Handle provider selection change."""
+        # Determine which provider was selected
+        selected_provider_id = None
+        for provider_id, radio in self._provider_radios.items():
+            if radio == button:
+                selected_provider_id = provider_id
+                break
+
+        if not selected_provider_id:
+            return
+
+        # Save active provider to database
+        self._db.set_active_provider(selected_provider_id if selected_provider_id != "none" else None)
+        self._active_provider_id = selected_provider_id
+
+        # Switch to corresponding page
+        page_index = self._provider_pages.get(selected_provider_id, 0)
+        self._provider_stack.setCurrentIndex(page_index)
+
+        # Load provider settings if not "none"
+        if selected_provider_id != "none" and selected_provider_id in self._provider_widgets:
+            self._load_provider_settings(selected_provider_id)
+
+    def _load_provider_settings(self, provider_id: str):
+        """Load settings for a provider."""
+        widgets = self._provider_widgets.get(provider_id)
+        if not widgets:
+            return
+
+        provider = self._provider_instances.get(provider_id)
+        if not provider:
+            return
+
+        # Load credentials
+        field_names = [f['name'] for f in provider.get_credential_fields()]
+        credentials = self._db.get_provider_credentials(provider_id, field_names)
+
+        for field_name, value in credentials.items():
+            if field_name in widgets['credential_fields']:
+                widgets['credential_fields'][field_name].setText(value or "")
+
+        # Load save credentials checkbox
+        has_creds = self._db.has_provider_credentials(provider_id, field_names)
+        widgets['save_creds'].setChecked(has_creds)
+        widgets['creds_warning'].setVisible(has_creds)
+        widgets['clear_btn'].setEnabled(has_creds)
+
+        # Load auto-login
+        auto_login = self._db.get_provider_auto_login(provider_id)
+        widgets['auto_login'].setChecked(auto_login)
+
+        # Load last import time
+        last_sync = self._db.get_provider_last_sync(provider_id)
+        if last_sync:
+            widgets['last_import_label'].setText(f"{tr('Last import')}: {last_sync}")
+        else:
+            widgets['last_import_label'].setText(f"{tr('Last import')}: {tr('Never')}")
+
+        # Load auto-sync settings
+        auto_sync_enabled = self._db.get_provider_auto_sync_enabled(provider_id)
+        widgets['auto_sync_enabled'].setChecked(auto_sync_enabled)
+
+        interval = self._db.get_provider_sync_interval(provider_id)
+        interval_combo = widgets['sync_interval']
+        index = interval_combo.findData(interval)
+        if index >= 0:
+            interval_combo.setCurrentIndex(index)
+
+        # Update status label
+        if auto_sync_enabled:
+            widgets['auto_sync_status'].setText(tr("Auto-sync: Active"))
+            widgets['auto_sync_status'].setStyleSheet("color: #27ae60;")
+        else:
+            widgets['auto_sync_status'].setText(tr("Auto-sync: Disabled"))
+            widgets['auto_sync_status'].setStyleSheet("color: #95a5a6;")
+
+    def _test_provider_connection(self, provider_id: str):
+        """Test connection for a provider."""
+        widgets = self._provider_widgets.get(provider_id)
+        if not widgets:
+            return
+
+        provider = self._provider_instances.get(provider_id)
+        if not provider:
+            return
+
+        # Get credentials from UI
+        credentials = {}
+        for field_name, line_edit in widgets['credential_fields'].items():
+            credentials[field_name] = line_edit.text().strip()
+
+        # Update status
+        widgets['status_label'].setText(tr("Connecting..."))
+        widgets['status_label'].setStyleSheet("color: #3498db; font-style: italic;")
+        widgets['test_btn'].setEnabled(False)
+
+        # Attempt login
+        success, message = provider.login(credentials)
+
+        # Update UI
+        widgets['test_btn'].setEnabled(True)
+
+        if success:
+            widgets['status_label'].setText(f"{tr('Connected as')} {provider.get_user_display_name()}")
+            widgets['status_label'].setStyleSheet("color: #27ae60; font-weight: bold;")
+            widgets['import_btn'].setEnabled(True)
+
+            # Save credentials if checkbox is checked
+            if widgets['save_creds'].isChecked():
+                self._db.save_provider_credentials(provider_id, credentials)
+                widgets['creds_warning'].setVisible(True)
+                widgets['clear_btn'].setEnabled(True)
+
+            # Save auto-login setting
+            self._db.set_provider_auto_login(provider_id, widgets['auto_login'].isChecked())
+        else:
+            widgets['status_label'].setText(f"{tr('Authentication failed')}: {message}")
+            widgets['status_label'].setStyleSheet("color: #e74c3c;")
+            widgets['import_btn'].setEnabled(False)
+
+    def _clear_provider_credentials(self, provider_id: str):
+        """Clear saved credentials for a provider."""
+        widgets = self._provider_widgets.get(provider_id)
+        if not widgets:
+            return
+
+        provider = self._provider_instances.get(provider_id)
+        if not provider:
+            return
+
+        field_names = [f['name'] for f in provider.get_credential_fields()]
+        self._db.clear_provider_credentials(provider_id, field_names)
+
+        widgets['creds_warning'].setVisible(False)
+        widgets['clear_btn'].setEnabled(False)
+        widgets['save_creds'].setChecked(False)
+
+        QMessageBox.information(self, tr("Credentials Cleared"),
+                              tr("Saved credentials have been removed."))
+
+    def _import_from_provider(self, provider_id: str):
+        """Import grades from a provider."""
+        widgets = self._provider_widgets.get(provider_id)
+        if not widgets:
+            return
+
+        provider = self._provider_instances.get(provider_id)
+        if not provider:
+            return
+
+        # Check authentication
+        if not provider.is_authenticated():
+            # Try to authenticate first
+            credentials = {}
+            for field_name, line_edit in widgets['credential_fields'].items():
+                credentials[field_name] = line_edit.text().strip()
+
+            if not all(credentials.values()):
+                widgets['import_status'].setText(tr("Invalid credentials"))
+                widgets['import_status'].setStyleSheet("color: #e74c3c;")
+                return
+
+            success, message = provider.login(credentials)
+            if not success:
+                widgets['import_status'].setText(message)
+                widgets['import_status'].setStyleSheet("color: #e74c3c;")
+                return
+
+        # Show progress
+        widgets['progress'].setVisible(True)
+        widgets['import_btn'].setEnabled(False)
+        widgets['import_status'].setText(tr("Fetching grades..."))
+        widgets['import_status'].setStyleSheet("color: #3498db;")
+
+        # Fetch grades
+        success, grades, message = provider.get_grades()
+
+        if not success:
+            widgets['progress'].setVisible(False)
+            widgets['import_btn'].setEnabled(True)
+            widgets['import_status'].setText(message)
+            widgets['import_status'].setStyleSheet("color: #e74c3c;")
+            return
+
+        # Apply term filter
+        term_filter = widgets['term_filter'].currentData()
+        if term_filter > 0:
+            grades = [g for g in grades if g.get('term') == term_filter]
+
+        # Apply year filter
+        if widgets['current_year_only'].isChecked():
+            active_year = self._db.get_active_school_year()
+            if active_year:
+                # Filter grades by date range (simplified)
+                pass  # For now, keep all grades
+
+        widgets['import_status'].setText(f"{tr('Found {count} new grades').format(count=len(grades))}")
+
+        # TODO: Check for unmapped subjects and show mapping dialog
+        # TODO: Check for duplicates if skip_duplicates is checked
+        # TODO: Import grades to database
+
+        # Hide progress
+        widgets['progress'].setVisible(False)
+        widgets['import_btn'].setEnabled(True)
+
+        # Update last sync time
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._db.set_provider_last_sync(provider_id, now)
+        widgets['last_import_label'].setText(f"{tr('Last import')}: {now}")
+
+        # Emit signal
+        self.data_imported.emit()
+
+    def _manage_provider_subject_mappings(self, provider_id: str):
+        """Open subject mappings dialog for a provider."""
+        provider = self._provider_instances.get(provider_id)
+        if not provider:
+            return
+
+        provider_name = provider.get_provider_name()
+        dialog = ManageSubjectMappingsDialog(self._db, self)
+        # TODO: Update ManageSubjectMappingsDialog to accept provider_id
+        dialog.exec()
+
+    def _on_provider_auto_sync_toggled(self, provider_id: str, state):
+        """Handle auto-sync toggle for a provider."""
+        enabled = state == Qt.Checked
+        self._db.set_provider_auto_sync_enabled(provider_id, enabled)
+
+        widgets = self._provider_widgets.get(provider_id)
+        if widgets:
+            if enabled:
+                widgets['auto_sync_status'].setText(tr("Auto-sync: Active"))
+                widgets['auto_sync_status'].setStyleSheet("color: #27ae60;")
+            else:
+                widgets['auto_sync_status'].setText(tr("Auto-sync: Disabled"))
+                widgets['auto_sync_status'].setStyleSheet("color: #95a5a6;")
+
+    def _on_provider_sync_interval_changed(self, provider_id: str, index):
+        """Handle sync interval change for a provider."""
+        widgets = self._provider_widgets.get(provider_id)
+        if not widgets:
+            return
+
+        interval = widgets['sync_interval'].itemData(index)
+        self._db.set_provider_sync_interval(provider_id, interval)
 
     def handle_key(self, event: QKeyEvent) -> bool:
         """Handle keyboard shortcuts for this page. Returns True if handled."""
