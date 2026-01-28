@@ -721,15 +721,26 @@ class OnboardingWizard(QDialog):
 
 
 class SubjectMappingDialog(QDialog):
-    """Dialog for mapping ClasseViva subjects to VoteTracker subjects."""
+    """Dialog for mapping provider subjects to VoteTracker subjects."""
 
-    def __init__(self, cv_subjects: List[str], db: Database, parent=None):
+    def __init__(self, source_subjects: List[str], provider_id: str, provider_name: str,
+                 db: Database, parent=None):
+        """
+        Args:
+            source_subjects: List of subject names from the provider
+            provider_id: Provider identifier (e.g., "classeviva", "axios")
+            provider_name: Human-readable provider name (e.g., "ClasseViva", "Axios")
+            db: Database instance
+            parent: Parent widget
+        """
         super().__init__(parent)
-        self._cv_subjects = cv_subjects
+        self._source_subjects = source_subjects
+        self._provider_id = provider_id
+        self._provider_name = provider_name
         self._db = db
-        self._mappings = {}  # cv_subject -> vt_subject
+        self._mappings = {}  # source_subject -> vt_subject
 
-        self.setWindowTitle(tr("Map ClasseViva Subjects"))
+        self.setWindowTitle(tr("Map {provider} Subjects").format(provider=provider_name))
         self.setMinimumWidth(700)
         self.setMinimumHeight(500)
         self._setup_ui()
@@ -741,7 +752,7 @@ class SubjectMappingDialog(QDialog):
 
         # Header
         header = QLabel(
-            tr("Map ClasseViva subjects to VoteTracker subjects") + "\n" +
+            tr("Map {provider} subjects to VoteTracker subjects").format(provider=self._provider_name) + "\n" +
             tr("We've auto-suggested matches based on subject names.")
         )
         header.setWordWrap(True)
@@ -752,7 +763,7 @@ class SubjectMappingDialog(QDialog):
         self._table = QTableWidget()
         self._table.setColumnCount(4)
         self._table.setHorizontalHeaderLabels([
-            tr("ClasseViva Subject"),
+            self._provider_name + " " + tr("Subject"),
             tr("→"),
             tr("VoteTracker Subject"),
             ""
@@ -769,12 +780,12 @@ class SubjectMappingDialog(QDialog):
         vt_subjects = self._db.get_subjects()
 
         # Populate table with suggestions
-        self._table.setRowCount(len(self._cv_subjects))
-        for i, cv_subject in enumerate(self._cv_subjects):
-            # ClasseViva subject (read-only)
-            cv_item = QTableWidgetItem(cv_subject)
-            cv_item.setFlags(cv_item.flags() & ~Qt.ItemIsEditable)
-            self._table.setItem(i, 0, cv_item)
+        self._table.setRowCount(len(self._source_subjects))
+        for i, source_subject in enumerate(self._source_subjects):
+            # Provider subject (read-only)
+            source_item = QTableWidgetItem(source_subject)
+            source_item.setFlags(source_item.flags() & ~Qt.ItemIsEditable)
+            self._table.setItem(i, 0, source_item)
 
             # Arrow
             arrow_item = QTableWidgetItem("→")
@@ -787,7 +798,7 @@ class SubjectMappingDialog(QDialog):
             combo.setEditable(True)
 
             # Get auto-suggestion
-            suggestion = get_auto_suggestions(cv_subject, vt_subjects)
+            suggestion = get_auto_suggestions(source_subject, vt_subjects)
 
             # Add options to combo
             combo.addItem(tr("-- Create New Subject --"), None)
@@ -801,27 +812,27 @@ class SubjectMappingDialog(QDialog):
                 if index >= 0:
                     combo.setCurrentIndex(index)
                     # Highlight as auto-matched
-                    cv_item.setBackground(QColor(39, 174, 96, 30))  # Light green
+                    source_item.setBackground(QColor(39, 174, 96, 30))  # Light green
             elif suggestion["action"] == "create" and suggestion["suggested_new"]:
                 # Suggest creating new canonical name
                 combo.setEditText(suggestion["suggested_new"])
-                cv_item.setBackground(QColor(52, 152, 219, 30))  # Light blue
+                source_item.setBackground(QColor(52, 152, 219, 30))  # Light blue
             elif suggestion["suggested_match"]:
                 # Low confidence - show suggestion but require manual confirmation
                 index = combo.findData(suggestion["suggested_match"])
                 if index >= 0:
                     combo.setCurrentIndex(index)
-                cv_item.setBackground(QColor(243, 156, 18, 30))  # Light orange
+                source_item.setBackground(QColor(243, 156, 18, 30))  # Light orange
             else:
                 # No suggestion - manual mapping required
                 if suggestion["suggested_new"]:
                     combo.setEditText(suggestion["suggested_new"])
-                cv_item.setBackground(QColor(231, 76, 60, 30))  # Light red
+                source_item.setBackground(QColor(231, 76, 60, 30))  # Light red
 
             self._table.setCellWidget(i, 2, combo)
 
             # Store reference for later retrieval
-            combo.setProperty("cv_subject", cv_subject)
+            combo.setProperty("source_subject", source_subject)
 
             # Confidence indicator
             if suggestion["confidence"] > 0:
@@ -883,7 +894,7 @@ class SubjectMappingDialog(QDialog):
     def _save_mappings(self):
         """Save the mappings and close dialog."""
         for i in range(self._table.rowCount()):
-            cv_subject = self._table.item(i, 0).text()
+            source_subject = self._table.item(i, 0).text()
             combo = self._table.cellWidget(i, 2)
 
             # Get selected or entered value
@@ -896,9 +907,9 @@ class SubjectMappingDialog(QDialog):
                 vt_subject = combo.currentText().strip()
 
             if vt_subject:
-                self._mappings[cv_subject] = vt_subject
-                # Save mapping to database
-                self._db.save_subject_mapping(cv_subject, vt_subject)
+                self._mappings[source_subject] = vt_subject
+                # Save mapping to database (provider-aware)
+                self._db.save_provider_subject_mapping(self._provider_id, source_subject, vt_subject)
                 # Ensure the VoteTracker subject exists
                 if vt_subject not in self._db.get_subjects():
                     self._db.add_subject(vt_subject)
@@ -911,14 +922,23 @@ class SubjectMappingDialog(QDialog):
 
 
 class ManageSubjectMappingsDialog(QDialog):
-    """Dialog for viewing and editing existing ClasseViva subject mappings."""
+    """Dialog for viewing and editing existing provider subject mappings."""
 
-    def __init__(self, db: Database, parent=None):
+    def __init__(self, provider_id: str, provider_name: str, db: Database, parent=None):
+        """
+        Args:
+            provider_id: Provider identifier (e.g., "classeviva", "axios")
+            provider_name: Human-readable provider name (e.g., "ClasseViva", "Axios")
+            db: Database instance
+            parent: Parent widget
+        """
         super().__init__(parent)
+        self._provider_id = provider_id
+        self._provider_name = provider_name
         self._db = db
         self._changed = False
 
-        self.setWindowTitle(tr("Manage ClasseViva Subject Mappings"))
+        self.setWindowTitle(tr("Manage {provider} Subject Mappings").format(provider=provider_name))
         self.setMinimumWidth(700)
         self.setMinimumHeight(400)
         self._setup_ui()
@@ -931,7 +951,7 @@ class ManageSubjectMappingsDialog(QDialog):
 
         # Header
         header = QLabel(
-            tr("View and edit how ClasseViva subjects are mapped to VoteTracker subjects.")
+            tr("View and edit how {provider} subjects are mapped to VoteTracker subjects.").format(provider=self._provider_name)
         )
         header.setWordWrap(True)
         header.setStyleSheet("font-size: 12px; margin-bottom: 8px;")
@@ -941,7 +961,7 @@ class ManageSubjectMappingsDialog(QDialog):
         self._table = QTableWidget()
         self._table.setColumnCount(3)
         self._table.setHorizontalHeaderLabels([
-            tr("ClasseViva Subject"),
+            self._provider_name + " " + tr("Subject"),
             tr("VoteTracker Subject"),
             ""
         ])
@@ -977,16 +997,16 @@ class ManageSubjectMappingsDialog(QDialog):
 
     def _load_mappings(self):
         """Load all existing mappings into the table."""
-        mappings = self._db.get_all_subject_mappings()
+        mappings = self._db.get_all_provider_subject_mappings(self._provider_id)
         vt_subjects = self._db.get_subjects()
 
         self._table.setRowCount(len(mappings))
 
-        for i, (cv_subject, vt_subject) in enumerate(sorted(mappings.items())):
-            # ClasseViva subject (read-only)
-            cv_item = QTableWidgetItem(cv_subject)
-            cv_item.setFlags(cv_item.flags() & ~Qt.ItemIsEditable)
-            self._table.setItem(i, 0, cv_item)
+        for i, (source_subject, vt_subject) in enumerate(sorted(mappings.items())):
+            # Provider subject (read-only)
+            source_item = QTableWidgetItem(source_subject)
+            source_item.setFlags(source_item.flags() & ~Qt.ItemIsEditable)
+            self._table.setItem(i, 0, source_item)
 
             # VoteTracker subject (dropdown)
             combo = QComboBox()
@@ -1006,7 +1026,7 @@ class ManageSubjectMappingsDialog(QDialog):
 
             # Connect change signal
             combo.currentTextChanged.connect(
-                lambda text, cv=cv_subject: self._on_mapping_changed(cv, text)
+                lambda text, src=source_subject: self._on_mapping_changed(src, text)
             )
 
             self._table.setCellWidget(i, 1, combo)
@@ -1015,23 +1035,23 @@ class ManageSubjectMappingsDialog(QDialog):
             delete_btn = QPushButton(tr("Delete"))
             delete_btn.setIcon(get_symbolic_icon("edit-delete"))
             delete_btn.clicked.connect(
-                lambda checked, cv=cv_subject: self._delete_mapping(cv)
+                lambda checked, src=source_subject: self._delete_mapping(src)
             )
             self._table.setCellWidget(i, 2, delete_btn)
 
         # Update info label
         if len(mappings) == 0:
-            self._info_label.setText(tr("No mappings yet. Import grades from ClasseViva to create mappings."))
+            self._info_label.setText(tr("No mappings yet. Import grades from {provider} to create mappings.").format(provider=self._provider_name))
         else:
             self._info_label.setText(tr("{count} mapping(s)").format(count=len(mappings)))
 
-    def _on_mapping_changed(self, cv_subject: str, new_vt_subject: str):
+    def _on_mapping_changed(self, source_subject: str, new_vt_subject: str):
         """Handle when a mapping is changed."""
         new_vt_subject = new_vt_subject.strip()
         if not new_vt_subject:
             return
 
-        current_mapping = self._db.get_subject_mapping(cv_subject)
+        current_mapping = self._db.get_provider_subject_mapping(self._provider_id, source_subject)
         if current_mapping != new_vt_subject:
             # Ensure the subject exists
             if new_vt_subject not in self._db.get_subjects():
@@ -1046,32 +1066,32 @@ class ManageSubjectMappingsDialog(QDialog):
                     self._db.add_subject(new_vt_subject)
                 else:
                     # Revert change
-                    self._reload_row(cv_subject)
+                    self._reload_row(source_subject)
                     return
 
-            # Save new mapping
-            self._db.save_subject_mapping(cv_subject, new_vt_subject)
+            # Save new mapping (provider-aware)
+            self._db.save_provider_subject_mapping(self._provider_id, source_subject, new_vt_subject)
             self._changed = True
 
-    def _delete_mapping(self, cv_subject: str):
+    def _delete_mapping(self, source_subject: str):
         """Delete a subject mapping."""
         reply = QMessageBox.question(
             self,
             tr("Confirm Deletion"),
-            tr("Delete mapping for '{subject}'?").format(subject=cv_subject) + "\n" +
+            tr("Delete mapping for '{subject}'?").format(subject=source_subject) + "\n" +
             tr("This won't delete any grades, but future imports will ask for mapping again."),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
-            self._db.clear_subject_mapping(cv_subject)
+            self._db.clear_provider_subject_mapping(self._provider_id, source_subject)
             self._changed = True
             self._load_mappings()
 
     def _clear_all_mappings(self):
         """Clear all subject mappings."""
-        mappings = self._db.get_all_subject_mappings()
+        mappings = self._db.get_all_provider_subject_mappings(self._provider_id)
         if len(mappings) == 0:
             return
 
@@ -1085,16 +1105,16 @@ class ManageSubjectMappingsDialog(QDialog):
         )
 
         if reply == QMessageBox.Yes:
-            self._db.clear_all_subject_mappings()
+            self._db.clear_all_provider_subject_mappings(self._provider_id)
             self._changed = True
             self._load_mappings()
 
-    def _reload_row(self, cv_subject: str):
+    def _reload_row(self, source_subject: str):
         """Reload a specific row after reverting changes."""
         for i in range(self._table.rowCount()):
             item = self._table.item(i, 0)
-            if item and item.text() == cv_subject:
-                current_mapping = self._db.get_subject_mapping(cv_subject)
+            if item and item.text() == source_subject:
+                current_mapping = self._db.get_provider_subject_mapping(self._provider_id, source_subject)
                 combo = self._table.cellWidget(i, 1)
                 if combo and current_mapping:
                     combo.setCurrentText(current_mapping)
