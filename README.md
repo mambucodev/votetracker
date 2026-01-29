@@ -106,10 +106,15 @@ python scripts/build.py --onefile
 ### Optional Features
 
 **Axios Italia Integration:**
-- Install via: `pip install --user axios`
-- Not available in Arch repos (use pip only)
-- The Axios provider will automatically appear in Settings once installed
-- Requires adding `~/.local/bin` to PATH: `export PATH="$HOME/.local/bin:$PATH"`
+- **Arch Linux:** Use pipx (recommended)
+  ```bash
+  sudo pacman -S python-pipx
+  pipx install axios
+  pipx ensurepath
+  ```
+- **Other distros:** Use virtual environment or pipx
+- The Axios provider will automatically appear in Settings once the CLI is installed
+- **Note:** axios is not available in Arch repos or AUR; pipx creates an isolated environment
 
 ## Data Storage
 

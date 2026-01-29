@@ -573,7 +573,9 @@ History stored in `UndoManager`, max 50 operations.
 ### Optional
 - **axios** (>=0.4.0) - Axios Italia electronic register integration
   - Only needed if using the Axios sync provider
-  - Not available in Arch repos; install via: `pip install --user axios`
+  - Not available in Arch repos or AUR
+  - **Arch Linux:** Install via pipx: `sudo pacman -S python-pipx && pipx install axios`
+  - **Other distros:** Use virtual environment or pipx
   - The Axios provider will automatically be hidden if the CLI is not installed
 - **PyInstaller** - For building standalone executables
 
