@@ -24,6 +24,7 @@ class AxiosProvider(SyncProvider):
         self._selected_student_id = None
         self._available_students = []
         self._auth_token = None
+        self._dashboard_url = None
 
     def get_provider_name(self) -> str:
         """Get human-readable provider name."""
@@ -137,6 +138,9 @@ class AxiosProvider(SyncProvider):
             else:
                 return False, "Login succeeded but couldn't extract authentication token"
 
+            # Save the dashboard URL for Referer header in AJAX requests
+            self._dashboard_url = resp.url
+
             # If student_id already provided, use it
             if student_id:
                 self._selected_student_id = student_id
@@ -192,12 +196,16 @@ class AxiosProvider(SyncProvider):
         try:
             ajax_url = "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Ajax_Get.aspx"
 
-            # Add RVT header (auth token)
+            # Add RVT header (auth token) and Referer
             headers = {
                 'RVT': self._auth_token,
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json, text/javascript, */*; q=0.01',
             }
+
+            # Add Referer header if we have the dashboard URL
+            if self._dashboard_url:
+                headers['Referer'] = self._dashboard_url
 
             # Step 1: Load the grades page (uppercase Action parameter)
             # Add cache-busting timestamp parameter
