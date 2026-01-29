@@ -72,8 +72,13 @@ votetracker/
 │   ├── utils.py              # Utility functions
 │   ├── constants.py          # Application constants
 │   ├── i18n.py               # Internationalization
-│   ├── classeviva.py         # ClasseViva API client
+│   ├── sync_provider.py      # Base provider interface and registry
+│   ├── classeviva.py         # ClasseViva API client (deprecated - use providers/)
 │   ├── subject_matcher.py    # Smart subject matching/mapping
+│   ├── providers/            # Sync provider implementations
+│   │   ├── __init__.py       # Provider registration
+│   │   ├── classeviva_provider.py  # ClasseViva provider
+│   │   └── axios_provider.py       # Axios Italia provider (optional)
 │   └── pages/                # Application pages
 │       ├── __init__.py
 │       ├── dashboard.py      # Overview page
@@ -296,6 +301,66 @@ votetracker/
   - `suggest_canonical_name(cv_subject)` - Suggest canonical subject name
   - `get_auto_suggestions(cv_subject, vt_subjects)` - Get full suggestion with action
 
+#### `src/votetracker/sync_provider.py`
+**Purpose:** Base sync provider interface and registry system
+- **Class:** `SyncProvider` (Abstract Base Class)
+  - **Methods:**
+    - `get_provider_name()` - Get human-readable provider name (abstract)
+    - `get_credential_fields()` - Get credential field definitions (abstract)
+    - `login(credentials)` - Authenticate with provider (abstract)
+    - `get_grades()` - Fetch grades from provider (abstract)
+    - `logout()` - Clear authentication state
+    - `is_authenticated()` - Check if logged in
+    - `get_user_display_name()` - Get authenticated user's name
+- **Class:** `SyncProviderRegistry` (Singleton)
+  - **Methods:**
+    - `register(provider_id, provider_class)` - Register a provider class
+    - `get_provider(provider_id, database)` - Get provider instance (cached)
+    - `get_available_providers()` - Get list of (provider_id, provider_name) tuples
+    - `clear_instances()` - Clear all cached instances
+
+#### `src/votetracker/providers/__init__.py`
+**Purpose:** Provider registration module
+- **Functions:**
+  - `register_all_providers()` - Register all available providers (called at app startup)
+  - `_is_axios_available()` - Check if axios CLI is installed
+- **Behavior:**
+  - Always registers ClasseViva provider (uses requests, which is required)
+  - Only registers Axios provider if axios CLI is detected on system
+  - This ensures optional dependencies don't break the app
+
+#### `src/votetracker/providers/classeviva_provider.py`
+**Purpose:** ClasseViva electronic register integration
+- **Class:** `ClasseVivaProvider(SyncProvider)`
+  - **Methods:**
+    - `get_provider_name()` - Returns "ClasseViva"
+    - `get_credential_fields()` - Returns username/password fields
+    - `login(credentials)` - Authenticate using ClasseVivaClient
+    - `get_grades()` - Fetch and convert grades
+    - `logout()` - Clear session
+- **Functions:**
+  - `convert_classeviva_to_votetracker(grades)` - Convert CV format to VT format
+  - `_map_grade_type(component_desc)` - Map CV type to VT type
+  - `_parse_term(period_desc)` - Parse term number from period
+
+#### `src/votetracker/providers/axios_provider.py`
+**Purpose:** Axios Italia electronic register integration (optional)
+- **Class:** `AxiosProvider(SyncProvider)`
+  - **Methods:**
+    - `get_provider_name()` - Returns "Axios"
+    - `get_credential_fields()` - Returns customer_id, username, password, student_id fields
+    - `login(credentials)` - Validate credentials by testing CLI
+    - `get_grades()` - Fetch grades via axios CLI subprocess
+    - `logout()` - Clear credentials
+- **Functions:**
+  - `convert_axios_to_votetracker(grades)` - Convert Axios format to VT format
+  - `_map_grade_type(kind)` - Map Axios kind to VT type
+  - `_parse_term_from_date(date_str)` - Infer term from date
+- **Requirements:**
+  - Requires axios CLI installed: `pip install --user axios`
+  - Not available in Arch repos; must be installed via pip
+  - Provider is automatically hidden if CLI is not available
+
 ---
 
 ### Pages
@@ -506,6 +571,10 @@ History stored in `UndoManager`, max 50 operations.
 - **requests** (>=2.31.0) - HTTP client for ClasseViva API
 
 ### Optional
+- **axios** (>=0.4.0) - Axios Italia electronic register integration
+  - Only needed if using the Axios sync provider
+  - Not available in Arch repos; install via: `pip install --user axios`
+  - The Axios provider will automatically be hidden if the CLI is not installed
 - **PyInstaller** - For building standalone executables
 
 ---
