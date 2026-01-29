@@ -244,15 +244,43 @@ class AxiosProvider(SyncProvider):
 
             print(f"DEBUG: Found {len(frazione_options)} term options")
 
-            for frazione_value, frazione_label in frazione_options:
+            for frazione_option_value, frazione_label in frazione_options:
                 try:
                     # Parse term number from label (e.g., "TRIMESTRE" or "PENTAMESTRE")
                     # TRIMESTRE = Term 1, PENTAMESTRE/QUADRIMESTRE 2 = Term 2
                     term_num = 1 if 'TRIMESTRE' in frazione_label.upper() and 'PENTA' not in frazione_label.upper() else 2
 
                     print(f"DEBUG: Fetching grades for {frazione_label} (term {term_num})")
-                    print(f"DEBUG: frazione value: {frazione_value}")
 
+                    # Step 2a: Load FAMILY_VOTI for this specific term to get the hidden frazione value
+                    timestamp = int(time.time() * 1000)
+                    term_resp = self._session.get(
+                        f"{ajax_url}?Action=FAMILY_VOTI&fiFrazId={frazione_option_value}&_={timestamp}",
+                        headers=headers,
+                        timeout=10
+                    )
+
+                    if term_resp.status_code != 200:
+                        print(f"DEBUG: Failed to load FAMILY_VOTI for {frazione_label}: HTTP {term_resp.status_code}")
+                        continue
+
+                    # Parse response to get the hidden frazione value
+                    term_voti_data = term_resp.json()
+                    if term_voti_data.get('errorcode') != "0":
+                        print(f"DEBUG: Error loading term page: {term_voti_data.get('errormsg')}")
+                        continue
+
+                    term_html = term_voti_data.get('html', '')
+                    frazione_hidden_match = re.search(r'id=[\'"]frazione[\'"].*?value=[\'"]([^\'\"]+)[\'"]', term_html)
+
+                    if not frazione_hidden_match:
+                        print(f"DEBUG: Could not find hidden frazione value for {frazione_label}")
+                        continue
+
+                    frazione_value = frazione_hidden_match.group(1)
+                    print(f"DEBUG: Extracted hidden frazione value (length: {len(frazione_value)})")
+
+                    # Step 2b: Now fetch grades using the correct frazione value
                     post_data = {
                         "draw": 1,
                         "columns": {},
