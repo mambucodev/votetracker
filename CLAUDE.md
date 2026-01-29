@@ -75,6 +75,7 @@ votetracker/
 │   ├── sync_provider.py      # Base provider interface and registry
 │   ├── classeviva.py         # ClasseViva API client (deprecated - use providers/)
 │   ├── subject_matcher.py    # Smart subject matching/mapping
+│   ├── icon_provider.py      # Cross-platform icon system
 │   ├── providers/            # Sync provider implementations
 │   │   ├── __init__.py       # Provider registration
 │   │   ├── classeviva_provider.py  # ClasseViva provider
@@ -96,12 +97,28 @@ votetracker/
 │   ├── build.py              # PyInstaller build script
 │   ├── install.sh            # Linux install script
 │   ├── uninstall.sh          # Linux uninstall script
-│   ├── PKGBUILD              # Arch Linux package definition
-│   └── votetracker.desktop   # Desktop entry file
+│   ├── PKGBUILD              # Arch Linux package definition (for local builds)
+│   ├── votetracker.desktop   # Desktop entry file
+│   └── votetracker-*.pkg.tar.zst  # Latest built package
+├── docs/                     # Documentation and references
+│   ├── README.md             # Documentation index
+│   ├── AUR_PUBLISHING_GUIDE.md      # AUR publishing guide
+│   ├── AUR_BIN_PUBLISHING_GUIDE.md  # AUR binary package guide
+│   ├── PKGBUILD.aur          # Reference PKGBUILD for AUR
+│   ├── PKGBUILD.aur-bin      # Reference PKGBUILD for AUR binary
+│   ├── PKGBUILD-axios        # Optional axios integration PKGBUILD
+│   ├── IMPLEMENTATION_PLAN.md       # Development planning docs
+│   ├── IMPROVEMENTS.md       # Enhancement ideas
+│   ├── WINDOWS_OPTIMIZATION.md      # Windows-specific docs
+│   ├── RELEASE_NOTES_*.md    # Release notes for versions
+│   └── releases/             # Archived package builds
+├── icons/                    # Application icons
 ├── pyproject.toml            # Python package configuration
 ├── VoteTracker.spec          # PyInstaller spec file
 ├── run.py                    # Quick run script
-└── README.md                 # User documentation
+├── CLAUDE.md                 # This file - development guide
+├── README.md                 # User documentation
+└── LICENSE                   # Project license
 ```
 
 ---
@@ -165,7 +182,8 @@ votetracker/
       - `update_vote(vote_id, ...)` - Update existing vote
       - `get_vote(vote_id)` - Get single vote
       - `delete_vote(vote_id)` - Delete vote
-      - `vote_exists(subject, grade, date, vote_type, school_year_id)` - Check duplicate
+      - `vote_exists(subject, grade, date, vote_type, school_year_id)` - Check if exact vote exists (including grade value)
+      - `find_vote_by_metadata(subject, date, vote_type, school_year_id)` - Find vote by metadata (ignoring grade value) - used for updating edited grades
       - `get_subjects_with_votes(school_year_id, term)` - Get subjects that have votes
     - Grade Goals:
       - `set_grade_goal(subject, target_grade, school_year_id, term)` - Set or update grade goal
@@ -219,19 +237,18 @@ votetracker/
     - Shows table with auto-suggestions based on fuzzy matching
     - Color-coded confidence levels
   - `ManageSubjectMappingsDialog(QDialog)` - View/edit existing subject mappings
-    - Constructor: `(db: Database, parent)`
+    - Constructor: `(provider_id: str, provider_name: str, db: Database, parent)`
     - `was_changed()` - Returns bool if changes made
-    - Shows table of all current ClasseViva→VoteTracker mappings
+    - Shows table of all current provider→VoteTracker subject mappings
     - Allows editing and deleting individual mappings
+    - Works with any sync provider (ClasseViva, Axios, etc.)
 
 #### `src/votetracker/widgets.py`
 **Purpose:** Custom Qt widgets
 - **Classes:**
-  - `SubjectCard(QWidget)` - Dashboard subject card with average
-  - `VoteTableWidget(QTableWidget)` - Enhanced table for votes
-  - `ChartWidget(QWidget)` - Base chart widget
-  - `GradeDistributionChart(ChartWidget)` - Histogram chart
-  - `GradeTrendChart(ChartWidget)` - Line chart over time
+  - `SubjectCard(QWidget)` - Dashboard subject card with average display
+  - `VoteTableWidget(QTableWidget)` - Enhanced table widget for displaying votes
+  - `TermToggle(QWidget)` - Toggle widget for switching between Term 1 and Term 2
 
 #### `src/votetracker/undo.py`
 **Purpose:** Undo/redo functionality
@@ -249,11 +266,17 @@ votetracker/
 #### `src/votetracker/utils.py`
 **Purpose:** Utility functions
 - **Functions:**
-  - `get_grade_color(grade)` - Returns color for grade (red/yellow/green)
-  - `get_symbolic_icon(name)` - Returns QIcon for icon name
-  - `format_grade(grade)` - Format grade to 2 decimals
-  - `calculate_average(votes, weights)` - Calculate weighted average
-  - `round_italian(value)` - Italian rounding (0.5 rounds up)
+  - `calc_average(votes)` - Calculate weighted average (excludes 0.00 grades like + or - marks)
+  - `round_report_card(average)` - Italian rounding for report cards (0.5 rounds up)
+  - `get_status_color(average)` - Returns QColor for grade status (red/yellow/green)
+  - `get_type_color(vote_type)` - Returns QColor for vote type (Written/Oral/Practical)
+  - `get_grade_style(grade)` - Returns CSS style string for grade display
+  - `get_status_icon_name(average)` - Returns icon name based on average
+  - `get_symbolic_icon(name)` - Returns QIcon for icon name (uses icon_provider system)
+  - `has_icon(name)` - Check if icon is available
+  - `get_icon_fallback(name)` - Get text fallback for icon
+  - `get_school_year_name(start_year)` - Generate school year name (e.g., "2025/2026")
+  - `get_short_year_name(start_year)` - Generate short year name (e.g., "25/26")
 
 #### `src/votetracker/constants.py`
 **Purpose:** Application-wide constants
@@ -442,13 +465,24 @@ votetracker/
 
 #### `src/votetracker/pages/statistics.py`
 **Purpose:** Statistics and charts
-- **Class:** `StatisticsPage(QWidget)`
-  - Grade distribution histogram
-  - Grade trend over time
-  - Filter by subject
-  - **Methods:**
-    - `refresh()` - Reload charts
-    - `handle_key(event)` - Term switching
+- **Classes:**
+  - `BarChart(QFrame)` - Simple horizontal bar chart for subject averages
+    - `set_data(data)` - Set chart data as list of (label, value, color) tuples
+  - `DistributionChart(QFrame)` - Histogram for grade distribution
+    - `set_data(grades)` - Set data from list of grade values
+  - `TrendChart(QFrame)` - Line chart showing grade trends over time
+    - `set_data(votes)` - Set data from list of vote dicts
+    - Draws Y-axis labels, passing threshold line, and date labels
+  - `StatisticsPage(QWidget)` - Main statistics page
+    - Grade distribution histogram
+    - Grade trend over time line chart
+    - Subject averages bar chart
+    - Best/worst subjects lists
+    - Summary statistics (total grades, average, highest/lowest)
+    - **Methods:**
+      - `refresh()` - Reload all charts and statistics
+      - `handle_key(event)` - Handle term switching (1/2 keys)
+      - `_update_extremes_list(layout, subjects, is_best)` - Update best/worst subjects
 
 #### `src/votetracker/pages/settings.py`
 **Purpose:** Settings, import/export, ClasseViva
@@ -482,18 +516,24 @@ votetracker/
     - `_export_to_file()` - Export to JSON file
     - `_clear_term_votes()` - Delete term votes
     - `_clear_year_votes()` - Delete year votes
-    - ClasseViva methods:
-      - `_load_cv_credentials()` - Load saved credentials
-      - `_test_cv_connection()` - Test login
-      - `_clear_cv_credentials()` - Clear saved credentials
-      - `_import_from_classeviva()` - Import grades from CV
-      - `_manage_subject_mappings()` - Open subject mappings dialog
+    - Provider sync methods:
+      - `_load_provider_credentials(provider_id)` - Load saved credentials for provider
+      - `_test_provider_connection(provider_id)` - Test provider login
+      - `_clear_provider_credentials(provider_id)` - Clear provider credentials
+      - `_import_from_provider(provider_id)` - Import grades from provider (with smart update logic)
+      - `_manage_provider_subject_mappings(provider_id)` - Open subject mappings dialog for provider
       - `_on_auto_sync_toggled(state)` - Handle auto-sync toggle
       - `_on_sync_interval_changed(index)` - Handle interval change
       - `_start_auto_sync()` - Start sync timer
       - `_stop_auto_sync()` - Stop sync timer
-      - `_auto_sync_tick()` - Perform sync
+      - `_auto_sync_tick()` - Perform automatic sync
       - `_on_language_changed(index)` - Handle language selection
+    - **Import Logic:**
+      - Uses `find_vote_by_metadata()` to check for existing grades
+      - Updates existing grades if teacher modified them (grade/weight/description changes)
+      - Adds new grades if they don't exist
+      - Skips exact duplicates
+      - Shows detailed status: "X new, Y updated (Z skipped)"
     - `handle_key(event)` - Keyboard shortcuts (Ctrl+I/E)
 
 ---
@@ -507,12 +547,37 @@ votetracker/
 - **grade_goals**: id, subject_id, school_year_id, term, target_grade, created_at
 - **settings**: key, value (stores ClasseViva credentials, mappings, sync settings, etc.)
 
-### ClasseViva Subject Mappings
-Subject mappings are stored in the settings table with keys like `cv_mapping_{classeviva_subject_name}`.
-- Example: `cv_mapping_MATEMATICA` → `Math`
-- Use `Database.get_all_subject_mappings()` to retrieve all
+### Provider Subject Mappings
+Subject mappings are stored in the settings table with keys like `{provider_id}_mapping_{provider_subject_name}`.
+- Example: `classeviva_mapping_MATEMATICA` → `Math`
+- Example: `axios_mapping_MATEMATICA` → `Math`
+- Use `Database.get_all_subject_mappings()` to retrieve all mappings for a provider
 - Mappings persist across imports
-- Used during ClasseViva import to map CV subject names to VT subject names
+- Used during grade import to map provider subject names to VoteTracker subject names
+- Each provider has its own namespace for mappings
+
+### Grade Import and Update Logic
+When importing grades from electronic registers (ClasseViva, Axios, etc.):
+1. **Duplicate Detection:** Grades are matched by subject, date, and type (NOT grade value)
+2. **Update vs Add:**
+   - If a vote exists with same subject/date/type → **UPDATE** it (teacher may have changed grade/weight)
+   - If no matching vote exists → **ADD** as new vote
+3. **What Triggers Updates:**
+   - Grade value changes (teacher corrects a grade from 7 to 8)
+   - Weight changes (teacher marks grade as "blue" - doesn't count toward average)
+   - Description changes (teacher adds/modifies notes)
+4. **Import Status Messages:**
+   - Shows: "Import complete: X new, Y updated (Z skipped)"
+   - "New" = grades that didn't exist before
+   - "Updated" = grades that were modified by teacher
+   - "Skipped" = grades that are exactly identical
+
+### Zero Grades (+ and - Marks)
+Some teachers give "+" or "-" as encouragement/warning marks that don't count toward averages:
+- These import as 0.00 grade values
+- **Excluded from average calculations:** `calc_average()` filters out any grade ≤ 0
+- Still visible in grade lists and statistics, but don't affect subject averages
+- This matches how Italian schools handle non-numeric evaluations
 
 ### Data Flow
 1. User actions trigger page methods
@@ -620,6 +685,19 @@ Stored in database `settings` table with key-value pairs:
 - Database queries are synchronous (single-threaded)
 - Large datasets (>1000 votes) may slow UI
 - Consider pagination for votes table in future
+
+### Statistics and Charts
+- **Chart Design Philosophy:** Use simple, Qt-native widgets that respect system themes
+- **Avoid:** Hardcoded colors, white backgrounds, dark text that doesn't adapt to theme
+- **Current Implementation:**
+  - `BarChart` - Horizontal bars with QFrame, uses system panel style
+  - `DistributionChart` - Histogram with colored bars, count labels at top
+  - `TrendChart` - Custom painted line chart with Y-axis labels, passing threshold, date markers
+- **Chart Data Flow:**
+  - Statistics page queries database
+  - Converts data to chart format (tuples/dicts)
+  - Calls `set_data()` on chart widgets
+  - Charts redraw with new data
 
 ---
 
@@ -831,6 +909,13 @@ gh release create v2.6.0 --title "v2.6.0 - Subject Mapping Management" --notes-f
 
 ## Version History
 
+- **2.8.0** (In Development) - Smart grade updates, improved statistics, project cleanup
+  - Added smart grade update logic: automatically updates grades when teachers modify them
+  - Refactored statistics page with minimal Qt-native charts (replaced enhanced_charts)
+  - Average calculation now excludes 0.00 grades (+ and - marks)
+  - Fixed ManageSubjectMappingsDialog constructor to work with provider system
+  - Organized project structure: moved documentation to docs/ folder
+  - Import status now shows: "X new, Y updated (Z skipped)"
 - **2.7.1** - CI/CD workflow with automated testing (Python 3.8-3.12), enhanced interactive charts with hover tooltips and animations
 - **2.7.0** - Performance enhancements: database indices, connection pooling, caching, grade goals foundation, constants extraction, comprehensive unit tests
 - **2.6.0** - Subject mapping management dialog and Settings page restructure
