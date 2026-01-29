@@ -1059,37 +1059,79 @@ class SettingsPage(QWidget):
             if mapped_subject:
                 grade["subject"] = mapped_subject
 
-        # Check for duplicates if option is enabled
-        new_grades = []
+        # Process grades: add new or update existing
+        imported_count = 0
+        updated_count = 0
         skipped_count = 0
+        skip_duplicates = self._cv_skip_duplicates.isChecked()
 
         for grade in vt_grades:
-            if self._cv_skip_duplicates.isChecked():
-                if self._db.vote_exists(
-                    grade["subject"],
-                    grade["grade"],
-                    grade["date"],
-                    grade["type"]
-                ):
+            # Get active school year
+            active_year = self._db.get_active_school_year()
+            school_year_id = active_year["id"] if active_year else None
+
+            # Check if vote already exists by metadata (subject, date, type)
+            existing_vote = self._db.find_vote_by_metadata(
+                grade["subject"],
+                grade["date"],
+                grade["type"],
+                school_year_id
+            )
+
+            if existing_vote:
+                # Check if grade/weight/description has changed
+                has_changes = (
+                    existing_vote['grade'] != grade['grade'] or
+                    existing_vote.get('weight', 1.0) != grade.get('weight', 1.0) or
+                    existing_vote.get('description', '') != grade.get('description', '')
+                )
+
+                if has_changes:
+                    # Update existing vote
+                    self._db.update_vote(
+                        vote_id=existing_vote['id'],
+                        subject=grade["subject"],
+                        grade=grade['grade'],
+                        vote_type=grade['type'],
+                        date=grade['date'],
+                        description=grade.get('description', ''),
+                        term=grade.get('term', existing_vote['term']),
+                        weight=grade.get('weight', 1.0)
+                    )
+                    updated_count += 1
+                    imported_count += 1
+                else:
+                    # Exact duplicate - skip
                     skipped_count += 1
-                    continue
-
-            new_grades.append(grade)
-
-        # Import new grades
-        if new_grades:
-            self._db.import_votes(new_grades)
-
-        # Update UI
-        imported_count = len(new_grades)
+            else:
+                # Add new vote
+                self._db.add_vote(
+                    subject=grade["subject"],
+                    grade=grade['grade'],
+                    vote_type=grade['type'],
+                    date=grade['date'],
+                    description=grade.get('description', ''),
+                    term=grade.get('term', self._db.get_current_term()),
+                    weight=grade.get('weight', 1.0),
+                    school_year_id=school_year_id
+                )
+                imported_count += 1
         self._cv_progress.setVisible(False)
         self._cv_import_btn.setEnabled(True)
 
         # Build status message
         if imported_count > 0:
-            status_msg = tr("Import complete: {count} grades imported").format(count=imported_count)
+            status_parts = []
+            new_count = imported_count - updated_count
+            if new_count > 0:
+                status_parts.append(tr("{count} new").format(count=new_count))
+            if updated_count > 0:
+                status_parts.append(tr("{count} updated").format(count=updated_count))
+
+            status_msg = tr("Import complete: ") + ", ".join(status_parts)
             if skipped_count > 0:
-                status_msg += " (" + tr("Skipped {count} duplicates").format(count=skipped_count) + ")"
+                status_msg += " (" + tr("{count} skipped").format(count=skipped_count) + ")"
+
             self._cv_import_status.setText(status_msg)
             self._cv_import_status.setStyleSheet("color: #27ae60;")
             self.data_imported.emit()
@@ -1472,6 +1514,7 @@ class SettingsPage(QWidget):
 
         # Import grades
         imported_count = 0
+        updated_count = 0
         skipped_count = 0
         error_count = 0
         skip_duplicates = widgets['skip_duplicates'].isChecked()
@@ -1500,28 +1543,63 @@ class SettingsPage(QWidget):
 
                 print(f"DEBUG: Term: {term}, School Year ID: {school_year_id}")
 
-                # Check for duplicate
-                if skip_duplicates:
-                    is_duplicate = self._db.vote_exists(vt_subject, grade['grade'], grade['date'], grade['type'], school_year_id)
-                    if is_duplicate:
-                        print(f"DEBUG: Skipping duplicate")
-                        skipped_count += 1
-                        continue
-
-                # Add vote
-                print(f"DEBUG: Adding vote to database...")
-                self._db.add_vote(
-                    subject=vt_subject,
-                    grade=grade['grade'],
-                    vote_type=grade['type'],
-                    date=grade['date'],
-                    description=grade.get('description', ''),
-                    term=term,
-                    weight=grade.get('weight', 1.0),
-                    school_year_id=school_year_id
+                # Check if vote already exists by metadata (subject, date, type)
+                existing_vote = self._db.find_vote_by_metadata(
+                    vt_subject,
+                    grade['date'],
+                    grade['type'],
+                    school_year_id
                 )
-                imported_count += 1
-                print(f"DEBUG: Successfully imported!")
+
+                if existing_vote:
+                    # Check if grade/weight/description has changed
+                    has_changes = (
+                        existing_vote['grade'] != grade['grade'] or
+                        existing_vote.get('weight', 1.0) != grade.get('weight', 1.0) or
+                        existing_vote.get('description', '') != grade.get('description', '')
+                    )
+
+                    if has_changes:
+                        # Update existing vote
+                        print(f"DEBUG: Updating existing vote (grade changed from {existing_vote['grade']} to {grade['grade']})")
+                        self._db.update_vote(
+                            vote_id=existing_vote['id'],
+                            subject=vt_subject,
+                            grade=grade['grade'],
+                            vote_type=grade['type'],
+                            date=grade['date'],
+                            description=grade.get('description', ''),
+                            term=term,
+                            weight=grade.get('weight', 1.0)
+                        )
+                        updated_count += 1
+                        imported_count += 1
+                        print(f"DEBUG: Successfully updated!")
+                    else:
+                        # Exact duplicate - skip
+                        if skip_duplicates:
+                            print(f"DEBUG: Skipping exact duplicate")
+                            skipped_count += 1
+                            continue
+                        else:
+                            # If not skipping duplicates, still skip exact matches
+                            skipped_count += 1
+                            continue
+                else:
+                    # Add new vote
+                    print(f"DEBUG: Adding new vote to database...")
+                    self._db.add_vote(
+                        subject=vt_subject,
+                        grade=grade['grade'],
+                        vote_type=grade['type'],
+                        date=grade['date'],
+                        description=grade.get('description', ''),
+                        term=term,
+                        weight=grade.get('weight', 1.0),
+                        school_year_id=school_year_id
+                    )
+                    imported_count += 1
+                    print(f"DEBUG: Successfully imported!")
 
             except Exception as e:
                 print(f"ERROR importing grade {idx+1}: {e}")
@@ -1530,7 +1608,7 @@ class SettingsPage(QWidget):
                 error_count += 1
                 continue
 
-        print(f"DEBUG: Import complete - Imported: {imported_count}, Skipped: {skipped_count}, Errors: {error_count}")
+        print(f"DEBUG: Import complete - New: {imported_count - updated_count}, Updated: {updated_count}, Skipped: {skipped_count}, Errors: {error_count}")
 
         # Hide progress
         widgets['progress'].setVisible(False)
@@ -1538,9 +1616,17 @@ class SettingsPage(QWidget):
 
         # Show result
         if imported_count > 0:
-            status_msg = tr("Imported {imported} grades").format(imported=imported_count)
+            status_parts = []
+            new_count = imported_count - updated_count
+            if new_count > 0:
+                status_parts.append(tr("{count} new").format(count=new_count))
+            if updated_count > 0:
+                status_parts.append(tr("{count} updated").format(count=updated_count))
+
+            status_msg = tr("Import complete: ") + ", ".join(status_parts)
             if skipped_count > 0:
                 status_msg += tr(" ({skipped} skipped)").format(skipped=skipped_count)
+
             widgets['import_status'].setText(status_msg)
             widgets['import_status'].setStyleSheet("color: #27ae60;")
         else:
@@ -1562,8 +1648,7 @@ class SettingsPage(QWidget):
             return
 
         provider_name = provider.get_provider_name()
-        dialog = ManageSubjectMappingsDialog(self._db, self)
-        # TODO: Update ManageSubjectMappingsDialog to accept provider_id
+        dialog = ManageSubjectMappingsDialog(provider_id, provider_name, self._db, self)
         dialog.exec()
 
     def _on_provider_auto_sync_toggled(self, provider_id: str, state):
