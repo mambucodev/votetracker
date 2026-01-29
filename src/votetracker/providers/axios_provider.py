@@ -51,12 +51,29 @@ class AxiosProvider(SyncProvider):
         Raises:
             Exception: If login fails or cannot find students
         """
+        # Helper function for headers (same as axios library)
+        def headers_for(url: str) -> dict:
+            return {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Origin": "https://family.axioscloud.it",
+                "Referer": url,
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            }
+
         session = requests.Session()
-        start_url = f"https://family.axioscloud.it/Secret/RELogin.aspx?Customer_ID={customer_id}"
+        start_url = f"https://family.axioscloud.it/Secret/REStart.aspx?Customer_ID={customer_id}"
 
         try:
-            # Get the login page
-            resp = session.get(start_url, timeout=10)
+            # Get the login page with proper headers
+            resp = session.get(start_url, headers=headers_for(start_url), timeout=10)
+
+            # DEBUG: Save initial page
+            try:
+                with open("/tmp/axios_initial_page.html", 'w', encoding='utf-8') as f:
+                    f.write(resp.text)
+            except:
+                pass
+
             tree = html.fromstring(resp.text)
 
             # Extract ASP.NET viewstate (with safety checks)
@@ -65,7 +82,12 @@ class AxiosProvider(SyncProvider):
             eventvalidation_list = tree.xpath('//input[@id="__EVENTVALIDATION"]/@value')
 
             if not viewstate_list or not viewstategenerator_list or not eventvalidation_list:
-                raise Exception("Failed to extract login form data - customer ID may be invalid")
+                raise Exception(
+                    f"Failed to extract login form data. "
+                    f"Customer ID '{customer_id}' may be invalid. "
+                    f"Page saved to /tmp/axios_initial_page.html. "
+                    f"Verify customer ID at https://family.axioscloud.it"
+                )
 
             viewstate = viewstate_list[0]
             viewstategenerator = viewstategenerator_list[0]
@@ -80,7 +102,7 @@ class AxiosProvider(SyncProvider):
                 "ibtnRE.y": 0,
                 "mha": "",
             }
-            resp = session.post(start_url, data=start_payload, timeout=10)
+            resp = session.post(start_url, data=start_payload, headers=headers_for(start_url), timeout=10)
             tree = html.fromstring(resp.text)
 
             # Update viewstate
@@ -113,9 +135,11 @@ class AxiosProvider(SyncProvider):
             "txtPassword": password,
             "btnLogin": "Accedi",
         }
+        login_url = "https://family.axioscloud.it/Secret/RELogin.aspx"
         resp = session.post(
-            "https://family.axioscloud.it/Secret/RELogin.aspx",
+            login_url,
             data=login_payload,
+            headers=headers_for(start_url),
             timeout=10
         )
         tree = html.fromstring(resp.text)
