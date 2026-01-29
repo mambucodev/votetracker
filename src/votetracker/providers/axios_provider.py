@@ -235,9 +235,25 @@ class AxiosProvider(SyncProvider):
             if resp.status_code != 200:
                 return False, [], f"Failed to load grades page (HTTP {resp.status_code}): {resp.text[:200]}"
 
-            # Check for errors
-            if "Errore" in resp.text:
-                return False, [], f"Error loading grades page: {resp.text[:200]}"
+            # Parse JSON response
+            try:
+                voti_data = resp.json()
+                errorcode = voti_data.get('errorcode', '-1')
+
+                # errorcode "0" means success
+                if errorcode != "0":
+                    errormsg = voti_data.get('errormsg', 'Unknown error')
+                    return False, [], f"Error loading grades page: {errormsg}"
+
+                # Extract frazione from HTML
+                html_content = voti_data.get('html', '')
+                frazione_match = re.search(r'id=[\'"]frazione[\'"].*?value=[\'"]([^\'\"]+)[\'"]', html_content)
+                frazione = frazione_match.group(1) if frazione_match else ""
+
+                print(f"DEBUG: Extracted frazione: {frazione}")
+
+            except Exception as e:
+                return False, [], f"Failed to parse grades page response: {str(e)}"
 
             # Step 2: Fetch the grades list via POST
             # Update headers for POST request
@@ -252,7 +268,7 @@ class AxiosProvider(SyncProvider):
                 "length": 1000,  # Get up to 1000 grades
                 "search": {"value": "", "regex": False},
                 "iMatId": "",
-                "frazione": ""  # Will need to extract this if required
+                "frazione": frazione  # Use extracted frazione value
             }
 
             resp = self._session.post(
@@ -267,11 +283,12 @@ class AxiosProvider(SyncProvider):
                 with open("/tmp/axios_grades_list.json", 'w', encoding='utf-8') as f:
                     f.write(f"<!-- Status: {resp.status_code} -->\n")
                     f.write(resp.text)
-            except:
-                pass
+                print(f"DEBUG: Grades list status: {resp.status_code}, saved to /tmp/axios_grades_list.json")
+            except Exception as e:
+                print(f"DEBUG: Failed to save grades list: {e}")
 
             if resp.status_code != 200:
-                return False, [], f"Failed to fetch grades list (HTTP {resp.status_code})"
+                return False, [], f"Failed to fetch grades list (HTTP {resp.status_code}): {resp.text[:200]}"
 
             # For now, return success and save the response
             return True, [], f"Fetched grades - check /tmp/axios_grades_list.json ({len(resp.text)} bytes)"
