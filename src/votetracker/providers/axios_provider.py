@@ -190,40 +190,68 @@ class AxiosProvider(SyncProvider):
             return False, [], "No authentication token available"
 
         try:
-            # DashboardLoad worked with GET, try similar "Load" actions
             ajax_url = "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Ajax_Get.aspx"
 
-            # Try actions that follow the DashboardLoad pattern
-            actions_to_try = [
-                "VotiLoad",
-                "GradesLoad",
-                "ValutazioniLoad",
-                "FAMILY_VOTI_Load",
-                "LoadVoti",
-                "GetVoti",
-            ]
+            # Add RVT header (auth token)
+            headers = {
+                'RVT': self._auth_token,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json; charset=utf-8',
+            }
 
-            for action in actions_to_try:
-                try:
-                    url = f"{ajax_url}?action={action}"
-                    resp = self._session.get(url, timeout=10)
+            # Step 1: Load the grades page (uppercase Action parameter)
+            resp = self._session.get(f"{ajax_url}?Action=FAMILY_VOTI", headers=headers, timeout=10)
 
-                    filename = f"/tmp/axios_action_{action}.html"
-                    with open(filename, 'w', encoding='utf-8') as f:
-                        f.write(f"<!-- URL: {url} -->\n")
-                        f.write(f"<!-- Status: {resp.status_code} -->\n")
-                        f.write(resp.text)
+            # Debug: save grades page
+            try:
+                with open("/tmp/axios_voti_page.html", 'w', encoding='utf-8') as f:
+                    f.write(f"<!-- Status: {resp.status_code} -->\n")
+                    f.write(resp.text)
+            except:
+                pass
 
-                    print(f"Action {action}: HTTP {resp.status_code}, {len(resp.text)} bytes")
+            if resp.status_code != 200:
+                return False, [], f"Failed to load grades page (HTTP {resp.status_code})"
 
-                    # Check if successful (not an error message)
-                    if resp.status_code == 200 and "Errore" not in resp.text and len(resp.text) > 200:
-                        return True, [], f"SUCCESS with action={action} - saved to {filename} ({len(resp.text)} bytes)"
+            # Check for errors
+            if "Errore" in resp.text:
+                return False, [], f"Error loading grades page: {resp.text[:200]}"
 
-                except Exception as e:
-                    print(f"Action {action} failed: {e}")
+            # Step 2: Fetch the grades list via POST
+            # We need to extract the frazione parameter from the page, but for now try without it
+            headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
 
-            return True, [], "Tried multiple actions - check /tmp/axios_action_*.html files"
+            post_data = {
+                "draw": 1,
+                "columns": {},
+                "order": [],
+                "start": 0,
+                "length": 1000,  # Get up to 1000 grades
+                "search": {"value": "", "regex": False},
+                "iMatId": "",
+                "frazione": ""  # Will need to extract this if required
+            }
+
+            resp = self._session.post(
+                f"{ajax_url}?Action=FAMILY_VOTI_ELENCO_LISTA",
+                headers=headers,
+                json=post_data,
+                timeout=10
+            )
+
+            # Debug: save grades list response
+            try:
+                with open("/tmp/axios_grades_list.json", 'w', encoding='utf-8') as f:
+                    f.write(f"<!-- Status: {resp.status_code} -->\n")
+                    f.write(resp.text)
+            except:
+                pass
+
+            if resp.status_code != 200:
+                return False, [], f"Failed to fetch grades list (HTTP {resp.status_code})"
+
+            # For now, return success and save the response
+            return True, [], f"Fetched grades - check /tmp/axios_grades_list.json ({len(resp.text)} bytes)"
 
         except requests.exceptions.Timeout:
             return False, [], "Request timeout"
