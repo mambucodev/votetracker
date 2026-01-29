@@ -221,11 +221,20 @@ class AxiosProvider(SyncProvider):
                 # Extract ALL frazione values from the dropdown (for all terms)
                 html_content = voti_data.get('html', '')
 
-                # Find all frazione options in the dropdown
-                frazione_options = re.findall(r'<option\s+value\s*=\s*[\'"]([^\'\"]+)[\'"].*?>([^<]+)</option>', html_content)
+                # Find the frazione dropdown specifically (id='fiFrazId')
+                # Extract only options from this dropdown, not the subject filter dropdown
+                frazione_select_match = re.search(r"<select[^>]+id=['\"]fiFrazId['\"][^>]*>(.*?)</select>", html_content, re.DOTALL)
+
+                if not frazione_select_match:
+                    return False, [], "No frazione/term dropdown found in response"
+
+                frazione_select_html = frazione_select_match.group(1)
+
+                # Now extract options only from this dropdown
+                frazione_options = re.findall(r'<option\s+value\s*=\s*[\'"]([^\'\"]+)[\'"].*?>([^<]+)</option>', frazione_select_html)
 
                 if not frazione_options:
-                    return False, [], "No term/frazione options found in response"
+                    return False, [], "No term options found in frazione dropdown"
 
             except Exception as e:
                 return False, [], f"Failed to parse grades page response: {str(e)}"
