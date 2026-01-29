@@ -1219,6 +1219,11 @@ class SettingsPage(QWidget):
         auto_login = self._db.get_provider_auto_login(provider_id)
         widgets['auto_login'].setChecked(auto_login)
 
+        # Auto-test connection if auto-login is enabled and credentials exist
+        if auto_login and has_creds:
+            # Automatically test connection on page load
+            self._test_provider_connection(provider_id)
+
         # Load last import time
         last_sync = self._db.get_provider_last_sync(provider_id)
         if last_sync:
