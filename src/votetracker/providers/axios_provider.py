@@ -239,110 +239,83 @@ class AxiosProvider(SyncProvider):
             except Exception as e:
                 return False, [], f"Failed to parse grades page response: {str(e)}"
 
-            # Step 2: Fetch grades for ALL terms
-            all_grades = []
+            # Step 2: Fetch grades (just once - server returns all grades regardless of term selection)
+            # We'll determine which term each grade belongs to based on date
 
-            print(f"DEBUG: Found {len(frazione_options)} term options")
+            # Parse term date ranges from the options
+            term_ranges = []
+            for frazione_value, frazione_label in frazione_options:
+                # Extract dates from label: "TRIMESTRE (15/09/2025 - 15/12/2025)"
+                date_match = re.search(r'\((\d{2}/\d{2}/\d{4})\s*-\s*(\d{2}/\d{2}/\d{4})\)', frazione_label)
+                if date_match:
+                    start_str, end_str = date_match.groups()
+                    # Convert DD/MM/YYYY to YYYY-MM-DD
+                    start_parts = start_str.split('/')
+                    end_parts = end_str.split('/')
+                    start_date = f"{start_parts[2]}-{start_parts[1]}-{start_parts[0]}"
+                    end_date = f"{end_parts[2]}-{end_parts[1]}-{end_parts[0]}"
 
-            for frazione_option_value, frazione_label in frazione_options:
-                try:
-                    # Parse term number from label (e.g., "TRIMESTRE" or "PENTAMESTRE")
-                    # TRIMESTRE = Term 1, PENTAMESTRE/QUADRIMESTRE 2 = Term 2
+                    # Determine term number
                     term_num = 1 if 'TRIMESTRE' in frazione_label.upper() and 'PENTA' not in frazione_label.upper() else 2
 
-                    print(f"DEBUG: Fetching grades for {frazione_label} (term {term_num})")
+                    term_ranges.append({
+                        'term': term_num,
+                        'start': start_date,
+                        'end': end_date,
+                        'label': frazione_label
+                    })
 
-                    # Step 2a: Load FAMILY_VOTI for this specific term to get the hidden frazione value
-                    timestamp = int(time.time() * 1000)
-                    term_resp = self._session.get(
-                        f"{ajax_url}?Action=FAMILY_VOTI&fiFrazId={frazione_option_value}&_={timestamp}",
-                        headers=headers,
-                        timeout=10
-                    )
+            print(f"DEBUG: Parsed term ranges: {term_ranges}")
 
-                    if term_resp.status_code != 200:
-                        print(f"DEBUG: Failed to load FAMILY_VOTI for {frazione_label}: HTTP {term_resp.status_code}")
-                        continue
+            # Fetch grades once (using the hidden frazione from the already-loaded page)
+            post_data = {
+                "draw": 1,
+                "columns": {},
+                "order": [],
+                "start": 0,
+                "length": 1000,
+                "search": {"value": "", "regex": False},
+                "iMatId": "",
+                "frazione": frazione
+            }
 
-                    # Parse response to get the hidden frazione value
-                    term_voti_data = term_resp.json()
-                    if term_voti_data.get('errorcode') != "0":
-                        print(f"DEBUG: Error loading term page: {term_voti_data.get('errormsg')}")
-                        continue
+            post_headers = headers.copy()
+            post_headers['Accept'] = 'application/json, text/javascript, */*; q=0.01'
+            post_headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
 
-                    term_html = term_voti_data.get('html', '')
-                    frazione_hidden_match = re.search(r'id=[\'"]frazione[\'"].*?value=[\'"]([^\'\"]+)[\'"]', term_html)
+            resp = self._session.post(
+                f"{ajax_url}?Action=FAMILY_VOTI_ELENCO_LISTA",
+                headers=post_headers,
+                data=json.dumps(post_data),
+                timeout=10
+            )
 
-                    if not frazione_hidden_match:
-                        print(f"DEBUG: Could not find hidden frazione value for {frazione_label}")
-                        continue
+            if resp.status_code != 200:
+                return False, [], f"Failed to fetch grades list (HTTP {resp.status_code}): {resp.text[:200]}"
 
-                    frazione_value = frazione_hidden_match.group(1)
-                    print(f"DEBUG: Extracted hidden frazione value (length: {len(frazione_value)})")
+            grades_data = resp.json()
+            raw_grades = grades_data.get('data', [])
 
-                    # Step 2b: Now fetch grades using the correct frazione value
-                    post_data = {
-                        "draw": 1,
-                        "columns": {},
-                        "order": [],
-                        "start": 0,
-                        "length": 1000,  # Get up to 1000 grades per term
-                        "search": {"value": "", "regex": False},
-                        "iMatId": "",
-                        "frazione": frazione_value
-                    }
+            if not raw_grades:
+                return True, [], "No grades found"
 
-                    # Prepare headers for this specific request
-                    # Note: Server expects JSON body but with form-encoded Content-Type header
-                    post_headers = headers.copy()
-                    post_headers['Accept'] = 'application/json, text/javascript, */*; q=0.01'
-                    post_headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
+            # Convert grades and assign term based on date
+            all_grades = self._convert_axios_grades(raw_grades)
 
-                    # Send JSON as string data (not using json= parameter)
-                    # This way we can control the Content-Type header
-                    json_payload = json.dumps(post_data)
-                    print(f"DEBUG: Sending JSON payload: {json_payload[:200]}")
+            for grade in all_grades:
+                grade_date = grade['date']  # YYYY-MM-DD format
 
-                    resp = self._session.post(
-                        f"{ajax_url}?Action=FAMILY_VOTI_ELENCO_LISTA",
-                        headers=post_headers,
-                        data=json_payload,
-                        timeout=10
-                    )
+                # Find which term this grade belongs to based on date
+                assigned_term = 2  # Default to term 2 if not found
+                for term_range in term_ranges:
+                    if term_range['start'] <= grade_date <= term_range['end']:
+                        assigned_term = term_range['term']
+                        break
 
-                    print(f"DEBUG: POST response status: {resp.status_code}")
-
-                    if resp.status_code == 200:
-                        print(f"DEBUG: Response text (first 500 chars): {resp.text[:500]}")
-
-                        grades_data = resp.json()
-                        raw_grades = grades_data.get('data', [])
-
-                        print(f"DEBUG: Found {len(raw_grades)} raw grades in {frazione_label}")
-
-                        # Convert and add term number to each grade
-                        term_grades = self._convert_axios_grades(raw_grades)
-                        for grade in term_grades:
-                            grade['term'] = term_num
-
-                        print(f"DEBUG: Converted to {len(term_grades)} grades for term {term_num}")
-                        all_grades.extend(term_grades)
-                    else:
-                        print(f"DEBUG: POST failed with status {resp.status_code}, response: {resp.text[:500]}")
-
-                except Exception as e:
-                    # Continue with other terms if one fails
-                    print(f"ERROR: Failed to fetch grades for term {frazione_label}: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    continue
+                grade['term'] = assigned_term
 
             print(f"DEBUG: Total grades fetched: {len(all_grades)}")
-
-            if not all_grades:
-                return True, [], "No grades found in any term"
-
-            return True, all_grades, f"Successfully fetched {len(all_grades)} grades from all terms"
+            return True, all_grades, f"Successfully fetched {len(all_grades)} grades"
 
         except requests.exceptions.Timeout:
             return False, [], "Request timeout"
