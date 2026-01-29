@@ -1402,10 +1402,14 @@ class SettingsPage(QWidget):
             widgets['import_status'].setStyleSheet("color: #e74c3c;")
             return
 
+        print(f"DEBUG: Fetched {len(grades)} grades from provider")
+
         # Apply term filter
         term_filter = widgets['term_filter'].currentData()
         if term_filter > 0:
+            before_filter = len(grades)
             grades = [g for g in grades if g.get('term') == term_filter]
+            print(f"DEBUG: After term filter ({term_filter}): {len(grades)} grades (was {before_filter})")
 
         # Apply year filter
         if widgets['current_year_only'].isChecked():
@@ -1413,6 +1417,13 @@ class SettingsPage(QWidget):
             if active_year:
                 # Filter grades by date range (simplified)
                 pass  # For now, keep all grades
+
+        if len(grades) == 0:
+            widgets['progress'].setVisible(False)
+            widgets['import_btn'].setEnabled(True)
+            widgets['import_status'].setText(tr("No grades found after applying filters"))
+            widgets['import_status'].setStyleSheet("color: #95a5a6;")
+            return
 
         widgets['import_status'].setText(f"{tr('Found {count} new grades').format(count=len(grades))}")
 
@@ -1457,13 +1468,21 @@ class SettingsPage(QWidget):
         # Import grades
         imported_count = 0
         skipped_count = 0
+        error_count = 0
         skip_duplicates = widgets['skip_duplicates'].isChecked()
 
-        for grade in grades:
+        print(f"DEBUG: Starting import of {len(grades)} grades")
+        print(f"DEBUG: Skip duplicates: {skip_duplicates}")
+
+        for idx, grade in enumerate(grades):
             try:
+                print(f"DEBUG: Grade {idx+1}: {grade.get('subject')} - {grade.get('grade')} - {grade.get('date')} - Term {grade.get('term')}")
+
                 # Map subject
                 provider_subject = grade['subject']
                 vt_subject = subject_mappings.get(provider_subject, provider_subject)
+
+                print(f"DEBUG: Mapped {provider_subject} -> {vt_subject}")
 
                 # Get or create subject
                 subject_id = self._db.get_subject_id(vt_subject)
@@ -1474,13 +1493,18 @@ class SettingsPage(QWidget):
                 # Get current term if not specified in grade
                 term = grade.get('term', self._db.get_current_term())
 
+                print(f"DEBUG: Term: {term}, School Year ID: {school_year_id}")
+
                 # Check for duplicate
                 if skip_duplicates:
-                    if self._db.vote_exists(vt_subject, grade['grade'], grade['date'], grade['type'], school_year_id):
+                    is_duplicate = self._db.vote_exists(vt_subject, grade['grade'], grade['date'], grade['type'], school_year_id)
+                    if is_duplicate:
+                        print(f"DEBUG: Skipping duplicate")
                         skipped_count += 1
                         continue
 
                 # Add vote
+                print(f"DEBUG: Adding vote to database...")
                 self._db.add_vote(
                     subject=vt_subject,
                     grade=grade['grade'],
@@ -1492,10 +1516,16 @@ class SettingsPage(QWidget):
                     school_year_id=school_year_id
                 )
                 imported_count += 1
+                print(f"DEBUG: Successfully imported!")
 
             except Exception as e:
-                print(f"Error importing grade: {e}")
+                print(f"ERROR importing grade {idx+1}: {e}")
+                import traceback
+                traceback.print_exc()
+                error_count += 1
                 continue
+
+        print(f"DEBUG: Import complete - Imported: {imported_count}, Skipped: {skipped_count}, Errors: {error_count}")
 
         # Hide progress
         widgets['progress'].setVisible(False)

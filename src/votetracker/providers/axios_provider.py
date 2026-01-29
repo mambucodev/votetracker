@@ -235,11 +235,15 @@ class AxiosProvider(SyncProvider):
             headers['Accept'] = 'application/json, text/javascript, */*; q=0.01'
             headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
 
+            print(f"DEBUG: Found {len(frazione_options)} term options")
+
             for frazione_value, frazione_label in frazione_options:
                 try:
                     # Parse term number from label (e.g., "TRIMESTRE" or "PENTAMESTRE")
                     # TRIMESTRE = Term 1, PENTAMESTRE/QUADRIMESTRE 2 = Term 2
                     term_num = 1 if 'TRIMESTRE' in frazione_label.upper() and 'PENTA' not in frazione_label.upper() else 2
+
+                    print(f"DEBUG: Fetching grades for {frazione_label} (term {term_num})")
 
                     post_data = {
                         "draw": 1,
@@ -263,17 +267,24 @@ class AxiosProvider(SyncProvider):
                         grades_data = resp.json()
                         raw_grades = grades_data.get('data', [])
 
+                        print(f"DEBUG: Found {len(raw_grades)} raw grades in {frazione_label}")
+
                         # Convert and add term number to each grade
                         term_grades = self._convert_axios_grades(raw_grades)
                         for grade in term_grades:
                             grade['term'] = term_num
 
+                        print(f"DEBUG: Converted to {len(term_grades)} grades for term {term_num}")
                         all_grades.extend(term_grades)
 
                 except Exception as e:
                     # Continue with other terms if one fails
-                    print(f"Failed to fetch grades for term {frazione_label}: {e}")
+                    print(f"ERROR: Failed to fetch grades for term {frazione_label}: {e}")
+                    import traceback
+                    traceback.print_exc()
                     continue
+
+            print(f"DEBUG: Total grades fetched: {len(all_grades)}")
 
             if not all_grades:
                 return True, [], "No grades found in any term"
