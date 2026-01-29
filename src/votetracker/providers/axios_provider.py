@@ -184,19 +184,24 @@ class AxiosProvider(SyncProvider):
             # Fetch grades via AJAX API
             ajax_url = "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Ajax_Get.aspx"
 
-            # Use GET with action parameter (as seen in dashboard HTML)
-            resp = self._session.get(f"{ajax_url}?action=FAMILY_VOTI", timeout=10)
+            # Try POST request with action parameter
+            # The dashboard tiles use JavaScript to make AJAX calls
+            post_data = {'action': 'FAMILY_VOTI'}
+
+            resp = self._session.post(ajax_url, data=post_data, timeout=10)
 
             # Debug: save response
             try:
                 with open("/tmp/axios_voti.html", 'w', encoding='utf-8') as f:
                     f.write(f"<!-- Status: {resp.status_code} -->\n")
+                    f.write(f"<!-- Method: POST -->\n")
+                    f.write(f"<!-- Data: {post_data} -->\n")
                     f.write(resp.text)
             except:
                 pass
 
             if resp.status_code != 200:
-                return False, [], f"Failed to fetch grades (HTTP {resp.status_code})"
+                return False, [], f"Failed to fetch grades (HTTP {resp.status_code}): {resp.text[:200]}"
 
             # Parse HTML to extract grades
             tree = html.fromstring(resp.text)
