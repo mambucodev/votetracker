@@ -101,6 +101,15 @@ python scripts/build.py --onefile
 - Python 3.8+
 - PySide6
 - reportlab (for PDF export)
+- requests (for ClasseViva integration)
+
+### Optional Features
+
+**Axios Italia Integration:**
+- Install via: `pip install --user axios`
+- Not available in Arch repos (use pip only)
+- The Axios provider will automatically appear in Settings once installed
+- Requires adding `~/.local/bin` to PATH: `export PATH="$HOME/.local/bin:$PATH"`
 
 ## Data Storage
 

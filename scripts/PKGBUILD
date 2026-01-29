@@ -6,6 +6,8 @@ pkgdesc="School grade management application"
 arch=('any')
 license=('MIT')
 depends=('python' 'pyside6' 'python-reportlab' 'python-requests')
+optdepends=('python-pip: for installing axios (pip install --user axios) to enable Axios Italia sync provider')
+install=votetracker.install
 
 # No source - we use local files
 source=()
