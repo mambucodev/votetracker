@@ -1,13 +1,12 @@
 # Maintainer: Your Name <your@email.com>
 pkgname=votetracker
 pkgver=2.7.1
-pkgrel=2
+pkgrel=3
 pkgdesc="School grade management application"
 arch=('any')
 license=('MIT')
 depends=('python' 'pyside6' 'python-reportlab' 'python-requests')
-optdepends=('python-pipx: for installing axios (pipx install axios) to enable Axios Italia sync provider')
-install=votetracker.install
+optdepends=('python-axios: Axios Italia electronic register integration')
 
 # No source - we use local files
 source=()
