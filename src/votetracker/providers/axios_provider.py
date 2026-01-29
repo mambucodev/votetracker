@@ -181,28 +181,28 @@ class AxiosProvider(SyncProvider):
             return False, [], "No authentication token available"
 
         try:
-            # Step 1: Get dashboard to find grade page link
-            dashboard_url = "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Ajax_Get.aspx"
-            dashboard_data = {
-                'action': 'DashboardLoad',
-                '_AXToken': self._auth_token
-            }
+            # Try common family pages directly
+            test_urls = [
+                "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Ajax_Get.aspx?action=DashboardLoad",
+                "https://registrofamiglie.axioscloud.it/Pages/SD/SD_HomePage.aspx",
+                "https://registrofamiglie.axioscloud.it/Pages/APP/FAMILY/FAMILY_Voti.aspx",
+                "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Voti.aspx",
+            ]
 
-            resp = self._session.post(dashboard_url, data=dashboard_data, timeout=15)
+            for idx, url in enumerate(test_urls):
+                try:
+                    resp = self._session.get(url, timeout=10)
+                    filename = f"/tmp/axios_test_{idx}.html"
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        f.write(f"<!-- URL: {url} -->\n")
+                        f.write(f"<!-- Status: {resp.status_code} -->\n")
+                        f.write(resp.text)
+                    print(f"Saved {url} to {filename}")
+                except Exception as e:
+                    print(f"Failed {url}: {e}")
 
-            # Debug: save dashboard response
-            try:
-                with open("/tmp/axios_dashboard.html", 'w', encoding='utf-8') as f:
-                    f.write(resp.text)
-            except:
-                pass
-
-            if resp.status_code != 200:
-                return False, [], f"Failed to load dashboard (HTTP {resp.status_code})"
-
-            # TODO: Parse dashboard to find where grades are
-            # For now, just indicate we reached this point
-            return True, [], f"Dashboard loaded ({len(resp.text)} bytes) - grade parsing not yet implemented. Check /tmp/axios_dashboard.html for structure."
+            # Return info
+            return True, [], f"Tested multiple URLs - check /tmp/axios_test_*.html files to see what pages exist"
 
         except requests.exceptions.Timeout:
             return False, [], "Request timeout"
