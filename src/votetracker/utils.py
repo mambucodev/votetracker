@@ -16,11 +16,21 @@ from .constants import (
 # ============================================================================
 
 def calc_average(votes: List[Dict]) -> float:
-    """Calculate the average grade from a list of votes."""
+    """
+    Calculate the average grade from a list of votes.
+    Excludes grades that are 0.00 (e.g., + or - marks that don't count toward average).
+    """
     if not votes:
         return 0.0
-    total = sum(v.get("grade", 0) * v.get("weight", 1.0) for v in votes)
-    weights = sum(v.get("weight", 1.0) for v in votes)
+
+    # Filter out grades that are 0 (+ or - marks)
+    valid_votes = [v for v in votes if v.get("grade", 0) > 0]
+
+    if not valid_votes:
+        return 0.0
+
+    total = sum(v.get("grade", 0) * v.get("weight", 1.0) for v in valid_votes)
+    weights = sum(v.get("weight", 1.0) for v in valid_votes)
     return total / weights if weights > 0 else 0.0
 
 
