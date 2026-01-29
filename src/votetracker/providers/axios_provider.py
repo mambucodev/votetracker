@@ -181,48 +181,36 @@ class AxiosProvider(SyncProvider):
             return False, [], "No authentication token available"
 
         try:
-            # Fetch grades via AJAX API
-            ajax_url = "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Ajax_Get.aspx"
+            # The system uses server-side rendering, not pure AJAX
+            # Try to find the direct page URL for grades
 
-            # Try multiple approaches to fetch grades
-            attempts = [
-                # Approach 1: POST with action and token
-                {'action': 'FAMILY_VOTI', '_AXToken': self._auth_token},
-                # Approach 2: POST with just action
-                {'action': 'FAMILY_VOTI'},
-                # Approach 3: Query string
-                None  # Will use GET with ?action=FAMILY_VOTI
-            ]
+            # First, let's load the main family page which should have navigation
+            home_url = "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Home.aspx"
+            resp = self._session.get(home_url, timeout=10)
 
-            for idx, post_data in enumerate(attempts):
-                try:
-                    if post_data is None:
-                        # GET request
-                        resp = self._session.get(f"{ajax_url}?action=FAMILY_VOTI", timeout=10)
-                        method = "GET"
-                    else:
-                        # POST request
-                        resp = self._session.post(ajax_url, data=post_data, timeout=10)
-                        method = "POST"
+            # Save for debugging
+            try:
+                with open("/tmp/axios_home.html", 'w', encoding='utf-8') as f:
+                    f.write(f"<!-- Status: {resp.status_code} -->\n")
+                    f.write(f"<!-- URL: {home_url} -->\n")
+                    f.write(resp.text)
+            except:
+                pass
 
-                    # Debug: save response
-                    filename = f"/tmp/axios_voti_attempt_{idx}.html"
-                    with open(filename, 'w', encoding='utf-8') as f:
-                        f.write(f"<!-- Status: {resp.status_code} -->\n")
-                        f.write(f"<!-- Method: {method} -->\n")
-                        f.write(f"<!-- Data: {post_data} -->\n")
-                        f.write(resp.text)
+            if resp.status_code != 200:
+                return False, [], f"Failed to load home page (HTTP {resp.status_code})"
 
-                    # Check if successful (not an error message)
-                    if resp.status_code == 200 and "Errore" not in resp.text:
-                        # Success! Parse the grades
-                        return True, [], f"Found grades at attempt {idx} - saved to {filename} ({len(resp.text)} bytes)"
+            # Parse the page to look for links or forms related to grades
+            tree = html.fromstring(resp.text)
 
-                except Exception as e:
-                    print(f"Attempt {idx} failed: {e}")
+            # Look for any links containing "voti" or "valutazioni"
+            grade_links = tree.xpath("//a[contains(translate(@href, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'vot')]/@href")
 
-            # All attempts failed
-            return False, [], "All attempts to fetch grades failed - check /tmp/axios_voti_attempt_*.html files"
+            if grade_links:
+                # Found grade links, save them for analysis
+                return True, [], f"Found home page, check /tmp/axios_home.html - Found {len(grade_links)} potential grade links"
+
+            return True, [], f"Loaded home page - saved to /tmp/axios_home.html for analysis ({len(resp.text)} bytes)"
 
         except requests.exceptions.Timeout:
             return False, [], "Request timeout"
