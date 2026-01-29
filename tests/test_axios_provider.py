@@ -13,13 +13,19 @@ import os
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from votetracker.providers.axios_provider import (
-    convert_axios_to_votetracker,
-    _map_grade_type,
-    _parse_term_from_date
-)
+# Try to import axios provider - skip tests if lxml is not available
+try:
+    from votetracker.providers.axios_provider import (
+        convert_axios_to_votetracker,
+        _map_grade_type,
+        _parse_term_from_date
+    )
+    AXIOS_AVAILABLE = True
+except ImportError:
+    AXIOS_AVAILABLE = False
 
 
+@unittest.skipUnless(AXIOS_AVAILABLE, "lxml not available (Axios provider is optional)")
 class TestAxiosGradeTypeMapping(unittest.TestCase):
     """Test grade type mapping from Axios to VoteTracker."""
 
@@ -53,6 +59,7 @@ class TestAxiosGradeTypeMapping(unittest.TestCase):
         self.assertEqual(_map_grade_type("Altro"), "Written")
 
 
+@unittest.skipUnless(AXIOS_AVAILABLE, "lxml not available (Axios provider is optional)")
 class TestAxiosTermParsing(unittest.TestCase):
     """Test term parsing from dates."""
 
@@ -81,6 +88,7 @@ class TestAxiosTermParsing(unittest.TestCase):
         self.assertEqual(_parse_term_from_date("2024-13-01"), 1)  # Invalid month
 
 
+@unittest.skipUnless(AXIOS_AVAILABLE, "lxml not available (Axios provider is optional)")
 class TestAxiosToVoteTrackerConversion(unittest.TestCase):
     """Test full conversion from Axios format to VoteTracker format."""
 
