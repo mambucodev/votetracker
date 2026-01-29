@@ -184,31 +184,45 @@ class AxiosProvider(SyncProvider):
             # Fetch grades via AJAX API
             ajax_url = "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Ajax_Get.aspx"
 
-            # Try POST request with action parameter
-            # The dashboard tiles use JavaScript to make AJAX calls
-            post_data = {'action': 'FAMILY_VOTI'}
+            # Try multiple approaches to fetch grades
+            attempts = [
+                # Approach 1: POST with action and token
+                {'action': 'FAMILY_VOTI', '_AXToken': self._auth_token},
+                # Approach 2: POST with just action
+                {'action': 'FAMILY_VOTI'},
+                # Approach 3: Query string
+                None  # Will use GET with ?action=FAMILY_VOTI
+            ]
 
-            resp = self._session.post(ajax_url, data=post_data, timeout=10)
+            for idx, post_data in enumerate(attempts):
+                try:
+                    if post_data is None:
+                        # GET request
+                        resp = self._session.get(f"{ajax_url}?action=FAMILY_VOTI", timeout=10)
+                        method = "GET"
+                    else:
+                        # POST request
+                        resp = self._session.post(ajax_url, data=post_data, timeout=10)
+                        method = "POST"
 
-            # Debug: save response
-            try:
-                with open("/tmp/axios_voti.html", 'w', encoding='utf-8') as f:
-                    f.write(f"<!-- Status: {resp.status_code} -->\n")
-                    f.write(f"<!-- Method: POST -->\n")
-                    f.write(f"<!-- Data: {post_data} -->\n")
-                    f.write(resp.text)
-            except:
-                pass
+                    # Debug: save response
+                    filename = f"/tmp/axios_voti_attempt_{idx}.html"
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        f.write(f"<!-- Status: {resp.status_code} -->\n")
+                        f.write(f"<!-- Method: {method} -->\n")
+                        f.write(f"<!-- Data: {post_data} -->\n")
+                        f.write(resp.text)
 
-            if resp.status_code != 200:
-                return False, [], f"Failed to fetch grades (HTTP {resp.status_code}): {resp.text[:200]}"
+                    # Check if successful (not an error message)
+                    if resp.status_code == 200 and "Errore" not in resp.text:
+                        # Success! Parse the grades
+                        return True, [], f"Found grades at attempt {idx} - saved to {filename} ({len(resp.text)} bytes)"
 
-            # Parse HTML to extract grades
-            tree = html.fromstring(resp.text)
+                except Exception as e:
+                    print(f"Attempt {idx} failed: {e}")
 
-            # For now, return the raw HTML for analysis
-            # We need to see the structure to parse it correctly
-            return True, [], f"Fetched grades page - saved to /tmp/axios_voti.html for analysis ({len(resp.text)} bytes)"
+            # All attempts failed
+            return False, [], "All attempts to fetch grades failed - check /tmp/axios_voti_attempt_*.html files"
 
         except requests.exceptions.Timeout:
             return False, [], "Request timeout"
