@@ -1,7 +1,7 @@
 # Maintainer: Your Name <your@email.com>
 pkgname=votetracker
-pkgver=2.7.1
-pkgrel=3
+pkgver=2.8.0
+pkgrel=1
 pkgdesc="School grade management application"
 arch=('any')
 license=('MIT')
