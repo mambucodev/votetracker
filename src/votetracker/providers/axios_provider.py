@@ -272,7 +272,11 @@ class AxiosProvider(SyncProvider):
                         timeout=10
                     )
 
+                    print(f"DEBUG: POST response status: {resp.status_code}")
+
                     if resp.status_code == 200:
+                        print(f"DEBUG: Response text (first 500 chars): {resp.text[:500]}")
+
                         grades_data = resp.json()
                         raw_grades = grades_data.get('data', [])
 
@@ -285,6 +289,8 @@ class AxiosProvider(SyncProvider):
 
                         print(f"DEBUG: Converted to {len(term_grades)} grades for term {term_num}")
                         all_grades.extend(term_grades)
+                    else:
+                        print(f"DEBUG: POST failed with status {resp.status_code}, response: {resp.text[:500]}")
 
                 except Exception as e:
                     # Continue with other terms if one fails
