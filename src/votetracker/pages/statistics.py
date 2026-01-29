@@ -8,13 +8,13 @@ from PySide6.QtWidgets import (
     QScrollArea, QFrame, QGridLayout
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtGui import QKeyEvent, QPainter, QColor, QPen
+from datetime import datetime
 
 from ..database import Database
 from ..utils import calc_average, get_status_color
 from ..widgets import TermToggle
 from ..i18n import tr
-from ..enhanced_charts import InteractiveBarChart, InteractiveDistributionChart, GradeTrendChart
 
 
 class BarChart(QFrame):
@@ -22,13 +22,13 @@ class BarChart(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._data = []  # List of (label, value, max_value, color)
+        self._data = []  # List of (label, value, color)
         self._setup_ui()
 
     def _setup_ui(self):
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(8)
+        self._layout.setSpacing(6)
 
     def set_data(self, data: list):
         """Set chart data. Each item: (label, value, color)"""
@@ -43,8 +43,8 @@ class BarChart(QFrame):
                 item.widget().deleteLater()
 
         if not self._data:
-            empty = QLabel("No data")
-            empty.setStyleSheet("color: gray;")
+            empty = QLabel(tr("No data"))
+            empty.setAlignment(Qt.AlignCenter)
             self._layout.addWidget(empty)
             return
 
@@ -53,42 +53,45 @@ class BarChart(QFrame):
             max_val = 1
 
         for label, value, color in self._data:
-            row = QHBoxLayout()
-            row.setSpacing(8)
+            # Create row widget
+            row_widget = QWidget()
+            row = QHBoxLayout(row_widget)
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(12)
 
-            # Label
+            # Subject name label - make sure it's visible
             lbl = QLabel(label)
-            lbl.setFixedWidth(120)
-            lbl.setStyleSheet("font-size: 11px;")
+            lbl.setMinimumWidth(150)
+            lbl.setMaximumWidth(200)
+            lbl.setWordWrap(False)
+            lbl.setToolTip(label)
             row.addWidget(lbl)
 
             # Bar container
             bar_container = QFrame()
-            bar_container.setFixedHeight(20)
-            bar_container.setStyleSheet("background: #f0f0f0; border-radius: 4px;")
+            bar_container.setFixedHeight(28)
+            bar_container.setFrameShape(QFrame.StyledPanel)
             bar_layout = QHBoxLayout(bar_container)
-            bar_layout.setContentsMargins(0, 0, 0, 0)
+            bar_layout.setContentsMargins(2, 2, 2, 2)
             bar_layout.setSpacing(0)
 
             # Bar fill
             width_percent = (value / max_val) * 100 if max_val > 0 else 0
             bar = QFrame()
-            bar.setStyleSheet(f"background: {color}; border-radius: 4px;")
+            bar.setStyleSheet(f"background: {color}; border-radius: 2px;")
             bar_layout.addWidget(bar, int(width_percent))
             bar_layout.addStretch(int(100 - width_percent))
 
             row.addWidget(bar_container, 1)
 
-            # Value
-            val_lbl = QLabel(f"{value:.1f}" if isinstance(value, float) else str(value))
-            val_lbl.setFixedWidth(50)
+            # Value label
+            val_lbl = QLabel(f"{value:.2f}")
+            val_lbl.setFixedWidth(55)
             val_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            val_lbl.setStyleSheet("font-weight: bold;")
+            val_lbl.setStyleSheet(f"font-weight: bold; color: {color};")
             row.addWidget(val_lbl)
 
-            container = QWidget()
-            container.setLayout(row)
-            self._layout.addWidget(container)
+            self._layout.addWidget(row_widget)
 
 
 class DistributionChart(QFrame):
@@ -96,21 +99,26 @@ class DistributionChart(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._data = {}  # {range_label: count}
+        self._data = {}  # {range_label: (count, color)}
         self._setup_ui()
 
     def _setup_ui(self):
         self._layout = QHBoxLayout(self)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(4)
-        self._layout.setAlignment(Qt.AlignBottom)
+        self._layout.setContentsMargins(10, 10, 10, 10)
+        self._layout.setSpacing(6)
+        self._layout.setAlignment(Qt.AlignBottom | Qt.AlignHCenter)
 
     def set_data(self, grades: list):
         """Set distribution data from list of grades."""
-        # Define ranges (grades below 2 don't exist in Italian schools)
+        if not grades:
+            self._data = {}
+            self._update_chart()
+            return
+
+        # Define ranges
         ranges = [
-            ("2-3", 2, 4, "#c0392b"),
-            ("4-5", 4, 5.5, "#e74c3c"),
+            ("2-4", 2, 4, "#c0392b"),
+            ("4-5.5", 4, 5.5, "#e74c3c"),
             ("5.5-6", 5.5, 6, "#f39c12"),
             ("6-7", 6, 7, "#27ae60"),
             ("7-8", 7, 8, "#2ecc71"),
@@ -133,6 +141,9 @@ class DistributionChart(QFrame):
                 item.widget().deleteLater()
 
         if not self._data:
+            empty = QLabel(tr("No data"))
+            empty.setAlignment(Qt.AlignCenter)
+            self._layout.addWidget(empty)
             return
 
         max_count = max(c for c, _ in self._data.values()) if self._data else 1
@@ -141,32 +152,156 @@ class DistributionChart(QFrame):
 
         for label, (count, color) in self._data.items():
             col = QVBoxLayout()
-            col.setSpacing(4)
-            col.setAlignment(Qt.AlignBottom)
+            col.setSpacing(6)
+            col.setContentsMargins(0, 0, 0, 0)
 
-            # Count label
-            count_lbl = QLabel(str(count))
+            # Count label at top (fixed position)
+            count_lbl = QLabel(str(count) if count > 0 else "")
             count_lbl.setAlignment(Qt.AlignCenter)
-            count_lbl.setStyleSheet("font-size: 10px; font-weight: bold;")
+            count_lbl.setStyleSheet(f"font-weight: bold; color: {color};")
+            count_lbl.setFixedHeight(20)
             col.addWidget(count_lbl)
+
+            # Add spacer to push bar to bottom
+            col.addStretch()
 
             # Bar
             height = int((count / max_count) * 100) if max_count > 0 else 0
             bar = QFrame()
-            bar.setFixedWidth(30)
-            bar.setFixedHeight(max(height, 5))
-            bar.setStyleSheet(f"background: {color}; border-radius: 4px;")
+            bar.setFixedWidth(40)
+            bar.setFixedHeight(max(height, 3))
+            bar.setStyleSheet(f"background: {color}; border-radius: 3px;")
             col.addWidget(bar, 0, Qt.AlignCenter)
 
-            # Range label
+            # Range label at bottom
             range_lbl = QLabel(label)
             range_lbl.setAlignment(Qt.AlignCenter)
-            range_lbl.setStyleSheet("font-size: 10px;")
+            range_lbl.setFixedHeight(20)
             col.addWidget(range_lbl)
 
             container = QWidget()
             container.setLayout(col)
             self._layout.addWidget(container)
+
+
+class TrendChart(QFrame):
+    """Simple line chart showing grade trends over time."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._data_points = []  # List of (date, grade)
+        self.setMinimumHeight(200)
+        self.setFrameShape(QFrame.StyledPanel)
+
+    def set_data(self, votes: list):
+        """Set data from list of votes."""
+        if not votes:
+            self._data_points = []
+            self.update()
+            return
+
+        # Sort votes by date
+        sorted_votes = sorted(votes, key=lambda v: v.get('date', ''))
+        self._data_points = [
+            (v.get('date', ''), v.get('grade', 0))
+            for v in sorted_votes
+        ]
+        self.update()
+
+    def paintEvent(self, event):
+        """Custom paint to draw the line chart."""
+        super().paintEvent(event)
+
+        if not self._data_points:
+            painter = QPainter(self)
+            painter.drawText(self.rect(), Qt.AlignCenter, tr("No data"))
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Calculate drawing area with margins
+        margin = 40
+        width = self.width() - 2 * margin
+        height = self.height() - 2 * margin
+
+        # Find min/max grades for scaling
+        grades = [d[1] for d in self._data_points]
+        min_grade = max(0, min(grades) - 0.5)
+        max_grade = min(10, max(grades) + 0.5)
+        grade_range = max_grade - min_grade
+        if grade_range == 0:
+            grade_range = 1
+
+        # Draw grid lines with Y-axis labels
+        painter.setPen(QPen(QColor(150, 150, 150), 1, Qt.DotLine))
+        for i in range(5):
+            y = margin + (height * i / 4)
+            painter.drawLine(margin, int(y), margin + width, int(y))
+
+            # Draw Y-axis grade label
+            grade_val = max_grade - (grade_range * i / 4)
+            painter.setPen(QColor(150, 150, 150))
+            painter.drawText(5, int(y + 5), f"{grade_val:.1f}")
+            painter.setPen(QPen(QColor(150, 150, 150), 1, Qt.DotLine))
+
+        # Draw passing threshold (6.0)
+        if min_grade <= 6 <= max_grade:
+            passing_y = margin + height * (1 - (6 - min_grade) / grade_range)
+            painter.setPen(QPen(QColor("#27ae60"), 1, Qt.DashLine))
+            painter.drawLine(margin, int(passing_y), margin + width, int(passing_y))
+            # Label the passing line
+            painter.setPen(QColor("#27ae60"))
+            painter.drawText(margin + width - 50, int(passing_y - 5), tr("Pass (6.0)"))
+
+        # Calculate points
+        points = []
+        for i, (date, grade) in enumerate(self._data_points):
+            x = margin + (width * i / max(len(self._data_points) - 1, 1))
+            y = margin + height * (1 - (grade - min_grade) / grade_range)
+            points.append((x, y, grade))
+
+        # Draw line
+        if len(points) >= 2:
+            painter.setPen(QPen(QColor("#3498db"), 2))
+            for i in range(len(points) - 1):
+                painter.drawLine(
+                    int(points[i][0]), int(points[i][1]),
+                    int(points[i + 1][0]), int(points[i + 1][1])
+                )
+
+        # Draw points
+        for x, y, grade in points:
+            color = get_status_color(grade)
+            painter.setPen(QPen(QColor("white"), 1))
+            painter.setBrush(color)
+            painter.drawEllipse(int(x) - 3, int(y) - 3, 6, 6)
+
+        # Draw X-axis date labels (first, middle, last)
+        painter.setPen(QColor(150, 150, 150))
+        if len(self._data_points) > 0:
+            # First date
+            date_str = self._format_date(self._data_points[0][0])
+            painter.drawText(int(points[0][0]) - 20, self.height() - 15, date_str)
+
+            # Last date
+            if len(self._data_points) > 1:
+                date_str = self._format_date(self._data_points[-1][0])
+                painter.drawText(int(points[-1][0]) - 20, self.height() - 15, date_str)
+
+            # Middle date
+            if len(self._data_points) > 2:
+                mid_idx = len(self._data_points) // 2
+                date_str = self._format_date(self._data_points[mid_idx][0])
+                painter.drawText(int(points[mid_idx][0]) - 20, self.height() - 15, date_str)
+
+    def _format_date(self, date_str: str) -> str:
+        """Format date string for display."""
+        try:
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            return date_obj.strftime("%d/%m")
+        except:
+            return date_str[:10] if len(date_str) >= 10 else date_str
 
 
 class StatisticsPage(QWidget):
@@ -238,8 +373,8 @@ class StatisticsPage(QWidget):
         self._dist_group = QGroupBox(tr("Grade Distribution"))
         dist_layout = QVBoxLayout(self._dist_group)
         dist_layout.setContentsMargins(16, 16, 16, 16)
-        self._distribution_chart = InteractiveDistributionChart()
-        self._distribution_chart.setMinimumHeight(200)
+        self._distribution_chart = DistributionChart()
+        self._distribution_chart.setMinimumHeight(180)
         dist_layout.addWidget(self._distribution_chart)
         scroll_layout.addWidget(self._dist_group)
 
@@ -247,17 +382,17 @@ class StatisticsPage(QWidget):
         self._trend_group = QGroupBox(tr("Grade Trend Over Time"))
         trend_layout = QVBoxLayout(self._trend_group)
         trend_layout.setContentsMargins(16, 16, 16, 16)
-        self._trend_chart = GradeTrendChart()
-        self._trend_chart.setMinimumHeight(250)
+        self._trend_chart = TrendChart()
+        self._trend_chart.setMinimumHeight(200)
         trend_layout.addWidget(self._trend_chart)
         scroll_layout.addWidget(self._trend_group)
 
-        # Subject comparison
+        # Subject averages
         self._subjects_group = QGroupBox(tr("Subject Averages"))
         subjects_layout = QVBoxLayout(self._subjects_group)
         subjects_layout.setContentsMargins(16, 16, 16, 16)
-        self._subjects_chart = InteractiveBarChart()
-        self._subjects_chart.setMinimumHeight(250)
+        self._subjects_chart = BarChart()
+        self._subjects_chart.setMinimumHeight(200)
         subjects_layout.addWidget(self._subjects_chart)
         scroll_layout.addWidget(self._subjects_group)
 
@@ -375,27 +510,7 @@ class StatisticsPage(QWidget):
             subj_votes = self._db.get_votes(subject=subj, term=self._current_term)
             avg = calc_average(subj_votes)
             color = get_status_color(avg).name()
-
-            # Calculate detailed stats for tooltip
-            vote_count = len(subj_votes)
-            written_votes = [v for v in subj_votes if v.get("type") == "Written"]
-            oral_votes = [v for v in subj_votes if v.get("type") == "Oral"]
-            practical_votes = [v for v in subj_votes if v.get("type") == "Practical"]
-
-            w_avg = calc_average(written_votes) if written_votes else 0
-            o_avg = calc_average(oral_votes) if oral_votes else 0
-            p_avg = calc_average(practical_votes) if practical_votes else 0
-
-            detail_parts = [f"Total grades: {vote_count}"]
-            if written_votes:
-                detail_parts.append(f"Written: {w_avg:.2f} ({len(written_votes)} grades)")
-            if oral_votes:
-                detail_parts.append(f"Oral: {o_avg:.2f} ({len(oral_votes)} grades)")
-            if practical_votes:
-                detail_parts.append(f"Practical: {p_avg:.2f} ({len(practical_votes)} grades)")
-
-            detail = "<br>".join(detail_parts)
-            subject_data.append((subj, avg, color, detail))
+            subject_data.append((subj, avg, color))
 
         # Sort by average descending
         subject_data.sort(key=lambda x: x[1], reverse=True)
@@ -415,15 +530,15 @@ class StatisticsPage(QWidget):
 
         if not subjects:
             empty = QLabel(tr("No data"))
-            empty.setStyleSheet("color: gray;")
             layout.addWidget(empty)
             return
 
-        for i, (name, avg, color) in enumerate(subjects):
+        for i, item in enumerate(subjects):
+            name, avg, color = item[0], item[1], item[2]
+
             row = QHBoxLayout()
             rank = QLabel(f"#{i + 1}")
-            rank.setStyleSheet("font-weight: bold; color: gray;")
-            rank.setFixedWidth(25)
+            rank.setFixedWidth(30)
             row.addWidget(rank)
 
             name_lbl = QLabel(name)
