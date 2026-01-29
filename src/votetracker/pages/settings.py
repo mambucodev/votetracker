@@ -1416,13 +1416,101 @@ class SettingsPage(QWidget):
 
         widgets['import_status'].setText(f"{tr('Found {count} new grades').format(count=len(grades))}")
 
-        # TODO: Check for unmapped subjects and show mapping dialog
-        # TODO: Check for duplicates if skip_duplicates is checked
-        # TODO: Import grades to database
+        # Get active school year
+        active_year = self._db.get_active_school_year()
+        if not active_year:
+            widgets['progress'].setVisible(False)
+            widgets['import_btn'].setEnabled(True)
+            widgets['import_status'].setText(tr("No active school year found"))
+            widgets['import_status'].setStyleSheet("color: #e74c3c;")
+            return
+
+        school_year_id = active_year['id']
+
+        # Get subject mappings
+        subject_mappings = self._db.get_all_provider_subject_mappings(provider_id)
+
+        # Check for unmapped subjects
+        unmapped_subjects = []
+        for grade in grades:
+            provider_subject = grade['subject']
+            if provider_subject not in subject_mappings:
+                if provider_subject not in unmapped_subjects:
+                    unmapped_subjects.append(provider_subject)
+
+        # Show mapping dialog if needed
+        if unmapped_subjects:
+            from ..dialogs import SubjectMappingDialog
+
+            provider_name = provider.get_provider_name()
+            dialog = SubjectMappingDialog(unmapped_subjects, provider_id, provider_name, self._db, self)
+            if dialog.exec() != QDialog.Accepted:
+                widgets['progress'].setVisible(False)
+                widgets['import_btn'].setEnabled(True)
+                widgets['import_status'].setText(tr("Import cancelled - subjects not mapped"))
+                widgets['import_status'].setStyleSheet("color: #95a5a6;")
+                return
+
+            # Get updated mappings
+            subject_mappings = self._db.get_all_provider_subject_mappings(provider_id)
+
+        # Import grades
+        imported_count = 0
+        skipped_count = 0
+        skip_duplicates = widgets['skip_duplicates'].isChecked()
+
+        for grade in grades:
+            try:
+                # Map subject
+                provider_subject = grade['subject']
+                vt_subject = subject_mappings.get(provider_subject, provider_subject)
+
+                # Get or create subject
+                subject_id = self._db.get_subject_id(vt_subject)
+                if not subject_id:
+                    self._db.add_subject(vt_subject)
+                    subject_id = self._db.get_subject_id(vt_subject)
+
+                # Get current term if not specified in grade
+                term = grade.get('term', self._db.get_current_term())
+
+                # Check for duplicate
+                if skip_duplicates:
+                    if self._db.vote_exists(vt_subject, grade['grade'], grade['date'], grade['type'], school_year_id):
+                        skipped_count += 1
+                        continue
+
+                # Add vote
+                self._db.add_vote(
+                    subject=vt_subject,
+                    grade=grade['grade'],
+                    vote_type=grade['type'],
+                    date=grade['date'],
+                    description=grade.get('description', ''),
+                    term=term,
+                    weight=grade.get('weight', 1.0),
+                    school_year_id=school_year_id
+                )
+                imported_count += 1
+
+            except Exception as e:
+                print(f"Error importing grade: {e}")
+                continue
 
         # Hide progress
         widgets['progress'].setVisible(False)
         widgets['import_btn'].setEnabled(True)
+
+        # Show result
+        if imported_count > 0:
+            status_msg = tr("Imported {imported} grades").format(imported=imported_count)
+            if skipped_count > 0:
+                status_msg += tr(" ({skipped} skipped)").format(skipped=skipped_count)
+            widgets['import_status'].setText(status_msg)
+            widgets['import_status'].setStyleSheet("color: #27ae60;")
+        else:
+            widgets['import_status'].setText(tr("No new grades to import"))
+            widgets['import_status'].setStyleSheet("color: #95a5a6;")
 
         # Update last sync time
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
