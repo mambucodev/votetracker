@@ -241,8 +241,6 @@ class AxiosProvider(SyncProvider):
 
             # Step 2: Fetch grades for ALL terms
             all_grades = []
-            headers['Accept'] = 'application/json, text/javascript, */*; q=0.01'
-            headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
 
             print(f"DEBUG: Found {len(frazione_options)} term options")
 
@@ -253,6 +251,7 @@ class AxiosProvider(SyncProvider):
                     term_num = 1 if 'TRIMESTRE' in frazione_label.upper() and 'PENTA' not in frazione_label.upper() else 2
 
                     print(f"DEBUG: Fetching grades for {frazione_label} (term {term_num})")
+                    print(f"DEBUG: frazione value: {frazione_value}")
 
                     post_data = {
                         "draw": 1,
@@ -265,10 +264,21 @@ class AxiosProvider(SyncProvider):
                         "frazione": frazione_value
                     }
 
+                    # Prepare headers for this specific request
+                    # Note: Server expects JSON body but with form-encoded Content-Type header
+                    post_headers = headers.copy()
+                    post_headers['Accept'] = 'application/json, text/javascript, */*; q=0.01'
+                    post_headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
+
+                    # Send JSON as string data (not using json= parameter)
+                    # This way we can control the Content-Type header
+                    json_payload = json.dumps(post_data)
+                    print(f"DEBUG: Sending JSON payload: {json_payload[:200]}")
+
                     resp = self._session.post(
                         f"{ajax_url}?Action=FAMILY_VOTI_ELENCO_LISTA",
-                        headers=headers,
-                        json=post_data,
+                        headers=post_headers,
+                        data=json_payload,
                         timeout=10
                     )
 
