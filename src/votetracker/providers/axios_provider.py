@@ -23,6 +23,7 @@ class AxiosProvider(SyncProvider):
         self._session = None
         self._selected_student_id = None
         self._available_students = []
+        self._auth_token = None
 
     def get_provider_name(self) -> str:
         """Get human-readable provider name."""
@@ -129,6 +130,13 @@ class AxiosProvider(SyncProvider):
                 if "customerid" in resp.text.lower():
                     return False, "Login failed - check customer ID, username, and password"
 
+            # Extract authentication token
+            token_match = re.search(r"id='_AXToken'\s+value='([^']+)'", resp.text)
+            if token_match:
+                self._auth_token = token_match.group(1)
+            else:
+                return False, "Login succeeded but couldn't extract authentication token"
+
             # If student_id already provided, use it
             if student_id:
                 self._selected_student_id = student_id
@@ -136,8 +144,7 @@ class AxiosProvider(SyncProvider):
                 self._user_display_name = username
                 return True, f"Connected as {username}"
 
-            # Try to detect students (implementation pending - need to see dashboard first)
-            # For now, assume single student and set authenticated
+            # Set authenticated
             self._authenticated = True
             self._user_display_name = username
 
@@ -170,9 +177,39 @@ class AxiosProvider(SyncProvider):
         if not self._session or not self._authenticated:
             return False, [], "Not authenticated - please log in first"
 
-        # TODO: Implement grade fetching once we understand the dashboard structure
-        # For now, return empty to allow testing login
-        return True, [], "Grade fetching not yet implemented - coming soon"
+        if not self._auth_token:
+            return False, [], "No authentication token available"
+
+        try:
+            # Step 1: Get dashboard to find grade page link
+            dashboard_url = "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Ajax_Get.aspx"
+            dashboard_data = {
+                'action': 'DashboardLoad',
+                '_AXToken': self._auth_token
+            }
+
+            resp = self._session.post(dashboard_url, data=dashboard_data, timeout=15)
+
+            # Debug: save dashboard response
+            try:
+                with open("/tmp/axios_dashboard.html", 'w', encoding='utf-8') as f:
+                    f.write(resp.text)
+            except:
+                pass
+
+            if resp.status_code != 200:
+                return False, [], f"Failed to load dashboard (HTTP {resp.status_code})"
+
+            # TODO: Parse dashboard to find where grades are
+            # For now, just indicate we reached this point
+            return True, [], f"Dashboard loaded ({len(resp.text)} bytes) - grade parsing not yet implemented. Check /tmp/axios_dashboard.html for structure."
+
+        except requests.exceptions.Timeout:
+            return False, [], "Request timeout"
+        except requests.exceptions.RequestException as e:
+            return False, [], f"Network error: {str(e)}"
+        except Exception as e:
+            return False, [], f"Error: {str(e)}"
 
     def logout(self):
         """Clear authentication state."""

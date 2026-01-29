@@ -1,0 +1,412 @@
+
+
+<!DOCTYPE html>
+
+<!--[if IE 8]> <html lang="it-it" class="ie8 no-js"> <![endif]-->
+<!--[if IE 9]> <html lang="it-it" class="ie9 no-js"> <![endif]-->
+<!--[if !IE]><!-->
+<html lang="it-it" class="no-js">
+<!--<![endif]-->
+
+<!-- BEGIN HEAD -->
+<head>
+  <meta http-equiv="Cache-control" content="max-age=72000; stale-while-revalidate=14400; must-revalidate; public;">
+  <title>Axios | Registro Elettronico Famiglie</title>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <meta content="" name="description" />
+  <meta content="" name="author" />
+
+  <link rel="preconnect" href="https://cdn.axioscloud.it">
+  <link rel="dns-prefetch" href="https://cdn.axioscloud.it/" />
+
+  <!-- BEGIN GLOBAL MANDATORY STYLES -->
+  <link rel="preload" href="https://fonts.googleapis.com/css?family=Open+Sans:400,300,600,700&subset=all&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://use.fontawesome.com/releases/v5.14.0/css/all.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://use.fontawesome.com/releases/v5.14.0/css/v4-shims.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://fonts.googleapis.com/icon?family=Material+Icons" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="../../Theme/assets/global/plugins/simple-line-icons/simple-line-icons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="../../Theme/assets/global/plugins/bootstrap/dist/css/bootstrap.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript> 
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/uniform/css/uniform.default.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-switch/css/bootstrap-switch.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-treeview-210/dist/bootstrap-treeview.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <!-- END GLOBAL MANDATORY STYLES -->
+
+  <!-- BEGIN PAGE LEVEL PLUGIN STYLES -->
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-notific8-1.7.0/dist/jquery.notific8.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-ui/jquery-ui-1.10.3.custom.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/fullcalendar/fullcalendar/fullcalendar.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-summernote/summernote.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-modal/css/bootstrap-modal-bs3patch.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-modal/css/bootstrap-modal.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-fileinput/bootstrap-fileinput.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-select/bootstrap-select.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/select2/select2.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/icheck/skins/all.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-tags-input/jquery.tagsinput.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-datetimepicker-enosdan_4.17.37/css/bootstrap-datetimepicker.min.css?ID=1" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript> 
+  
+  
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/datatables/extensions/Scroller/css/dataTables.scroller.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/datatables/extensions/ColReorder/css/dataTables.colReorder.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/datatables/plugins/bootstrap/dataTables.bootstrap.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/jstree/dist/themes/default/style.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  
+  
+  
+
+  <!-- END PAGE LEVEL PLUGIN STYLES -->
+  <!-- BEGIN:File Upload Plugin CSS files-->
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-file-upload/blueimp-gallery/blueimp-gallery.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-file-upload/css/jquery.fileupload.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-file-upload/css/jquery.fileupload-ui.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+    <!-- END:File Upload Plugin CSS files-->
+    
+  <!-- BEGIN PAGE STYLES -->
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/admin/pages/css/profile.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/sweetmessage.10.11.1/sweetalert2.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  
+  
+  <!--http://csscompressor.com/-->
+
+<link rel="preload" href="../../Css/SD/SD_inbox.min.css?ID=200" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+<link rel="preload" href="../../Css/SD/SD_notifiche.min.css?ID=200" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+<link rel="preload" href="../../Css/SD/SD_stampe.css?ID=2" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <!-- END PAGE STYLES -->
+  
+  <!-- BEGIN THEME STYLES -->
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/css/components.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/css/plugins.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+
+  
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/admin/layout/css/layout.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+  <link rel="preload" href="../../css/SD/SD_standard.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+
+  
+  
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/menu-ico-microsoft.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/menu-ico-profilo.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/top-menu-ico-notifiche.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/top-menu-ico-messaggi.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/menu-ico-sms.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/menu-ico-notifiche-push.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/top-menu-ico-calendario.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/menu-ico-utenti.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/menu-ico-rubrica-mailing.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/top-ico-microsoft.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/top-ico-google.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/top-ico-info.svg">
+<link rel="prefetch" href="https://cdn.axioscloud.it/Images/SD/img20/top-ico-supporto.svg">
+
+
+
+
+
+
+<link rel="preload" href="../../css/SD/SD.min.css?ID=135" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+<link rel="preload" href="../../css/SD/axioscomponent.min.css?ID=11" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+<link rel="preload" href="../../css/SD/microsoft.css?ID=2" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+
+
+
+
+  <!--Aggiungere ##GUID subito dopo il nome del js in modo che sar� accodato un guid come id per il refresh forzato dei js sui client-->
+
+<link href="../../Css/APP/FAMILY.css?ID=5" rel="stylesheet" type="text/css" />
+  <!--Aggiungere ##GUID subito dopo il nome del js in modo che sar� accodato un guid come id per il refresh forzato dei js sui client-->
+<link rel="preload" href="../../css/COMMON/UNICA.css?ID=2" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+
+
+  
+  <!-- END THEME STYLES -->
+
+  <!-- START THEME STYLES ACCESSIBILITY-->
+  
+  <!-- END THEME STYLES ACCESSIBILITY-->
+
+  <link rel="preload" href="https://cdn.axioscloud.it/Theme/assets/global/plugins/select2totree/select2totree.css" as="style" onload="this.onload=null;this.rel='stylesheet'" /><noscript><link rel="stylesheet" href="style.css"></noscript>
+
+  <link rel="shortcut icon" href="https://cdn.axioscloud.it/Images/favicon.ico" />
+  
+</head>
+<!-- END HEAD -->
+
+<!-- BEGIN BODY -->
+
+<!-- DOC: Apply "page-header-fixed-mobile" and "page-footer-fixed-mobile" class to body element to force fixed header or footer in mobile devices -->
+<!-- DOC: Apply "page-sidebar-closed" class to the body and "page-sidebar-menu-closed" class to the sidebar menu element to hide the sidebar by default -->
+<!-- DOC: Apply "page-sidebar-hide" class to the body to make the sidebar completely hidden on toggle -->
+<!-- DOC: Apply "page-sidebar-closed-hide-logo" class to the body element to make the logo hidden on sidebar toggle -->
+<!-- DOC: Apply "page-sidebar-hide" class to body element to completely hide the sidebar on sidebar toggle -->
+<!-- DOC: Apply "page-sidebar-fixed" class to have fixed sidebar -->
+<!-- DOC: Apply "page-footer-fixed" class to the body element to have fixed footer -->
+<!-- DOC: Apply "page-sidebar-reversed" class to put the sidebar on the right side -->
+<!-- DOC: Apply "page-full-width" class to the body element to have full width page without the sidebar menu -->
+<!-- DOC: Apply "page-quick-sidebar-over-content" for quicksidebar -->
+<body class="page-header-fixed page-footer-fixed page-full-width">
+  <!-- BEGIN HEADER -->
+  <div class='page-header navbar navbar-fixed-top' data-href="SD_Ajax_Get.aspx" data-action="HeaderLoad">
+  </div>
+  <!-- END HEADER -->
+
+  <div class="clearfix">
+  </div>
+
+  <!-- BEGIN CONTAINER -->
+  <div class="page-container">
+
+    <!-- BEGIN SIDEBAR -->
+    
+    <div class='page-sidebar-content' data-href='SD_Ajax_Get.aspx' data-action='SidebarLoad'></div>
+    <!-- END SIDEBAR -->
+
+    <!-- BEGIN CONTENT -->
+    <div class="page-content-wrapper">
+      <!-- Il page-content può essere referenziato per id o per classe -->
+      
+      <div id='page-content' class='page-content' data-href='../APP/APP_Ajax_Get.aspx' data-action='DashboardLoad'></div> 
+    </div>
+    <!-- END CONTENT -->
+
+    <!-- BEGIN QUICK SIDEBAR -->
+    <!-- END QUICK SIDEBAR -->
+
+  </div>
+  <!-- END CONTAINER -->
+
+  <!-- BEGIN FOOTER -->
+  <div class='page-footer' data-href="SD_Ajax_Get.aspx" data-action="FooterLoad">
+  </div>
+  <!-- END FOOTER -->
+
+  <!-- BEGIN MODAL CONTENT WITH STACK -->
+  <div id="modal-content-dinamico" tabindex="-1">
+    
+  </div>
+
+  
+  <!-- END MODAL -->
+  
+  
+  <!-- BEGIN JAVASCRIPTS(Load javascripts at bottom, this will reduce page load time) -->
+
+  <!-- BEGIN CORE PLUGINS -->
+  <!--[if lt IE 9]>
+    <script src="https://cdn.axioscloud.it/Theme/assets/global/plugins/respond.min.js"></script>
+    <script src="https://cdn.axioscloud.it/Theme/assets/global/plugins/excanvas.min.js"></script>
+  <![endif]-->
+  <script src="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-1.11.0.min.js" type="text/javascript"></script>
+  <script src="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-migrate-1.2.1.min.js" type="text/javascript"></script>
+  <!-- IMPORTANT! Load jquery-ui-1.10.3.custom.min.js before bootstrap.min.js to fix bootstrap tooltip conflict with jquery ui tooltip -->
+  <script src="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-ui/jquery-ui-1.10.3.custom.min.js" type="text/javascript"></script>
+  <script src="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap/dist/js/bootstrap.min.js" type="text/javascript"></script> 
+  <script defer src="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-switch/js/bootstrap-switch.min.js" type="text/javascript"></script>
+  <script src="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery.blockui.min.js" type="text/javascript"></script> 
+  <script defer src="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-notific8-1.7.0/dist/jquery.notific8.min.js" type="text/javascript"></script> 
+  <script src="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery.cokie.min.js" type="text/javascript"></script> 
+  <script src="https://cdn.axioscloud.it/Theme/assets/global/plugins/uniform/jquery.uniform.min.js" type="text/javascript"></script> 
+  <script defer src="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootbox/bootbox.min.js" type="text/javascript"></script> 
+  <script defer src="https://cdn.axioscloud.it/Theme/assets/global/plugins/ion.sound-2.1.3/ion.sound.js" type="text/javascript"></script> 
+  <script defer src="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-treeview-210/dist/bootstrap-treeview.min.js" type="text/javascript"></script>
+<!-- END CORE PLUGINS -->
+
+  <!-- TODO: trasformare in min -->
+  <!-- BEGIN PAGE LEVEL PLUGINS -->
+  <!-- IMPORTANT! fullcalendar depends on jquery-ui-1.10.3.custom.min.js for drag & drop support -->
+  <script src="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-validation/js/jquery.validate.min.js" type="text/javascript"></script>
+  <script defer src="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-validation/js/localization/messages_it.js" type="text/javascript"></script>
+  <!--  <script src="../../Theme/assets/global/plugins/jquery-validation/js/additional-methods.min.js" type="text/javascript"></script>
+  <script src="../../Theme/assets/global/plugins/jquery-easypiechart/jquery.easypiechart.min.js" type="text/javascript"></script>
+  <script src="../../Theme/assets/global/plugins/bootstrap-touchspin/bootstrap.touchspin.js" type="text/javascript"></script>-->
+  
+
+  
+
+  <!--Aggiungere ##GUID subito dopo il nome del js in modo che sar� accodato un guid come id per il refresh forzato dei js sui client-->
+<!--http://javascriptcompressor.com/-->
+<!--<script src="../../Theme/assets/global/plugins/gojs/go.js" type="text/javascript"></script>-->
+
+<script src="../../Theme/assets/global/plugins/jquery-validation/js/additional-methods.min.js" type="text/javascript"></script>
+<script defer src="../../Theme/assets/global/plugins/jquery-easypiechart/jquery.easypiechart.min.js" type="text/javascript"></script>
+<script defer src="../../Theme/assets/global/plugins/bootstrap-touchspin/bootstrap.touchspin.js" type="text/javascript"></script>
+  <script defer src="https://cdn.axioscloud.it/Theme/rss-reader/moment-with-locales.min.js"></script>
+<!--<script src="https://cdn.axioscloud.it/Theme/rss-reader/rss-reader.js"></script>-->
+<!--<script src="../../Theme/rss-reader/rss-reader.js"></script>-->
+  <!-- END PAGE LEVEL PLUGINS -->
+
+  <!-- The XDomainRequest Transport is included for cross-domain file deletion for IE 8 and IE 9 -->
+  <!--[if (gte IE 8)&(lt IE 10)]>
+      <script src="https://cdn.axioscloud.it/Theme/assets/global/plugins/jquery-file-upload/js/cors/jquery.xdr-transport.js"></script>
+      <![endif]-->
+  <!-- END:File Upload Plugin JS files-->
+
+  <!-- BEGIN PAGE LEVEL SCRIPTS -->
+  <script src="https://cdn.axioscloud.it/Theme/assets/global/scripts/metronic.min.js?ID=4" type="text/javascript"></script>
+ 
+  
+  <script async src="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-password-strength/password-score.min.js" type="text/javascript"></script>
+  <script async src="https://cdn.axioscloud.it/Theme/assets/global/plugins/bootstrap-password-strength/bootstrap-strength-meter.min.js" type="text/javascript"></script>
+
+  
+  <script src="../../Scripts/SD/AJAX.js?ID=342" type="text/javascript"></script>
+  
+  <!--Aggiungere ##GUID subito dopo il nome del js in modo che sar� accodato un guid come id per il refresh forzato dei js sui client-->
+<!--http://jscompress.com/ utilizzato con il metodo di fusione dei JS-->
+<!--<script src="../../Scripts/APP_NORMAL/APP.js?ID=3" type="text/javascript"></script>
+<script src="../../Scripts/APP_NORMAL/FAMILY.js?ID=4" type="text/javascript"></script>-->
+
+<script src="../../Scripts/APP/appjs.min.js?ID=13" type="text/javascript"></script>
+
+  <!--Aggiungere ##GUID subito dopo il nome del js in modo che sar� accodato un guid come id per il refresh forzato dei js sui client-->
+<!--http://jscompress.com/ utilizzato con il metodo di fusione dei JS-->
+<!--https://skalman.github.io/UglifyJS-online/-->
+<!--  <script src="../../Scripts/COMMON_NORMAL/Supporto.js" type="text/javascript"></script>
+  <script src="../../Scripts/COMMON_NORMAL/MessaggiNotifiche.js" type="text/javascript"></script>
+  <script src="../../Scripts/COMMON_NORMAL/Download.js" type="text/javascript"></script>
+  <script src="../../Scripts/COMMON_NORMAL/Seeker.js" type="text/javascript"></script>
+  <script src="../../Scripts/COMMON_NORMAL/Impostazioni.js" type="text/javascript"></script>
+  <script src="../../Scripts/COMMON_NORMAL/FD_TD.js" type="text/javascript"></script>
+  <script src="../../Scripts/COMMON_NORMAL/Datatable.js" type="text/javascript"></script>
+  <script src="../../Scripts/COMMON_NORMAL/Pert.js" type="text/javascript"></script>-->
+<!--In commonjs.min.js-->
+<!--<script src="../../scripts/common_normal/Anagrafiche.js?id=221" type="text/javascript"></script>
+<script src="../../scripts/common_normal/APD_TRASP.js" type="text/javascript"></script>
+<script src="../../scripts/common_normal/Documenti.js" type="text/javascript"></script>
+<script src="../../scripts/common_normal/IPA.js" type="text/javascript"></script>
+<script src="../../scripts/common_normal/Modal.js" type="text/javascript"></script>
+<script src="../../scripts/common_normal/Procedimenti.js" type="text/javascript"></script>
+<script src="../../scripts/common_normal/Protocollo.js" type="text/javascript"></script>
+<script src="../../scripts/common_normal/TabRegistro.js" type="text/javascript"></script>
+<script src="../../scripts/common_normal/UTL.js?id=211" type="text/javascript"></script>-->
+
+
+
+<script src="../../Scripts/COMMON/common_wrapper.js?ID=700" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/TreeView.js?ID=721" type="text/javascript"></script>
+<script src="../../Scripts/COMMON/commonjs.min.js?ID=1048" type="text/javascript"></script>
+<script src="../../Scripts/COMMON/countdown.min.js" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/PostaElettronica.js?ID=912" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/Stampe.js?ID=31" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/GDPR_COMMON.js?ID=3" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/SCANNER_COMMON.js?ID=72" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/SMS_COMMON.js?ID=40" type="text/javascript"></script>
+<script src="../../Scripts/COMMON/SweetMessage.js?ID=7" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/Counterup.js?ID=1" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/StampeTabelle.js?ID=22" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/NOTIFICHE_PUSH_COMMON.js?ID=90" type="text/javascript"></script>
+<script src="../../Scripts/COMMON/refreshItem.js?ID=7" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/PSAC_COMMON.js?ID=15" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/BILANCIO_COMMON.js?ID=1" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/Reg_repertori.js?ID=2" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/CIMEA.js?ID=2" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/COMMONFascicoloElettronico.js?ID=3" type="text/javascript"></script>
+<script src="../../Scripts/COMMON/Frazioni.js?ID=5" type="text/javascript"></script>
+<script defer src="../../scripts/COMMON/Device.js?ID=5" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/SysScuole.js?ID=1" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/Pagoscuola_COMMON.js?ID=1" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/Personale_Permessi_Sindacali.js?ID=1" type="text/javascript"></script>
+
+
+
+<script defer src="../../Scripts/COMMON/YouTube.js?ID=1" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/www-widgetapi.js?ID=1" type="text/javascript"></script>
+<script defer src="../../Scripts/COMMON/UNICA.js?ID=2" type="text/javascript"></script>
+    <!--Aggiungere ##GUID subito dopo il nome del js in modo che sar� accodato un guid come id per il refresh forzato dei js sui client-->
+<!--http://jscompress.com/ utilizzato con il metodo di fusione dei JS-->
+<!--<script src="../../Scripts/SD_NORMAL/SD.js?ID=210" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_layout.js" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_inbox.js" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_form-management.js?ID=211" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_components-pickers.js" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_components-dropdowns.js?ID=210" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_profile.js" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_rubrica.js" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_utenti.js" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_login-soft.js" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_notifiche.js" type="text/javascript"></script>-->
+
+<!--<script src="../../Scripts/SD_NORMAL/SD_form-icheck.js?ID=210" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_form-fileupload.js" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_calendar.js?ID=210" type="text/javascript"></script>
+<script src="../../Scripts/SD_NORMAL/SD_bacheche.js" type="text/javascript"></script>-->
+<!--<script src="../../Scripts/SD_NORMAL/AxiosMicrosoft365.js?ID=11" type="text/javascript"></script>-->
+
+<script defer src="../../Scripts/SD/bootstrap-session-timeout.js?ID=30" type="text/javascript"></script>
+<script src="../../Scripts/SD/sd_wrapper.js?ID=413" type="text/javascript"></script>
+<script src="../../Scripts/SD/sdjs.min.js?ID=935" type="text/javascript"></script>
+<script defer src="../../Scripts/SDLU/SDLU.js?ID=1" type="text/javascript"></script>
+<script defer src="../../Scripts/SD/MarketPlace.js" type="text/javascript"></script>
+<!--<script src="../../Scripts/SD_NORMAL/SD_bacheche.js" type="text/javascript"></script>-->
+
+
+
+
+
+
+
+
+  <!-- END PAGE LEVEL SCRIPTS -->
+
+  <!-- BEGIN APP LEVEL SCRIPTS -->
+  
+  
+  
+  <!-- END APP LEVEL SCRIPTS -->
+  
+
+  <!--ADD GOOGLE PLATFORM AND SCRIPT -->
+  
+
+
+
+  <input name="_sSFwK" type="hidden" id="_sSFwK" />
+  <input type='hidden' id='appInitFunction' value='APP.init();
+' />
+  <input type='hidden' id='commonInitFunction' value='
+' />
+  <input type='hidden' id='sdInitFunction' value='
+' />
+  <input type='hidden' id='_AXToken' value='M0VFMDM1RjA0MzQwMEM3RDVEQzU4RDgxMUYzRTIxRTE=' />
+
+  <!-- START JS ACCESSIBILITY-->
+  
+  <!-- END JS ACCESSIBILITY-->
+
+  <script type="text/javascript">
+
+		$(document).ready(function () {
+
+			Metronic.setAssetsPath('https://cdn.axioscloud.it/Theme/assets/');
+			Metronic.setGlobalImgPath('global/img/');
+
+			var appInit = $('#appInitFunction').attr("value");
+			var commonInit = $('#commonInitFunction').attr("value");
+			var sdInit = $('#sdInitFunction').attr("value");
+			var _AXToken = $('#_AXToken').attr("value");
+			Application.init(appInit, commonInit, sdInit, true, true, _AXToken, true);
+
+		});
+
+	</script>
+  
+  
+  
+  
+  
+
+
+
+
+
+
+
+  <!-- END JAVASCRIPTS -->
+
+</body>
+<!-- END BODY -->
+
+</html>
+
