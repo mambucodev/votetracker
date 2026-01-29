@@ -947,6 +947,62 @@ class Database:
             count = cursor.fetchone()[0]
             return count > 0
 
+    def find_vote_by_metadata(
+        self,
+        subject: str,
+        date: str,
+        vote_type: str,
+        school_year_id: int = None
+    ) -> dict:
+        """
+        Find an existing vote by subject, date, and type (ignoring grade value).
+        Used for updating grades when teachers edit them.
+
+        Args:
+            subject: Subject name
+            date: Date string
+            vote_type: Vote type (Oral/Written/Practical)
+            school_year_id: Optional school year ID (defaults to active year)
+
+        Returns:
+            Vote dict if found, None otherwise
+        """
+        subject_id = self.get_subject_id(subject)
+        if not subject_id:
+            return None
+
+        # Use active school year if not specified
+        if school_year_id is None:
+            active = self.get_active_school_year()
+            school_year_id = active["id"] if active else None
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT v.id, s.name as subject, v.grade, v.type, v.term,
+                       v.date, v.description, v.weight
+                FROM votes v
+                JOIN subjects s ON v.subject_id = s.id
+                WHERE v.subject_id = ?
+                AND v.school_year_id = ?
+                AND v.date = ?
+                AND v.type = ?
+            """, (subject_id, school_year_id, date, vote_type))
+
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "subject": row[1],
+                    "grade": row[2],
+                    "type": row[3],
+                    "term": row[4],
+                    "date": row[5],
+                    "description": row[6],
+                    "weight": row[7]
+                }
+            return None
+
     def get_grade_statistics(self) -> Dict[str, Any]:
         """
         Get aggregated grade statistics in a single query.
