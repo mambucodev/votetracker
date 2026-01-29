@@ -34,11 +34,15 @@ class DashboardPage(QWidget):
         self._title.setStyleSheet("font-size: 20px; font-weight: bold;")
         layout.addWidget(self._title)
 
-        # Stats group
+        # Top section: Statistics (left) and Recent Grades (right)
+        top_section = QHBoxLayout()
+        top_section.setSpacing(12)
+
+        # Stats group (left side, narrower)
         self._stats_group = QGroupBox(tr("Statistics"))
-        stats_layout = QHBoxLayout(self._stats_group)
-        stats_layout.setContentsMargins(16, 16, 16, 16)
-        stats_layout.setSpacing(24)
+        stats_layout = QVBoxLayout(self._stats_group)
+        stats_layout.setContentsMargins(12, 12, 12, 12)
+        stats_layout.setSpacing(12)
 
         # Store stat box tuples: (layout, label_widget, value_widget, key)
         self._stat_boxes = {}
@@ -48,7 +52,22 @@ class DashboardPage(QWidget):
             stats_layout.addLayout(box_layout)
 
         stats_layout.addStretch()
-        layout.addWidget(self._stats_group)
+        top_section.addWidget(self._stats_group, 1)  # Smaller proportion
+
+        # Recent grades widget (right side, wider)
+        self._recent_group = QGroupBox(tr("Recent Grades"))
+        recent_layout = QVBoxLayout(self._recent_group)
+        recent_layout.setContentsMargins(12, 12, 12, 12)
+        recent_layout.setSpacing(6)
+
+        # Container for recent grades list
+        self._recent_container = QVBoxLayout()
+        self._recent_container.setSpacing(4)
+        recent_layout.addLayout(self._recent_container)
+
+        top_section.addWidget(self._recent_group, 2)  # Larger proportion (2x stats)
+
+        layout.addLayout(top_section)
 
         # Subjects overview
         self._overview_group = QGroupBox(tr("Subjects Overview"))
@@ -83,7 +102,93 @@ class DashboardPage(QWidget):
         box.addWidget(value_widget)
 
         return box, label_widget, value_widget
-    
+
+    def _update_recent_grades(self, votes: list):
+        """Update the recent grades widget with latest grades."""
+        # Clear existing items
+        while self._recent_container.count():
+            item = self._recent_container.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if not votes:
+            empty = QLabel(tr("No votes recorded yet"))
+            empty.setStyleSheet("color: gray; padding: 20px;")
+            empty.setAlignment(Qt.AlignCenter)
+            self._recent_container.addWidget(empty)
+            return
+
+        # Sort votes by date (most recent first)
+        sorted_votes = sorted(votes, key=lambda v: v.get('date', ''), reverse=True)
+
+        # Show last 5 grades (to save space)
+        recent_votes = sorted_votes[:5]
+
+        for vote in recent_votes:
+            item = self._create_recent_grade_item(vote)
+            self._recent_container.addWidget(item)
+
+        # Add stretch at the end
+        self._recent_container.addStretch()
+
+    def _create_recent_grade_item(self, vote: dict) -> QWidget:
+        """Create a widget for a single recent grade item."""
+        item = QFrame()
+        item.setFrameShape(QFrame.StyledPanel)
+        item_layout = QHBoxLayout(item)
+        item_layout.setContentsMargins(8, 6, 8, 6)
+        item_layout.setSpacing(12)
+
+        # Subject name
+        subject_label = QLabel(vote.get('subject', ''))
+        subject_label.setStyleSheet("font-weight: bold;")
+        subject_label.setMinimumWidth(120)
+        item_layout.addWidget(subject_label)
+
+        # Grade value
+        grade = vote.get('grade', 0)
+        grade_label = QLabel(f"{grade:.2f}" if grade > 0 else "+/-")
+        grade_label.setStyleSheet(get_grade_style(grade) + "font-weight: bold; font-size: 16px;")
+        grade_label.setFixedWidth(50)
+        grade_label.setAlignment(Qt.AlignCenter)
+        item_layout.addWidget(grade_label)
+
+        # Vote type
+        vote_type = vote.get('type', '')
+        type_label = QLabel(tr(vote_type) if vote_type else "-")
+        type_label.setStyleSheet("color: gray;")
+        type_label.setFixedWidth(80)
+        item_layout.addWidget(type_label)
+
+        # Date
+        date_str = vote.get('date', '')
+        if date_str:
+            try:
+                from datetime import datetime
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                formatted_date = date_obj.strftime("%d/%m/%Y")
+            except:
+                formatted_date = date_str
+        else:
+            formatted_date = "-"
+
+        date_label = QLabel(formatted_date)
+        date_label.setStyleSheet("color: gray; font-size: 11px;")
+        date_label.setFixedWidth(80)
+        item_layout.addWidget(date_label)
+
+        # Description (if any)
+        description = vote.get('description', '')
+        if description:
+            desc_label = QLabel(description)
+            desc_label.setStyleSheet("color: gray; font-style: italic; font-size: 11px;")
+            desc_label.setWordWrap(False)
+            item_layout.addWidget(desc_label, 1)
+        else:
+            item_layout.addStretch(1)
+
+        return item
+
     def set_term_filter(self, term: int = None):
         """Set term filter (None for all terms)."""
         self._current_term = term
@@ -93,6 +198,7 @@ class DashboardPage(QWidget):
         # Update labels for language changes
         self._title.setText(tr("Dashboard"))
         self._stats_group.setTitle(tr("Statistics"))
+        self._recent_group.setTitle(tr("Recent Grades"))
         self._overview_group.setTitle(tr("Subjects Overview"))
         for key, (label_w, _) in self._stat_boxes.items():
             label_w.setText(tr(key))
@@ -122,7 +228,10 @@ class DashboardPage(QWidget):
         failing_val.setText(f"<b>{failing}</b>")
         color = "#e74c3c" if failing > 0 else "#27ae60"
         failing_val.setStyleSheet(f"font-size: 24px; font-weight: bold; color: {color};")
-        
+
+        # Update recent grades
+        self._update_recent_grades(votes)
+
         # Clear subjects grid
         while self._subjects_grid.count():
             item = self._subjects_grid.takeAt(0)

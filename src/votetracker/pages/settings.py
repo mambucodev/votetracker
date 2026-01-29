@@ -167,10 +167,18 @@ class SettingsPage(QWidget):
         export_label.setStyleSheet("font-weight: bold; margin-top: 8px;")
         data_layout.addWidget(export_label)
 
-        export_btn = QPushButton(tr("Export to File"))
-        export_btn.setIcon(get_symbolic_icon("document-export"))
-        export_btn.clicked.connect(self._export_to_file)
-        data_layout.addWidget(export_btn)
+        export_buttons_layout = QHBoxLayout()
+        export_json_btn = QPushButton(tr("Export as JSON"))
+        export_json_btn.setIcon(get_symbolic_icon("document-export"))
+        export_json_btn.clicked.connect(self._export_to_json)
+        export_buttons_layout.addWidget(export_json_btn)
+
+        export_csv_btn = QPushButton(tr("Export as CSV"))
+        export_csv_btn.setIcon(get_symbolic_icon("text-csv"))
+        export_csv_btn.clicked.connect(self._export_to_csv)
+        export_buttons_layout.addWidget(export_csv_btn)
+
+        data_layout.addLayout(export_buttons_layout)
 
         # Clear data section
         clear_label = QLabel(tr("Clear Data"))
@@ -805,25 +813,73 @@ class SettingsPage(QWidget):
                 self._import_status.setText(f"Error: {e}")
                 self._import_status.setStyleSheet("color: #e74c3c;")
     
-    def _export_to_file(self):
+    def _export_to_json(self):
         """Export votes to JSON file."""
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Save JSON File", "votes_export.json", "JSON Files (*.json)"
+            self, tr("Save JSON File"), "votes_export.json", "JSON Files (*.json)"
         )
-        
+
         if file_path:
             try:
                 with open(file_path, 'w', encoding='utf-8') as f:
                     json.dump(
-                        self._db.export_votes(), f, 
+                        self._db.export_votes(), f,
                         ensure_ascii=False, indent=2
                     )
                 QMessageBox.information(
-                    self, "Export Complete", 
-                    f"Votes exported to:\n{file_path}"
+                    self, tr("Export Complete"),
+                    tr("Votes exported to:") + f"\n{file_path}"
                 )
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Export error:\n{e}")
+                QMessageBox.critical(self, tr("Error"), tr("Export error:") + f"\n{e}")
+
+    def _export_to_csv(self):
+        """Export votes to CSV file."""
+        import csv
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, tr("Save CSV File"), "votes_export.csv", "CSV Files (*.csv)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            votes = self._db.export_votes()
+
+            if not votes:
+                QMessageBox.information(
+                    self, tr("Export Complete"),
+                    tr("No votes to export")
+                )
+                return
+
+            with open(file_path, 'w', newline='', encoding='utf-8') as f:
+                # Create CSV writer
+                fieldnames = ['subject', 'grade', 'type', 'date', 'description', 'weight', 'term']
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+
+                # Write header
+                writer.writeheader()
+
+                # Write votes
+                for vote in votes:
+                    writer.writerow({
+                        'subject': vote.get('subject', ''),
+                        'grade': vote.get('grade', ''),
+                        'type': vote.get('type', ''),
+                        'date': vote.get('date', ''),
+                        'description': vote.get('description', ''),
+                        'weight': vote.get('weight', 1.0),
+                        'term': vote.get('term', 1)
+                    })
+
+            QMessageBox.information(
+                self, tr("Export Complete"),
+                tr("Votes exported to:") + f"\n{file_path}"
+            )
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), tr("Export error:") + f"\n{e}")
     
     def _clear_term_votes(self):
         """Clear votes for current term."""
@@ -1684,9 +1740,9 @@ class SettingsPage(QWidget):
             if key == Qt.Key_I:
                 self._import_from_file()
                 return True
-            # Ctrl+E: Export to file
+            # Ctrl+E: Export to JSON
             if key == Qt.Key_E:
-                self._export_to_file()
+                self._export_to_json()
                 return True
 
         return False
