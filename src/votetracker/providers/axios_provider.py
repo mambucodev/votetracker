@@ -239,89 +239,112 @@ class AxiosProvider(SyncProvider):
             except Exception as e:
                 return False, [], f"Failed to parse grades page response: {str(e)}"
 
-            # Step 2: Fetch grades (just once - server returns all grades regardless of term selection)
-            # We'll determine which term each grade belongs to based on date
-
-            # Parse term date ranges from the options
-            term_ranges = []
-            for frazione_value, frazione_label in frazione_options:
-                # Extract dates from label: "TRIMESTRE (15/09/2025 - 15/12/2025)"
-                date_match = re.search(r'\((\d{2}/\d{2}/\d{4})\s*-\s*(\d{2}/\d{2}/\d{4})\)', frazione_label)
-                if date_match:
-                    start_str, end_str = date_match.groups()
-                    # Convert DD/MM/YYYY to YYYY-MM-DD
-                    start_parts = start_str.split('/')
-                    end_parts = end_str.split('/')
-                    start_date = f"{start_parts[2]}-{start_parts[1]}-{start_parts[0]}"
-                    end_date = f"{end_parts[2]}-{end_parts[1]}-{end_parts[0]}"
-
-                    # Determine term number
-                    term_num = 1 if 'TRIMESTRE' in frazione_label.upper() and 'PENTA' not in frazione_label.upper() else 2
-
-                    term_ranges.append({
-                        'term': term_num,
-                        'start': start_date,
-                        'end': end_date,
-                        'label': frazione_label
-                    })
-
-            print(f"DEBUG: Parsed term ranges: {term_ranges}")
-
-            # Extract hidden frazione value for POST request
-            frazione_match = re.search(r'id=[\'"]frazione[\'"].*?value=[\'"]([^\'\"]+)[\'"]', html_content)
-            frazione = frazione_match.group(1) if frazione_match else ""
-
-            if not frazione:
-                return False, [], "Could not extract frazione value from grades page"
-
-            # Fetch grades once (using the hidden frazione from the already-loaded page)
-            post_data = {
-                "draw": 1,
-                "columns": {},
-                "order": [],
-                "start": 0,
-                "length": 1000,
-                "search": {"value": "", "regex": False},
-                "iMatId": "",
-                "frazione": frazione
-            }
+            # Step 2: Fetch grades for EACH term separately
+            # Parse term info and fetch grades for each term
 
             post_headers = headers.copy()
             post_headers['Accept'] = 'application/json, text/javascript, */*; q=0.01'
             post_headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
 
-            resp = self._session.post(
-                f"{ajax_url}?Action=FAMILY_VOTI_ELENCO_LISTA",
-                headers=post_headers,
-                data=json.dumps(post_data),
-                timeout=10
-            )
+            all_grades = []
+            term_ranges = []
 
-            if resp.status_code != 200:
-                return False, [], f"Failed to fetch grades list (HTTP {resp.status_code}): {resp.text[:200]}"
+            for frazione_value, frazione_label in frazione_options:
+                # Parse term info from label
+                date_match = re.search(r'\((\d{2}/\d{2}/\d{4})\s*-\s*(\d{2}/\d{2}/\d{4})\)', frazione_label)
+                if not date_match:
+                    continue
 
-            grades_data = resp.json()
-            raw_grades = grades_data.get('data', [])
+                start_str, end_str = date_match.groups()
+                start_parts = start_str.split('/')
+                end_parts = end_str.split('/')
+                start_date = f"{start_parts[2]}-{start_parts[1]}-{start_parts[0]}"
+                end_date = f"{end_parts[2]}-{end_parts[1]}-{end_parts[0]}"
 
-            if not raw_grades:
-                return True, [], "No grades found"
+                # Determine term number
+                term_num = 1 if 'TRIMESTRE' in frazione_label.upper() and 'PENTA' not in frazione_label.upper() else 2
 
-            # Convert grades and assign term based on date
-            all_grades = self._convert_axios_grades(raw_grades)
+                term_ranges.append({
+                    'term': term_num,
+                    'start': start_date,
+                    'end': end_date,
+                    'label': frazione_label,
+                    'value': frazione_value
+                })
 
-            for grade in all_grades:
-                grade_date = grade['date']  # YYYY-MM-DD format
+                print(f"DEBUG: Fetching grades for {frazione_label} (term {term_num})")
 
-                # Find which term this grade belongs to based on date
-                assigned_term = 2  # Default to term 2 if not found
-                for term_range in term_ranges:
-                    if term_range['start'] <= grade_date <= term_range['end']:
-                        assigned_term = term_range['term']
-                        break
+                # Load this term's page to get its frazione value
+                timestamp = int(time.time() * 1000)
+                term_url = f"{ajax_url}?Action=FAMILY_VOTI&fiFrazId={frazione_value}&_={timestamp}"
+                resp_term = self._session.get(term_url, headers=headers, timeout=10)
 
-                grade['term'] = assigned_term
+                if resp_term.status_code != 200:
+                    print(f"DEBUG: Failed to load term page for {frazione_label}: HTTP {resp_term.status_code}")
+                    continue
 
-            print(f"DEBUG: Total grades fetched: {len(all_grades)}")
+                try:
+                    term_data = resp_term.json()
+                    if term_data.get('errorcode') != "0":
+                        print(f"DEBUG: Error loading term {frazione_label}: {term_data.get('errormsg')}")
+                        continue
+
+                    # Extract frazione value from this term's page
+                    term_html = term_data.get('html', '')
+                    frazione_match = re.search(r'id=[\'"]frazione[\'"].*?value=[\'"]([^\'\"]+)[\'"]', term_html)
+                    frazione = frazione_match.group(1) if frazione_match else ""
+
+                    if not frazione:
+                        print(f"DEBUG: Could not extract frazione value for {frazione_label}")
+                        continue
+
+                    # Fetch grades for this term
+                    post_data = {
+                        "draw": 1,
+                        "columns": {},
+                        "order": [],
+                        "start": 0,
+                        "length": 1000,
+                        "search": {"value": "", "regex": False},
+                        "iMatId": "",
+                        "frazione": frazione
+                    }
+
+                    resp = self._session.post(
+                        f"{ajax_url}?Action=FAMILY_VOTI_ELENCO_LISTA",
+                        headers=post_headers,
+                        data=json.dumps(post_data),
+                        timeout=10
+                    )
+
+                    if resp.status_code != 200:
+                        print(f"DEBUG: Failed to fetch grades for {frazione_label}: HTTP {resp.status_code}")
+                        continue
+
+                    grades_data = resp.json()
+                    raw_grades = grades_data.get('data', [])
+
+                    if raw_grades:
+                        # Convert grades
+                        term_grades = self._convert_axios_grades(raw_grades)
+
+                        # Assign term number to each grade
+                        for grade in term_grades:
+                            grade['term'] = term_num
+
+                        all_grades.extend(term_grades)
+                        print(f"DEBUG: Fetched {len(term_grades)} grades for {frazione_label}")
+                    else:
+                        print(f"DEBUG: No grades found for {frazione_label}")
+
+                except Exception as e:
+                    print(f"DEBUG: Error processing term {frazione_label}: {str(e)}")
+                    continue
+
+            if not all_grades:
+                return True, [], "No grades found in any term"
+
+            print(f"DEBUG: Total grades fetched from all terms: {len(all_grades)}")
             return True, all_grades, f"Successfully fetched {len(all_grades)} grades"
 
         except requests.exceptions.Timeout:
