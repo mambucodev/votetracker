@@ -267,6 +267,13 @@ class AxiosProvider(SyncProvider):
 
             print(f"DEBUG: Parsed term ranges: {term_ranges}")
 
+            # Extract hidden frazione value for POST request
+            frazione_match = re.search(r'id=[\'"]frazione[\'"].*?value=[\'"]([^\'\"]+)[\'"]', html_content)
+            frazione = frazione_match.group(1) if frazione_match else ""
+
+            if not frazione:
+                return False, [], "Could not extract frazione value from grades page"
+
             # Fetch grades once (using the hidden frazione from the already-loaded page)
             post_data = {
                 "draw": 1,
