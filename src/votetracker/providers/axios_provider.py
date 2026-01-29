@@ -107,13 +107,6 @@ class AxiosProvider(SyncProvider):
 
             resp = self._session.post(login_url, data=login_data, timeout=15, allow_redirects=True)
 
-            # Debug: save response
-            try:
-                with open("/tmp/axios_registrofamiglie_login.html", 'w', encoding='utf-8') as f:
-                    f.write(resp.text)
-            except:
-                pass
-
             # Check if login successful
             # Look for error messages or success indicators
             tree = html.fromstring(resp.text)
@@ -135,13 +128,11 @@ class AxiosProvider(SyncProvider):
             token_match = re.search(r"id='_AXToken'\s+value='([^']+)'", resp.text)
             if token_match:
                 self._auth_token = token_match.group(1)
-                print(f"DEBUG: Extracted _AXToken: {self._auth_token}")
             else:
                 return False, "Login succeeded but couldn't extract authentication token"
 
             # Save the dashboard URL for Referer header in AJAX requests
             self._dashboard_url = resp.url
-            print(f"DEBUG: Dashboard URL: {self._dashboard_url}")
 
             # If student_id already provided, use it
             if student_id:
@@ -153,15 +144,6 @@ class AxiosProvider(SyncProvider):
             # Set authenticated
             self._authenticated = True
             self._user_display_name = username
-
-            # Save the post-login page - it might contain the full SPA
-            try:
-                with open("/tmp/axios_post_login.html", 'w', encoding='utf-8') as f:
-                    f.write(f"<!-- Final URL: {resp.url} -->\n")
-                    f.write(f"<!-- Status: {resp.status_code} -->\n")
-                    f.write(resp.text)
-            except:
-                pass
 
             # Try to fetch grades to validate
             success, grades, message = self.get_grades()
@@ -215,22 +197,13 @@ class AxiosProvider(SyncProvider):
             # Step 0: Load dashboard first (browser does this before FAMILY_VOTI)
             timestamp = int(time.time() * 1000)
             resp_dash = self._session.get(f"{ajax_url}?Action=DashboardLoad&_={timestamp}", headers=headers, timeout=10)
-            print(f"DEBUG: DashboardLoad status: {resp_dash.status_code}")
+
+            if resp_dash.status_code != 200:
+                return False, [], f"Failed to load dashboard (HTTP {resp_dash.status_code})"
 
             # Step 1: Load the grades page (uppercase Action parameter)
             timestamp = int(time.time() * 1000)
             resp = self._session.get(f"{ajax_url}?Action=FAMILY_VOTI&_={timestamp}", headers=headers, timeout=10)
-
-            # Debug: save grades page
-            try:
-                with open("/tmp/axios_voti_page.html", 'w', encoding='utf-8') as f:
-                    f.write(f"<!-- Status: {resp.status_code} -->\n")
-                    f.write(f"<!-- RVT Header: {self._auth_token} -->\n")
-                    f.write(f"<!-- Referer: {self._dashboard_url} -->\n")
-                    f.write(resp.text)
-                print(f"DEBUG: FAMILY_VOTI status: {resp.status_code}, saved to /tmp/axios_voti_page.html")
-            except Exception as e:
-                print(f"DEBUG: Failed to save: {e}")
 
             if resp.status_code != 200:
                 return False, [], f"Failed to load grades page (HTTP {resp.status_code}): {resp.text[:200]}"
@@ -249,8 +222,6 @@ class AxiosProvider(SyncProvider):
                 html_content = voti_data.get('html', '')
                 frazione_match = re.search(r'id=[\'"]frazione[\'"].*?value=[\'"]([^\'\"]+)[\'"]', html_content)
                 frazione = frazione_match.group(1) if frazione_match else ""
-
-                print(f"DEBUG: Extracted frazione: {frazione}")
 
             except Exception as e:
                 return False, [], f"Failed to parse grades page response: {str(e)}"
@@ -278,20 +249,24 @@ class AxiosProvider(SyncProvider):
                 timeout=10
             )
 
-            # Debug: save grades list response
-            try:
-                with open("/tmp/axios_grades_list.json", 'w', encoding='utf-8') as f:
-                    f.write(f"<!-- Status: {resp.status_code} -->\n")
-                    f.write(resp.text)
-                print(f"DEBUG: Grades list status: {resp.status_code}, saved to /tmp/axios_grades_list.json")
-            except Exception as e:
-                print(f"DEBUG: Failed to save grades list: {e}")
-
             if resp.status_code != 200:
                 return False, [], f"Failed to fetch grades list (HTTP {resp.status_code}): {resp.text[:200]}"
 
-            # For now, return success and save the response
-            return True, [], f"Fetched grades - check /tmp/axios_grades_list.json ({len(resp.text)} bytes)"
+            # Parse the grades list JSON
+            try:
+                grades_data = resp.json()
+                raw_grades = grades_data.get('data', [])
+
+                if not raw_grades:
+                    return True, [], "No grades found for current period"
+
+                # Convert to VoteTracker format
+                vt_grades = self._convert_axios_grades(raw_grades)
+
+                return True, vt_grades, f"Successfully imported {len(vt_grades)} grades"
+
+            except Exception as e:
+                return False, [], f"Failed to parse grades list: {str(e)}"
 
         except requests.exceptions.Timeout:
             return False, [], "Request timeout"
@@ -299,6 +274,105 @@ class AxiosProvider(SyncProvider):
             return False, [], f"Network error: {str(e)}"
         except Exception as e:
             return False, [], f"Error: {str(e)}"
+
+    def _convert_axios_grades(self, raw_grades: List[Dict]) -> List[Dict]:
+        """
+        Convert Axios grades to VoteTracker format.
+
+        Args:
+            raw_grades: List of grades from Axios API
+
+        Returns:
+            List of grades in VoteTracker format
+        """
+        vt_grades = []
+
+        for grade in raw_grades:
+            try:
+                # Extract date (DD/MM/YYYY -> YYYY-MM-DD)
+                date_str = grade.get('giorno', '')
+                if date_str:
+                    day, month, year = date_str.split('/')
+                    date = f"{year}-{month}-{day}"
+                else:
+                    continue  # Skip if no date
+
+                # Extract subject
+                subject = grade.get('materia', '').strip()
+                if not subject:
+                    continue  # Skip if no subject
+
+                # Extract grade value from HTML
+                voto_html = grade.get('voto', '')
+                # Extract from title attribute: "Voto: 7+ ... Valore: 7,25"
+                valore_match = re.search(r'Valore:\s*([\d,\.]+)', voto_html)
+                if valore_match:
+                    # Use the numeric value (e.g., 7,25)
+                    grade_value = valore_match.group(1).replace(',', '.')
+                else:
+                    # Fallback: extract from span content (e.g., "7+", "8.48")
+                    grade_match = re.search(r'>([^<]+)<', voto_html)
+                    if grade_match:
+                        grade_value = grade_match.group(1).strip()
+                        # Convert "7+" to 7.25, "7-" to 6.75, etc.
+                        if '+' in grade_value:
+                            grade_value = str(float(grade_value.replace('+', '')) + 0.25)
+                        elif '-' in grade_value:
+                            grade_value = str(float(grade_value.replace('-', '')) - 0.25)
+                        elif '½' in grade_value or '1/2' in grade_value:
+                            grade_value = str(float(grade_value.replace('½', '').replace('1/2', '')) + 0.5)
+                    else:
+                        continue  # Skip if can't extract grade
+
+                # Convert to float
+                try:
+                    grade_float = float(grade_value)
+                except ValueError:
+                    continue  # Skip if not a valid number
+
+                # Map type (Orale, Scritto, Pratico)
+                tipo = grade.get('tipo', '').lower()
+                if 'oral' in tipo or 'oral' in tipo:
+                    vote_type = 'Oral'
+                elif 'scritt' in tipo or 'written' in tipo:
+                    vote_type = 'Written'
+                elif 'pratic' in tipo or 'practical' in tipo:
+                    vote_type = 'Practical'
+                else:
+                    vote_type = 'Oral'  # Default to Oral
+
+                # Extract description (remove HTML entities)
+                description = grade.get('commento', '').strip()
+                description = description.replace('&amp;', '&')
+                description = description.replace('&#224;', 'à')
+                description = description.replace('&#232;', 'è')
+                description = description.replace('&#233;', 'é')
+                description = description.replace('&#39;', "'")
+                description = description.replace('&lt;', '<')
+                description = description.replace('&gt;', '>')
+                description = description.replace('\r\n', ' ')
+                description = description.replace('\n', ' ')
+                # Limit length
+                if len(description) > 500:
+                    description = description[:497] + "..."
+
+                # Create VoteTracker grade
+                vt_grade = {
+                    'subject': subject,
+                    'grade': grade_float,
+                    'type': vote_type,
+                    'date': date,
+                    'description': description,
+                    'weight': 1.0  # Default weight
+                }
+
+                vt_grades.append(vt_grade)
+
+            except Exception as e:
+                # Skip grades that can't be converted
+                continue
+
+        return vt_grades
 
     def logout(self):
         """Clear authentication state."""
