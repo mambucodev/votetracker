@@ -54,31 +54,52 @@ class AxiosProvider(SyncProvider):
         session = requests.Session()
         start_url = f"https://family.axioscloud.it/Secret/RELogin.aspx?Customer_ID={customer_id}"
 
-        # Get the login page
-        resp = session.get(start_url)
-        tree = html.fromstring(resp.text)
+        try:
+            # Get the login page
+            resp = session.get(start_url, timeout=10)
+            tree = html.fromstring(resp.text)
 
-        # Extract ASP.NET viewstate
-        viewstate = tree.xpath('//input[@id="__VIEWSTATE"]/@value')[0]
-        viewstategenerator = tree.xpath('//input[@id="__VIEWSTATEGENERATOR"]/@value')[0]
-        eventvalidation = tree.xpath('//input[@id="__EVENTVALIDATION"]/@value')[0]
+            # Extract ASP.NET viewstate (with safety checks)
+            viewstate_list = tree.xpath('//input[@id="__VIEWSTATE"]/@value')
+            viewstategenerator_list = tree.xpath('//input[@id="__VIEWSTATEGENERATOR"]/@value')
+            eventvalidation_list = tree.xpath('//input[@id="__EVENTVALIDATION"]/@value')
 
-        # Initial POST (seems required by axios)
-        start_payload = {
-            "__VIEWSTATE": viewstate,
-            "__VIEWSTATEGENERATOR": viewstategenerator,
-            "__EVENTVALIDATION": eventvalidation,
-            "ibtnRE.x": 0,
-            "ibtnRE.y": 0,
-            "mha": "",
-        }
-        resp = session.post(start_url, data=start_payload)
-        tree = html.fromstring(resp.text)
+            if not viewstate_list or not viewstategenerator_list or not eventvalidation_list:
+                raise Exception("Failed to extract login form data - customer ID may be invalid")
 
-        # Update viewstate
-        viewstate = tree.xpath('//input[@id="__VIEWSTATE"]/@value')[0]
-        viewstategenerator = tree.xpath('//input[@id="__VIEWSTATEGENERATOR"]/@value')[0]
-        eventvalidation = tree.xpath('//input[@id="__EVENTVALIDATION"]/@value')[0]
+            viewstate = viewstate_list[0]
+            viewstategenerator = viewstategenerator_list[0]
+            eventvalidation = eventvalidation_list[0]
+
+            # Initial POST (seems required by axios)
+            start_payload = {
+                "__VIEWSTATE": viewstate,
+                "__VIEWSTATEGENERATOR": viewstategenerator,
+                "__EVENTVALIDATION": eventvalidation,
+                "ibtnRE.x": 0,
+                "ibtnRE.y": 0,
+                "mha": "",
+            }
+            resp = session.post(start_url, data=start_payload, timeout=10)
+            tree = html.fromstring(resp.text)
+
+            # Update viewstate
+            viewstate_list = tree.xpath('//input[@id="__VIEWSTATE"]/@value')
+            viewstategenerator_list = tree.xpath('//input[@id="__VIEWSTATEGENERATOR"]/@value')
+            eventvalidation_list = tree.xpath('//input[@id="__EVENTVALIDATION"]/@value')
+
+            if not viewstate_list or not viewstategenerator_list or not eventvalidation_list:
+                raise Exception("Failed to extract updated login form data")
+
+            viewstate = viewstate_list[0]
+            viewstategenerator = viewstategenerator_list[0]
+            eventvalidation = eventvalidation_list[0]
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Network error: {str(e)}")
+        except Exception as e:
+            if "extract" in str(e):
+                raise
+            raise Exception(f"Failed to access login page: {str(e)}")
 
         # Actual login
         login_payload = {
@@ -94,14 +115,23 @@ class AxiosProvider(SyncProvider):
         }
         resp = session.post(
             "https://family.axioscloud.it/Secret/RELogin.aspx",
-            data=login_payload
+            data=login_payload,
+            timeout=10
         )
         tree = html.fromstring(resp.text)
 
         # Check if login successful
         user_name = tree.xpath('//span[@id="lblUserName"]/text()')
         if not user_name:
-            raise Exception("Login failed - invalid credentials")
+            raise Exception("Login failed - check username and password")
+
+        # DEBUG: Save HTML for inspection
+        debug_html_path = "/tmp/axios_login_debug.html"
+        try:
+            with open(debug_html_path, 'w', encoding='utf-8') as f:
+                f.write(resp.text)
+        except:
+            pass  # Ignore debug write errors
 
         # Look for student selector dropdown
         # Common patterns: select with options, or hidden inputs with student data
@@ -113,24 +143,49 @@ class AxiosProvider(SyncProvider):
             for option in student_options:
                 student_id = option.get('value', '').strip()
                 student_name = option.text_content().strip()
-                if student_id and student_name:
+                if student_id and student_name and student_id != '':
                     students.append((student_id, student_name))
 
         # If no dropdown found, might be single student - extract from page
         if not students:
-            # Look for student info in the page (single student accounts might not have dropdown)
-            # Try to find hidden input or displayed student name
-            student_id_input = tree.xpath('//input[contains(@id, "AluSelected") or contains(@name, "txtAluSelected")]/@value')
-            if student_id_input:
-                student_id = student_id_input[0].strip()
-                # Use the logged-in user name as student name
-                student_name = user_name[0] if user_name else "Student"
-                students.append((student_id, student_name))
+            # Try various XPath patterns for student ID
+            patterns = [
+                '//input[contains(@id, "AluSelected")]/@value',
+                '//input[contains(@id, "txtAluSelected")]/@value',
+                '//input[contains(@name, "AluSelected")]/@value',
+                '//input[@id="ctl00_ContentPlaceHolderBody_txtAluSelected"]/@value',
+                '//span[contains(@id, "AluSelected")]/text()',
+            ]
+
+            for pattern in patterns:
+                student_id_input = tree.xpath(pattern)
+                if student_id_input and student_id_input[0].strip():
+                    student_id = student_id_input[0].strip()
+                    # Use the logged-in user name as student name
+                    student_name = user_name[0] if user_name else "Student"
+                    students.append((student_id, student_name))
+                    break
+
+        # If still no students, try to find ANY input with a numeric value
+        # (student IDs are usually numeric)
+        if not students:
+            all_inputs = tree.xpath('//input[@type="hidden"]')
+            for inp in all_inputs:
+                inp_id = inp.get('id', '')
+                inp_value = inp.get('value', '').strip()
+                # Look for patterns that might be student IDs
+                if 'alu' in inp_id.lower() and inp_value and inp_value.isdigit():
+                    student_name = user_name[0] if user_name else "Student"
+                    students.append((inp_value, student_name))
+                    break
 
         if not students:
-            # Last resort: check if there's a default student value in the page
-            # Some accounts auto-select the student
-            raise Exception("Could not find student information in the page. Please contact support.")
+            # Provide helpful error with debug info
+            raise Exception(
+                f"Could not find student information. "
+                f"HTML saved to {debug_html_path} for debugging. "
+                f"Please report this issue with your customer ID (school code)."
+            )
 
         return students
 
