@@ -181,28 +181,29 @@ class AxiosProvider(SyncProvider):
             return False, [], "No authentication token available"
 
         try:
-            # Try common family pages directly
-            test_urls = [
-                "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Ajax_Get.aspx?action=DashboardLoad",
-                "https://registrofamiglie.axioscloud.it/Pages/SD/SD_HomePage.aspx",
-                "https://registrofamiglie.axioscloud.it/Pages/APP/FAMILY/FAMILY_Voti.aspx",
-                "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Voti.aspx",
-            ]
+            # Fetch grades via AJAX API
+            ajax_url = "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Ajax_Get.aspx"
 
-            for idx, url in enumerate(test_urls):
-                try:
-                    resp = self._session.get(url, timeout=10)
-                    filename = f"/tmp/axios_test_{idx}.html"
-                    with open(filename, 'w', encoding='utf-8') as f:
-                        f.write(f"<!-- URL: {url} -->\n")
-                        f.write(f"<!-- Status: {resp.status_code} -->\n")
-                        f.write(resp.text)
-                    print(f"Saved {url} to {filename}")
-                except Exception as e:
-                    print(f"Failed {url}: {e}")
+            # Use GET with action parameter (as seen in dashboard HTML)
+            resp = self._session.get(f"{ajax_url}?action=FAMILY_VOTI", timeout=10)
 
-            # Return info
-            return True, [], f"Tested multiple URLs - check /tmp/axios_test_*.html files to see what pages exist"
+            # Debug: save response
+            try:
+                with open("/tmp/axios_voti.html", 'w', encoding='utf-8') as f:
+                    f.write(f"<!-- Status: {resp.status_code} -->\n")
+                    f.write(resp.text)
+            except:
+                pass
+
+            if resp.status_code != 200:
+                return False, [], f"Failed to fetch grades (HTTP {resp.status_code})"
+
+            # Parse HTML to extract grades
+            tree = html.fromstring(resp.text)
+
+            # For now, return the raw HTML for analysis
+            # We need to see the structure to parse it correctly
+            return True, [], f"Fetched grades page - saved to /tmp/axios_voti.html for analysis ({len(resp.text)} bytes)"
 
         except requests.exceptions.Timeout:
             return False, [], "Request timeout"
