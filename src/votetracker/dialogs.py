@@ -1123,3 +1123,63 @@ class ManageSubjectMappingsDialog(QDialog):
     def was_changed(self) -> bool:
         """Check if any changes were made."""
         return self._changed
+
+class SelectStudentDialog(QDialog):
+    """Dialog for selecting a student when multiple are available."""
+
+    def __init__(self, students: List[Tuple[str, str]], parent=None):
+        """
+        Initialize dialog.
+
+        Args:
+            students: List of (student_id, student_name) tuples
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        self.setWindowTitle(tr("Select Student"))
+        self.setMinimumWidth(350)
+        self._students = students
+        self._selected_student_id = None
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        # Info label
+        info_label = QLabel(
+            tr("Multiple students found for this account.") + "\n" +
+            tr("Please select which student to use:")
+        )
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+
+        # Student selector
+        layout.addWidget(QLabel(tr("Student:")))
+        self._student_combo = QComboBox()
+        for student_id, student_name in self._students:
+            self._student_combo.addItem(student_name, student_id)
+        layout.addWidget(self._student_combo)
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+
+        cancel_btn = QPushButton(tr("Cancel"))
+        cancel_btn.setIcon(get_symbolic_icon("dialog-cancel"))
+        cancel_btn.clicked.connect(self.reject)
+
+        select_btn = QPushButton(tr("Select"))
+        select_btn.setIcon(get_symbolic_icon("dialog-ok"))
+        select_btn.setDefault(True)
+        select_btn.clicked.connect(self.accept)
+
+        btn_layout.addStretch()
+        btn_layout.addWidget(cancel_btn)
+        btn_layout.addWidget(select_btn)
+        layout.addLayout(btn_layout)
+
+    def get_selected_student_id(self) -> Optional[str]:
+        """Get the selected student ID."""
+        return self._student_combo.currentData()

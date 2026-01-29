@@ -1284,9 +1284,59 @@ class SettingsPage(QWidget):
             # Save auto-login setting
             self._db.set_provider_auto_login(provider_id, widgets['auto_login'].isChecked())
         else:
-            widgets['status_label'].setText(f"{tr('Authentication failed')}: {message}")
-            widgets['status_label'].setStyleSheet("color: #e74c3c;")
-            widgets['import_btn'].setEnabled(False)
+            # Check if multiple students found
+            if message.startswith("MULTIPLE_STUDENTS:"):
+                import json
+                from ..dialogs import SelectStudentDialog
+
+                # Parse student list
+                students_json = message.replace("MULTIPLE_STUDENTS:", "")
+                try:
+                    students_data = json.loads(students_json)
+                    students = [(s["id"], s["name"]) for s in students_data]
+
+                    # Show selection dialog
+                    dialog = SelectStudentDialog(students, self)
+                    if dialog.exec():
+                        selected_student_id = dialog.get_selected_student_id()
+                        if selected_student_id:
+                            # Retry login with selected student
+                            credentials['student_id'] = selected_student_id
+                            success, message = provider.login(credentials)
+
+                            if success:
+                                widgets['status_label'].setText(f"{tr('Connected as')} {provider.get_user_display_name()}")
+                                widgets['status_label'].setStyleSheet("color: #27ae60; font-weight: bold;")
+                                widgets['import_btn'].setEnabled(True)
+
+                                # Save credentials if checkbox is checked
+                                if widgets['save_creds'].isChecked():
+                                    self._db.save_provider_credentials(provider_id, credentials)
+                                    widgets['creds_warning'].setVisible(True)
+                                    widgets['clear_btn'].setEnabled(True)
+
+                                # Save auto-login setting
+                                self._db.set_provider_auto_login(provider_id, widgets['auto_login'].isChecked())
+                            else:
+                                widgets['status_label'].setText(f"{tr('Authentication failed')}: {message}")
+                                widgets['status_label'].setStyleSheet("color: #e74c3c;")
+                                widgets['import_btn'].setEnabled(False)
+                        else:
+                            widgets['status_label'].setText(tr("No student selected"))
+                            widgets['status_label'].setStyleSheet("color: #e74c3c;")
+                            widgets['import_btn'].setEnabled(False)
+                    else:
+                        widgets['status_label'].setText(tr("Student selection cancelled"))
+                        widgets['status_label'].setStyleSheet("color: #e74c3c;")
+                        widgets['import_btn'].setEnabled(False)
+                except Exception as e:
+                    widgets['status_label'].setText(f"{tr('Error')}: {str(e)}")
+                    widgets['status_label'].setStyleSheet("color: #e74c3c;")
+                    widgets['import_btn'].setEnabled(False)
+            else:
+                widgets['status_label'].setText(f"{tr('Authentication failed')}: {message}")
+                widgets['status_label'].setStyleSheet("color: #e74c3c;")
+                widgets['import_btn'].setEnabled(False)
 
     def _clear_provider_credentials(self, provider_id: str):
         """Clear saved credentials for a provider."""

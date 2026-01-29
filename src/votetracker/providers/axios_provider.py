@@ -1,27 +1,138 @@
 """
 Axios Sync Provider Implementation
 
-Integrates with Axios Italia electronic register system via the axios Python CLI.
+Integrates with Axios Italia electronic register system using the axios Python library.
+Automatically detects available students and allows selection if multiple found.
 """
 
 import subprocess
 import json
 import os
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from datetime import datetime
+from lxml import html
+import requests
 from ..sync_provider import SyncProvider
+
+try:
+    from axios.navigator import Navigator
+    from axios.models import Credentials
+    AXIOS_AVAILABLE = True
+except ImportError:
+    AXIOS_AVAILABLE = False
 
 
 class AxiosProvider(SyncProvider):
-    """Axios implementation using axios Python library (CLI wrapper)."""
+    """Axios implementation using axios Python library with auto student detection."""
 
     def __init__(self, database):
         super().__init__(database)
         self._credentials = {}
+        self._selected_student_id = None
+        self._available_students = []  # List of (student_id, student_name) tuples
+        self._navigator = None
 
     def get_provider_name(self) -> str:
         """Get human-readable provider name."""
         return "Axios"
+
+    def _scrape_students(self, customer_id: str, username: str, password: str) -> List[Tuple[str, str]]:
+        """
+        Scrape available students from Axios web interface.
+
+        Args:
+            customer_id: School customer ID
+            username: Login username
+            password: Login password
+
+        Returns:
+            List of (student_id, student_name) tuples
+
+        Raises:
+            Exception: If login fails or cannot find students
+        """
+        session = requests.Session()
+        start_url = f"https://family.axioscloud.it/Secret/RELogin.aspx?Customer_ID={customer_id}"
+
+        # Get the login page
+        resp = session.get(start_url)
+        tree = html.fromstring(resp.text)
+
+        # Extract ASP.NET viewstate
+        viewstate = tree.xpath('//input[@id="__VIEWSTATE"]/@value')[0]
+        viewstategenerator = tree.xpath('//input[@id="__VIEWSTATEGENERATOR"]/@value')[0]
+        eventvalidation = tree.xpath('//input[@id="__EVENTVALIDATION"]/@value')[0]
+
+        # Initial POST (seems required by axios)
+        start_payload = {
+            "__VIEWSTATE": viewstate,
+            "__VIEWSTATEGENERATOR": viewstategenerator,
+            "__EVENTVALIDATION": eventvalidation,
+            "ibtnRE.x": 0,
+            "ibtnRE.y": 0,
+            "mha": "",
+        }
+        resp = session.post(start_url, data=start_payload)
+        tree = html.fromstring(resp.text)
+
+        # Update viewstate
+        viewstate = tree.xpath('//input[@id="__VIEWSTATE"]/@value')[0]
+        viewstategenerator = tree.xpath('//input[@id="__VIEWSTATEGENERATOR"]/@value')[0]
+        eventvalidation = tree.xpath('//input[@id="__EVENTVALIDATION"]/@value')[0]
+
+        # Actual login
+        login_payload = {
+            "__LASTFOCUS": "",
+            "__EVENTTARGET": "",
+            "__VIEWSTATE": viewstate,
+            "__VIEWSTATEGENERATOR": viewstategenerator,
+            "__EVENTVALIDATION": eventvalidation,
+            "txtImproveDone": "",
+            "txtUser": username,
+            "txtPassword": password,
+            "btnLogin": "Accedi",
+        }
+        resp = session.post(
+            "https://family.axioscloud.it/Secret/RELogin.aspx",
+            data=login_payload
+        )
+        tree = html.fromstring(resp.text)
+
+        # Check if login successful
+        user_name = tree.xpath('//span[@id="lblUserName"]/text()')
+        if not user_name:
+            raise Exception("Login failed - invalid credentials")
+
+        # Look for student selector dropdown
+        # Common patterns: select with options, or hidden inputs with student data
+        students = []
+
+        # Try to find student dropdown (if multiple students)
+        student_options = tree.xpath('//select[contains(@id, "Student") or contains(@name, "Alu")]//option')
+        if student_options:
+            for option in student_options:
+                student_id = option.get('value', '').strip()
+                student_name = option.text_content().strip()
+                if student_id and student_name:
+                    students.append((student_id, student_name))
+
+        # If no dropdown found, might be single student - extract from page
+        if not students:
+            # Look for student info in the page (single student accounts might not have dropdown)
+            # Try to find hidden input or displayed student name
+            student_id_input = tree.xpath('//input[contains(@id, "AluSelected") or contains(@name, "txtAluSelected")]/@value')
+            if student_id_input:
+                student_id = student_id_input[0].strip()
+                # Use the logged-in user name as student name
+                student_name = user_name[0] if user_name else "Student"
+                students.append((student_id, student_name))
+
+        if not students:
+            # Last resort: check if there's a default student value in the page
+            # Some accounts auto-select the student
+            raise Exception("Could not find student information in the page. Please contact support.")
+
+        return students
 
     def get_credential_fields(self) -> List[Dict[str, str]]:
         """
@@ -48,66 +159,99 @@ class AxiosProvider(SyncProvider):
                 'label': 'Password',
                 'type': 'password',
                 'placeholder': ''
-            },
-            {
-                'name': 'student_id',
-                'label': 'Student ID',
-                'type': 'text',
-                'placeholder': '12345'
             }
         ]
 
     def login(self, credentials: Dict[str, str]) -> Tuple[bool, str]:
         """
-        Authenticate with Axios.
-
-        For Axios, authentication is handled via environment variables
-        during each CLI call. We test credentials by attempting to fetch grades.
+        Authenticate with Axios and auto-detect students.
 
         Args:
-            credentials: Dict with customer_id, username, password, student_id
+            credentials: Dict with customer_id, username, password
+                        Optionally: student_id if already selected
 
         Returns:
             Tuple of (success: bool, message: str)
+            Special case: If multiple students found, returns (False, "MULTIPLE_STUDENTS:{json_data}")
         """
         customer_id = credentials.get('customer_id', '').strip()
         username = credentials.get('username', '').strip()
         password = credentials.get('password', '').strip()
-        student_id = credentials.get('student_id', '').strip()
+        student_id = credentials.get('student_id', '').strip()  # Optional
 
-        # Validate all fields present
-        if not all([customer_id, username, password, student_id]):
-            return False, "All credential fields are required"
+        # Validate required fields
+        if not all([customer_id, username, password]):
+            return False, "Customer ID, username, and password are required"
 
-        # Store credentials for use in get_grades()
-        self._credentials = credentials.copy()
+        # Check if axios library is available
+        if not AXIOS_AVAILABLE:
+            return False, "Axios library not found. Please install: pip install axios"
 
-        # Test credentials by attempting to fetch grades
-        # (axios CLI validates on each call, no persistent session)
+        # Check if axios CLI is installed
         try:
-            # Check if axios CLI is installed
             result = subprocess.run(
                 ['axios', '--version'],
                 capture_output=True,
                 text=True,
                 timeout=5
             )
-
             if result.returncode != 0:
                 return False, "Axios CLI not found. Please install: pip install axios"
-
         except FileNotFoundError:
             return False, "Axios CLI not found. Please install: pip install axios"
         except Exception as e:
             return False, f"Error checking axios CLI: {str(e)}"
 
-        # Try fetching grades to validate credentials
+        # Store credentials
+        self._credentials = credentials.copy()
+
+        # If student_id already provided (from selection), use it directly
+        if student_id:
+            self._selected_student_id = student_id
+        else:
+            # Scrape available students
+            try:
+                self._available_students = self._scrape_students(customer_id, username, password)
+            except Exception as e:
+                return False, f"Failed to retrieve student information: {str(e)}"
+
+            if not self._available_students:
+                return False, "No students found for this account"
+
+            # If only one student, auto-select it
+            if len(self._available_students) == 1:
+                self._selected_student_id = self._available_students[0][0]
+                student_name = self._available_students[0][1]
+                # Store in credentials for future use
+                self._credentials['student_id'] = self._selected_student_id
+            else:
+                # Multiple students - return special message for UI to handle
+                students_json = json.dumps([
+                    {"id": sid, "name": sname}
+                    for sid, sname in self._available_students
+                ])
+                return False, f"MULTIPLE_STUDENTS:{students_json}"
+
+        # Test connection by fetching grades
         success, grades, message = self.get_grades()
 
         if success:
             self._authenticated = True
-            self._user_display_name = f"{username} ({student_id})"
-            return True, f"Connected as {username}"
+            # Set display name
+            if self._available_students:
+                student_name = next(
+                    (name for sid, name in self._available_students if sid == self._selected_student_id),
+                    username
+                )
+                self._user_display_name = f"{student_name}"
+            else:
+                self._user_display_name = username
+
+            # Warn if no grades found
+            if len(grades) == 0:
+                return True, f"Connected as {self._user_display_name} (No grades found - check school year/term)"
+            else:
+                return True, f"Connected as {self._user_display_name} ({len(grades)} grades found)"
         else:
             return False, f"Authentication failed: {message}"
 
@@ -122,6 +266,9 @@ class AxiosProvider(SyncProvider):
         if not self._credentials:
             return False, [], "Not authenticated - please log in first"
 
+        if not self._selected_student_id:
+            return False, [], "No student selected - please reconnect"
+
         try:
             # Prepare environment variables for axios CLI
             env = os.environ.copy()
@@ -129,7 +276,7 @@ class AxiosProvider(SyncProvider):
                 'AXIOS_CUSTOMER_ID': self._credentials.get('customer_id', ''),
                 'AXIOS_USERNAME': self._credentials.get('username', ''),
                 'AXIOS_PASSWORD': self._credentials.get('password', ''),
-                'AXIOS_STUDENT_ID': self._credentials.get('student_id', '')
+                'AXIOS_STUDENT_ID': self._selected_student_id
             })
 
             # Call axios CLI to fetch grades
@@ -176,6 +323,9 @@ class AxiosProvider(SyncProvider):
         """Clear authentication state."""
         super().logout()
         self._credentials = {}
+        self._selected_student_id = None
+        self._available_students = []
+        self._navigator = None
 
 
 def convert_axios_to_votetracker(grades: List[Dict]) -> List[Dict]:
