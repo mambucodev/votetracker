@@ -148,6 +148,15 @@ class AxiosProvider(SyncProvider):
             self._authenticated = True
             self._user_display_name = username
 
+            # Save the post-login page - it might contain the full SPA
+            try:
+                with open("/tmp/axios_post_login.html", 'w', encoding='utf-8') as f:
+                    f.write(f"<!-- Final URL: {resp.url} -->\n")
+                    f.write(f"<!-- Status: {resp.status_code} -->\n")
+                    f.write(resp.text)
+            except:
+                pass
+
             # Try to fetch grades to validate
             success, grades, message = self.get_grades()
 
@@ -181,41 +190,40 @@ class AxiosProvider(SyncProvider):
             return False, [], "No authentication token available"
 
         try:
-            # Try different parameter combinations for the AJAX API
-            # DashboardLoad worked with GET, so let's try similar patterns
+            # DashboardLoad worked with GET, try similar "Load" actions
             ajax_url = "https://registrofamiglie.axioscloud.it/Pages/APP/APP_Ajax_Get.aspx"
 
-            attempts = [
-                # Try with data-content parameter (from dashboard tile HTML)
-                ("FAMILY_VOTI_with_content", f"{ajax_url}?action=FAMILY_VOTI&content=page-content"),
-                # Try uppercase ACTION
-                ("FAMILY_VOTI_uppercase", f"{ajax_url}?ACTION=FAMILY_VOTI"),
-                # Try different case for action value
-                ("Family_Voti", f"{ajax_url}?action=Family_Voti"),
-                # Try VOTI alone
-                ("VOTI", f"{ajax_url}?action=VOTI"),
+            # Try actions that follow the DashboardLoad pattern
+            actions_to_try = [
+                "VotiLoad",
+                "GradesLoad",
+                "ValutazioniLoad",
+                "FAMILY_VOTI_Load",
+                "LoadVoti",
+                "GetVoti",
             ]
 
-            for name, url in attempts:
+            for action in actions_to_try:
                 try:
+                    url = f"{ajax_url}?action={action}"
                     resp = self._session.get(url, timeout=10)
 
-                    filename = f"/tmp/axios_grades_{name}.html"
+                    filename = f"/tmp/axios_action_{action}.html"
                     with open(filename, 'w', encoding='utf-8') as f:
                         f.write(f"<!-- URL: {url} -->\n")
                         f.write(f"<!-- Status: {resp.status_code} -->\n")
                         f.write(resp.text)
 
-                    print(f"Attempt {name}: HTTP {resp.status_code}, {len(resp.text)} bytes")
+                    print(f"Action {action}: HTTP {resp.status_code}, {len(resp.text)} bytes")
 
-                    # Check if successful
+                    # Check if successful (not an error message)
                     if resp.status_code == 200 and "Errore" not in resp.text and len(resp.text) > 200:
-                        return True, [], f"SUCCESS with {name} - saved to {filename} ({len(resp.text)} bytes)"
+                        return True, [], f"SUCCESS with action={action} - saved to {filename} ({len(resp.text)} bytes)"
 
                 except Exception as e:
-                    print(f"Attempt {name} failed: {e}")
+                    print(f"Action {action} failed: {e}")
 
-            return True, [], "Tried multiple parameter combinations - check /tmp/axios_grades_*.html files"
+            return True, [], "Tried multiple actions - check /tmp/axios_action_*.html files"
 
         except requests.exceptions.Timeout:
             return False, [], "Request timeout"
