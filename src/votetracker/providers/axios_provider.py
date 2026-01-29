@@ -196,11 +196,14 @@ class AxiosProvider(SyncProvider):
             headers = {
                 'RVT': self._auth_token,
                 'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/json; charset=utf-8',
+                'Accept': 'application/json, text/javascript, */*; q=0.01',
             }
 
             # Step 1: Load the grades page (uppercase Action parameter)
-            resp = self._session.get(f"{ajax_url}?Action=FAMILY_VOTI", headers=headers, timeout=10)
+            # Add cache-busting timestamp parameter
+            import time
+            timestamp = int(time.time() * 1000)
+            resp = self._session.get(f"{ajax_url}?Action=FAMILY_VOTI&_={timestamp}", headers=headers, timeout=10)
 
             # Debug: save grades page
             try:
@@ -218,7 +221,8 @@ class AxiosProvider(SyncProvider):
                 return False, [], f"Error loading grades page: {resp.text[:200]}"
 
             # Step 2: Fetch the grades list via POST
-            # We need to extract the frazione parameter from the page, but for now try without it
+            # Update headers for POST request
+            headers['Accept'] = 'application/json, text/javascript, */*; q=0.01'
             headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
 
             post_data = {
