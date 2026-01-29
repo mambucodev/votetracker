@@ -43,6 +43,7 @@ class DashboardPage(QWidget):
         stats_layout = QVBoxLayout(self._stats_group)
         stats_layout.setContentsMargins(12, 12, 12, 12)
         stats_layout.setSpacing(12)
+        stats_layout.setAlignment(Qt.AlignCenter)  # Center horizontally
 
         # Store stat box tuples: (layout, label_widget, value_widget, key)
         self._stat_boxes = {}
@@ -51,7 +52,6 @@ class DashboardPage(QWidget):
             self._stat_boxes[key] = (label_w, value_w)
             stats_layout.addLayout(box_layout)
 
-        stats_layout.addStretch()
         top_section.addWidget(self._stats_group, 1)  # Smaller proportion
 
         # Recent grades widget (right side, wider)
@@ -91,12 +91,15 @@ class DashboardPage(QWidget):
         """Create a statistics display box. Returns (layout, label_widget, value_widget)."""
         box = QVBoxLayout()
         box.setSpacing(4)
+        box.setAlignment(Qt.AlignCenter)  # Center the content
 
         label_widget = QLabel(label)
         label_widget.setStyleSheet("color: gray; font-size: 12px;")
+        label_widget.setAlignment(Qt.AlignCenter)
 
         value_widget = QLabel(value)
         value_widget.setStyleSheet("font-size: 24px; font-weight: bold;")
+        value_widget.setAlignment(Qt.AlignCenter)
 
         box.addWidget(label_widget)
         box.addWidget(value_widget)
@@ -121,15 +124,31 @@ class DashboardPage(QWidget):
         # Sort votes by date (most recent first)
         sorted_votes = sorted(votes, key=lambda v: v.get('date', ''), reverse=True)
 
-        # Show last 5 grades (to save space)
-        recent_votes = sorted_votes[:5]
+        # Show last 6 grades
+        recent_votes = sorted_votes[:6]
 
-        for vote in recent_votes:
+        # Add top stretch
+        self._recent_container.addStretch(1)
+
+        for i, vote in enumerate(recent_votes):
             item = self._create_recent_grade_item(vote)
             self._recent_container.addWidget(item)
 
-        # Add stretch at the end
-        self._recent_container.addStretch()
+            # Add separator between items (but not after the last one)
+            if i < len(recent_votes) - 1:
+                separator = QFrame()
+                separator.setFrameShape(QFrame.HLine)
+                separator.setFrameShadow(QFrame.Plain)
+                separator.setFixedHeight(1)
+                separator.setStyleSheet("background-color: rgba(128, 128, 128, 0.3);")
+                self._recent_container.addWidget(separator)
+
+            # Add stretch between items for even distribution
+            if i < len(recent_votes) - 1:
+                self._recent_container.addStretch(1)
+
+        # Add bottom stretch
+        self._recent_container.addStretch(1)
 
     def _create_recent_grade_item(self, vote: dict) -> QWidget:
         """Create a widget for a single recent grade item."""
