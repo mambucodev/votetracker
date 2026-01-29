@@ -218,55 +218,67 @@ class AxiosProvider(SyncProvider):
                     errormsg = voti_data.get('errormsg', 'Unknown error')
                     return False, [], f"Error loading grades page: {errormsg}"
 
-                # Extract frazione from HTML
+                # Extract ALL frazione values from the dropdown (for all terms)
                 html_content = voti_data.get('html', '')
-                frazione_match = re.search(r'id=[\'"]frazione[\'"].*?value=[\'"]([^\'\"]+)[\'"]', html_content)
-                frazione = frazione_match.group(1) if frazione_match else ""
+
+                # Find all frazione options in the dropdown
+                frazione_options = re.findall(r'<option\s+value\s*=\s*[\'"]([^\'\"]+)[\'"].*?>([^<]+)</option>', html_content)
+
+                if not frazione_options:
+                    return False, [], "No term/frazione options found in response"
 
             except Exception as e:
                 return False, [], f"Failed to parse grades page response: {str(e)}"
 
-            # Step 2: Fetch the grades list via POST
-            # Update headers for POST request
+            # Step 2: Fetch grades for ALL terms
+            all_grades = []
             headers['Accept'] = 'application/json, text/javascript, */*; q=0.01'
             headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
 
-            post_data = {
-                "draw": 1,
-                "columns": {},
-                "order": [],
-                "start": 0,
-                "length": 1000,  # Get up to 1000 grades
-                "search": {"value": "", "regex": False},
-                "iMatId": "",
-                "frazione": frazione  # Use extracted frazione value
-            }
+            for frazione_value, frazione_label in frazione_options:
+                try:
+                    # Parse term number from label (e.g., "TRIMESTRE" or "PENTAMESTRE")
+                    # TRIMESTRE = Term 1, PENTAMESTRE/QUADRIMESTRE 2 = Term 2
+                    term_num = 1 if 'TRIMESTRE' in frazione_label.upper() and 'PENTA' not in frazione_label.upper() else 2
 
-            resp = self._session.post(
-                f"{ajax_url}?Action=FAMILY_VOTI_ELENCO_LISTA",
-                headers=headers,
-                json=post_data,
-                timeout=10
-            )
+                    post_data = {
+                        "draw": 1,
+                        "columns": {},
+                        "order": [],
+                        "start": 0,
+                        "length": 1000,  # Get up to 1000 grades per term
+                        "search": {"value": "", "regex": False},
+                        "iMatId": "",
+                        "frazione": frazione_value
+                    }
 
-            if resp.status_code != 200:
-                return False, [], f"Failed to fetch grades list (HTTP {resp.status_code}): {resp.text[:200]}"
+                    resp = self._session.post(
+                        f"{ajax_url}?Action=FAMILY_VOTI_ELENCO_LISTA",
+                        headers=headers,
+                        json=post_data,
+                        timeout=10
+                    )
 
-            # Parse the grades list JSON
-            try:
-                grades_data = resp.json()
-                raw_grades = grades_data.get('data', [])
+                    if resp.status_code == 200:
+                        grades_data = resp.json()
+                        raw_grades = grades_data.get('data', [])
 
-                if not raw_grades:
-                    return True, [], "No grades found for current period"
+                        # Convert and add term number to each grade
+                        term_grades = self._convert_axios_grades(raw_grades)
+                        for grade in term_grades:
+                            grade['term'] = term_num
 
-                # Convert to VoteTracker format
-                vt_grades = self._convert_axios_grades(raw_grades)
+                        all_grades.extend(term_grades)
 
-                return True, vt_grades, f"Successfully imported {len(vt_grades)} grades"
+                except Exception as e:
+                    # Continue with other terms if one fails
+                    print(f"Failed to fetch grades for term {frazione_label}: {e}")
+                    continue
 
-            except Exception as e:
-                return False, [], f"Failed to parse grades list: {str(e)}"
+            if not all_grades:
+                return True, [], "No grades found in any term"
+
+            return True, all_grades, f"Successfully fetched {len(all_grades)} grades from all terms"
 
         except requests.exceptions.Timeout:
             return False, [], "Request timeout"
