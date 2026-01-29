@@ -135,11 +135,13 @@ class AxiosProvider(SyncProvider):
             token_match = re.search(r"id='_AXToken'\s+value='([^']+)'", resp.text)
             if token_match:
                 self._auth_token = token_match.group(1)
+                print(f"DEBUG: Extracted _AXToken: {self._auth_token}")
             else:
                 return False, "Login succeeded but couldn't extract authentication token"
 
             # Save the dashboard URL for Referer header in AJAX requests
             self._dashboard_url = resp.url
+            print(f"DEBUG: Dashboard URL: {self._dashboard_url}")
 
             # If student_id already provided, use it
             if student_id:
@@ -207,9 +209,15 @@ class AxiosProvider(SyncProvider):
             if self._dashboard_url:
                 headers['Referer'] = self._dashboard_url
 
-            # Step 1: Load the grades page (uppercase Action parameter)
-            # Add cache-busting timestamp parameter
+            # Add cache-busting timestamp
             import time
+
+            # Step 0: Load dashboard first (browser does this before FAMILY_VOTI)
+            timestamp = int(time.time() * 1000)
+            resp_dash = self._session.get(f"{ajax_url}?Action=DashboardLoad&_={timestamp}", headers=headers, timeout=10)
+            print(f"DEBUG: DashboardLoad status: {resp_dash.status_code}")
+
+            # Step 1: Load the grades page (uppercase Action parameter)
             timestamp = int(time.time() * 1000)
             resp = self._session.get(f"{ajax_url}?Action=FAMILY_VOTI&_={timestamp}", headers=headers, timeout=10)
 
@@ -217,12 +225,15 @@ class AxiosProvider(SyncProvider):
             try:
                 with open("/tmp/axios_voti_page.html", 'w', encoding='utf-8') as f:
                     f.write(f"<!-- Status: {resp.status_code} -->\n")
+                    f.write(f"<!-- RVT Header: {self._auth_token} -->\n")
+                    f.write(f"<!-- Referer: {self._dashboard_url} -->\n")
                     f.write(resp.text)
-            except:
-                pass
+                print(f"DEBUG: FAMILY_VOTI status: {resp.status_code}, saved to /tmp/axios_voti_page.html")
+            except Exception as e:
+                print(f"DEBUG: Failed to save: {e}")
 
             if resp.status_code != 200:
-                return False, [], f"Failed to load grades page (HTTP {resp.status_code})"
+                return False, [], f"Failed to load grades page (HTTP {resp.status_code}): {resp.text[:200]}"
 
             # Check for errors
             if "Errore" in resp.text:
