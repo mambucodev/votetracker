@@ -9,7 +9,6 @@ import json
 import re
 from typing import List, Dict, Tuple, Optional
 from datetime import datetime
-from lxml import html
 import requests
 from ..sync_provider import SyncProvider
 
@@ -109,7 +108,8 @@ class AxiosProvider(SyncProvider):
 
             # Check if login successful
             # Look for error messages or success indicators
-            tree = html.fromstring(resp.text)
+            from lxml import html as lxml_html
+            tree = lxml_html.fromstring(resp.text)
 
             # Check for error messages
             error_divs = tree.xpath('//div[contains(@class, "alert-danger")]//text()')

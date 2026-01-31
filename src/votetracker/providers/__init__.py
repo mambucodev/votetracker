@@ -8,6 +8,15 @@ and handles provider registration with the SyncProviderRegistry.
 from ..sync_provider import SyncProviderRegistry
 
 
+def _is_axios_available():
+    """Check if lxml is installed (required by Axios provider)."""
+    try:
+        import lxml  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
 def register_all_providers():
     """
     Register all available sync providers.
@@ -16,8 +25,11 @@ def register_all_providers():
     """
     # Import providers here to avoid circular imports
     from .classeviva_provider import ClasseVivaProvider
-    from .axios_provider import AxiosProvider
 
-    # Register all providers (both use requests, which is required)
+    # ClasseViva only needs requests (required dependency)
     SyncProviderRegistry.register('classeviva', ClasseVivaProvider)
-    SyncProviderRegistry.register('axios', AxiosProvider)
+
+    # Axios requires lxml (optional dependency)
+    if _is_axios_available():
+        from .axios_provider import AxiosProvider
+        SyncProviderRegistry.register('axios', AxiosProvider)
