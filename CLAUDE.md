@@ -104,9 +104,6 @@ votetracker/
 │   ├── README.md             # Documentation index
 │   ├── AUR_PUBLISHING_GUIDE.md      # AUR publishing guide
 │   ├── AUR_BIN_PUBLISHING_GUIDE.md  # AUR binary package guide
-│   ├── PKGBUILD.aur          # Reference PKGBUILD for AUR
-│   ├── PKGBUILD.aur-bin      # Reference PKGBUILD for AUR binary
-│   ├── PKGBUILD-axios        # Optional axios integration PKGBUILD
 │   ├── IMPLEMENTATION_PLAN.md       # Development planning docs
 │   ├── IMPROVEMENTS.md       # Enhancement ideas
 │   ├── WINDOWS_OPTIMIZATION.md      # Windows-specific docs
@@ -346,10 +343,10 @@ votetracker/
 **Purpose:** Provider registration module
 - **Functions:**
   - `register_all_providers()` - Register all available providers (called at app startup)
-  - `_is_axios_available()` - Check if axios CLI is installed
+  - `_is_axios_available()` - Check if lxml is installed (required by Axios provider)
 - **Behavior:**
   - Always registers ClasseViva provider (uses requests, which is required)
-  - Only registers Axios provider if axios CLI is detected on system
+  - Only registers Axios provider if lxml is installed on the system
   - This ensures optional dependencies don't break the app
 
 #### `src/votetracker/providers/classeviva_provider.py`
@@ -371,18 +368,14 @@ votetracker/
 - **Class:** `AxiosProvider(SyncProvider)`
   - **Methods:**
     - `get_provider_name()` - Returns "Axios"
-    - `get_credential_fields()` - Returns customer_id, username, password, student_id fields
-    - `login(credentials)` - Validate credentials by testing CLI
-    - `get_grades()` - Fetch grades via axios CLI subprocess
-    - `logout()` - Clear credentials
-- **Functions:**
-  - `convert_axios_to_votetracker(grades)` - Convert Axios format to VT format
-  - `_map_grade_type(kind)` - Map Axios kind to VT type
-  - `_parse_term_from_date(date_str)` - Infer term from date
+    - `get_credential_fields()` - Returns customer_id, username, password fields
+    - `login(credentials)` - Authenticate with Axios Registro Famiglie via requests + lxml
+    - `get_grades()` - Fetch grades via AJAX API calls
+    - `logout()` - Clear credentials and session
+    - `_convert_axios_grades(raw_grades)` - Convert Axios grades to VoteTracker format
 - **Requirements:**
-  - Requires axios CLI installed: `pip install --user axios`
-  - Not available in Arch repos; must be installed via pip
-  - Provider is automatically hidden if CLI is not available
+  - Requires `lxml` for HTML parsing (optional dependency)
+  - Provider is automatically hidden if lxml is not installed
 
 ---
 
@@ -636,12 +629,10 @@ History stored in `UndoManager`, max 50 operations.
 - **requests** (>=2.31.0) - HTTP client for ClasseViva API
 
 ### Optional
-- **axios** (>=0.4.0) - Axios Italia electronic register integration
+- **lxml** (>=4.9.0) - Required by the Axios sync provider for HTML parsing
   - Only needed if using the Axios sync provider
-  - Not available in Arch repos or AUR
-  - **Arch Linux:** Install via pipx: `sudo pacman -S python-pipx && pipx install axios`
-  - **Other distros:** Use virtual environment or pipx
-  - The Axios provider will automatically be hidden if the CLI is not installed
+  - The Axios provider will automatically be hidden if lxml is not installed
+  - Install with: `pip install lxml` or `sudo pacman -S python-lxml` (Arch)
 - **PyInstaller** - For building standalone executables
 
 ---

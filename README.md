@@ -106,15 +106,15 @@ python scripts/build.py --onefile
 ### Optional Features
 
 **Axios Italia Integration:**
-- **Arch Linux:** Use pipx (recommended)
+- Requires `lxml` for HTML parsing
   ```bash
-  sudo pacman -S python-pipx
-  pipx install axios
-  pipx ensurepath
+  # Arch Linux
+  sudo pacman -S python-lxml
+
+  # pip
+  pip install lxml
   ```
-- **Other distros:** Use virtual environment or pipx
-- The Axios provider will automatically appear in Settings once the CLI is installed
-- **Note:** axios is not available in Arch repos or AUR; pipx creates an isolated environment
+- The Axios provider will automatically appear in Settings once lxml is installed
 
 ## Data Storage
 
