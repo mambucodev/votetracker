@@ -45,6 +45,7 @@ def build_pyinstaller(onefile: bool = False):
         "--hidden-import", "PySide6.QtCore",
         "--hidden-import", "PySide6.QtGui",
         "--hidden-import", "PySide6.QtWidgets",
+        "--hidden-import", "PySide6.QtSvg",
         "--hidden-import", "requests",
         "--hidden-import", "reportlab",
     ]

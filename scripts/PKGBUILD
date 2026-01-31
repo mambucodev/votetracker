@@ -5,8 +5,8 @@ pkgrel=1
 pkgdesc="School grade management application"
 arch=('any')
 license=('MIT')
-depends=('python' 'pyside6' 'python-reportlab' 'python-requests')
-optdepends=('python-axios: Axios Italia electronic register integration')
+depends=('python' 'pyside6' 'pyside6-svg' 'python-reportlab' 'python-requests')
+optdepends=('python-lxml: Axios Italia electronic register integration')
 
 # No source - we use local files
 source=()
