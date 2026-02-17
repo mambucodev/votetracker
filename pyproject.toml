@@ -47,3 +47,6 @@ Homepage = "https://github.com/mambucodev/votetracker"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["votetracker*"]
+
+[tool.setuptools.package-data]
+votetracker = ["icon.png"]

@@ -1,12 +1,12 @@
 """
 Unit tests for database module.
 """
+from __future__ import annotations
 
 import unittest
 import tempfile
 import os
 from src.votetracker.database import Database
-
 
 class TestDatabase(unittest.TestCase):
     """Test suite for Database class."""
@@ -116,7 +116,7 @@ class TestDatabase(unittest.TestCase):
         """Test adding a vote."""
         # Create school year first
         active_year = self.db.get_active_school_year()
-        self.assertIsNotNone(active_year)
+        assert active_year is not None
 
         # Add vote
         vote_id = self.db.add_vote(
@@ -139,6 +139,7 @@ class TestDatabase(unittest.TestCase):
     def test_update_vote(self):
         """Test updating a vote."""
         active_year = self.db.get_active_school_year()
+        assert active_year is not None
 
         # Add vote
         vote_id = self.db.add_vote(
@@ -151,6 +152,7 @@ class TestDatabase(unittest.TestCase):
             weight=1.0,
             school_year_id=active_year['id']
         )
+        assert vote_id is not None
 
         # Update it
         result = self.db.update_vote(
@@ -173,6 +175,7 @@ class TestDatabase(unittest.TestCase):
     def test_delete_vote(self):
         """Test deleting a vote."""
         active_year = self.db.get_active_school_year()
+        assert active_year is not None
 
         # Add vote
         vote_id = self.db.add_vote(
@@ -185,6 +188,7 @@ class TestDatabase(unittest.TestCase):
             weight=1.0,
             school_year_id=active_year['id']
         )
+        assert vote_id is not None
 
         # Delete it
         result = self.db.delete_vote(vote_id)
@@ -197,6 +201,7 @@ class TestDatabase(unittest.TestCase):
     def test_get_votes_filtering(self):
         """Test vote filtering by subject, year, term."""
         active_year = self.db.get_active_school_year()
+        assert active_year is not None
 
         # Add multiple votes
         self.db.add_vote("Math", 8.5, "Written", "2024-01-15", "", 1, 1.0, active_year['id'])
@@ -219,6 +224,7 @@ class TestDatabase(unittest.TestCase):
     def test_grade_statistics(self):
         """Test grade statistics calculation."""
         active_year = self.db.get_active_school_year()
+        assert active_year is not None
 
         # Add votes for multiple subjects
         self.db.add_vote("Math", 8.0, "Written", "2024-01-15", "", 1, 1.0, active_year['id'])
@@ -241,6 +247,7 @@ class TestDatabase(unittest.TestCase):
         """Test setting a grade goal."""
         self.db.add_subject("Math")
         active_year = self.db.get_active_school_year()
+        assert active_year is not None
 
         result = self.db.set_grade_goal("Math", 8.0, active_year['id'], 1)
         self.assertTrue(result)
@@ -252,6 +259,7 @@ class TestDatabase(unittest.TestCase):
         """Test deleting a grade goal."""
         self.db.add_subject("Math")
         active_year = self.db.get_active_school_year()
+        assert active_year is not None
 
         self.db.set_grade_goal("Math", 8.0, active_year['id'], 1)
         result = self.db.delete_grade_goal("Math", active_year['id'], 1)
@@ -263,6 +271,7 @@ class TestDatabase(unittest.TestCase):
     def test_calculate_needed_grade(self):
         """Test calculating needed grade to reach goal."""
         active_year = self.db.get_active_school_year()
+        assert active_year is not None
 
         # Add some votes
         self.db.add_vote("Math", 7.0, "Written", "2024-01-15", "", 1, 1.0, active_year['id'])
@@ -273,9 +282,8 @@ class TestDatabase(unittest.TestCase):
 
         # (7 + 8 + needed) / 3 = 8.0
         # needed = 9.0
-        self.assertIsNotNone(needed)
+        assert needed is not None
         self.assertAlmostEqual(needed, 9.0, places=1)
-
 
 if __name__ == '__main__':
     unittest.main()

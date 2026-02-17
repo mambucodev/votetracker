@@ -4,9 +4,9 @@ Unit tests for Axios provider conversion functions.
 These tests verify that Axios grade format is correctly converted to
 VoteTracker format.
 """
+from __future__ import annotations
 
 import unittest
-from datetime import datetime
 import sys
 import os
 
@@ -16,14 +16,22 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 # Try to import axios provider - skip tests if lxml is not available
 try:
     from votetracker.providers.axios_provider import (
-        convert_axios_to_votetracker,
-        _map_grade_type,
-        _parse_term_from_date
+        convert_axios_to_votetracker as convert_axios_to_votetracker,
+        _map_grade_type as _map_grade_type,
+        _parse_term_from_date as _parse_term_from_date,
     )
     AXIOS_AVAILABLE = True
 except ImportError:
     AXIOS_AVAILABLE = False
 
+    def _map_grade_type(tipo: str) -> str:  # type: ignore[no-redef]
+        raise RuntimeError("Axios provider not available")
+
+    def _parse_term_from_date(date_str: str) -> int:  # type: ignore[no-redef]
+        raise RuntimeError("Axios provider not available")
+
+    def convert_axios_to_votetracker(grades: list[dict]) -> list[dict]:  # type: ignore[no-redef]
+        raise RuntimeError("Axios provider not available")
 
 @unittest.skipUnless(AXIOS_AVAILABLE, "lxml not available (Axios provider is optional)")
 class TestAxiosGradeTypeMapping(unittest.TestCase):
@@ -58,7 +66,6 @@ class TestAxiosGradeTypeMapping(unittest.TestCase):
         self.assertEqual(_map_grade_type(""), "Written")
         self.assertEqual(_map_grade_type("Altro"), "Written")
 
-
 @unittest.skipUnless(AXIOS_AVAILABLE, "lxml not available (Axios provider is optional)")
 class TestAxiosTermParsing(unittest.TestCase):
     """Test term parsing from dates."""
@@ -86,7 +93,6 @@ class TestAxiosTermParsing(unittest.TestCase):
         self.assertEqual(_parse_term_from_date("invalid"), 1)
         self.assertEqual(_parse_term_from_date(""), 1)
         self.assertEqual(_parse_term_from_date("2024-13-01"), 1)  # Invalid month
-
 
 @unittest.skipUnless(AXIOS_AVAILABLE, "lxml not available (Axios provider is optional)")
 class TestAxiosToVoteTrackerConversion(unittest.TestCase):
@@ -214,7 +220,6 @@ class TestAxiosToVoteTrackerConversion(unittest.TestCase):
         self.assertEqual(result[0]["type"], "Written")
         self.assertEqual(result[1]["type"], "Oral")
         self.assertEqual(result[2]["type"], "Practical")
-
 
 if __name__ == '__main__':
     unittest.main()

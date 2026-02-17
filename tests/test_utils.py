@@ -1,11 +1,11 @@
 """
 Unit tests for utility functions.
 """
+from __future__ import annotations
 
 import unittest
 from src.votetracker.utils import calc_average, round_report_card, get_status_color
 from src.votetracker.constants import PASSING_GRADE, GRADE_INSUFFICIENT
-
 
 class TestUtils(unittest.TestCase):
     """Test suite for utility functions."""
@@ -119,7 +119,6 @@ class TestUtils(unittest.TestCase):
         # Exactly 6.0 should be green
         color = get_status_color(PASSING_GRADE)
         self.assertEqual(color.name(), "#27ae60")
-
 
 if __name__ == '__main__':
     unittest.main()

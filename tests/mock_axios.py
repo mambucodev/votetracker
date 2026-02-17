@@ -11,11 +11,11 @@ Usage:
 
     Then the AxiosProvider will call this instead of the real axios CLI.
 """
+from __future__ import annotations
 
 import sys
 import json
 import os
-
 
 def main():
     """Main entry point for mock axios CLI."""
@@ -108,7 +108,6 @@ def main():
     # Output JSON
     print(json.dumps(mock_grades, indent=2))
     return 0
-
 
 if __name__ == '__main__':
     sys.exit(main())
