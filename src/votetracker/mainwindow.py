@@ -1,6 +1,7 @@
 """
 Main window for VoteTracker application.
 """
+from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -11,7 +12,7 @@ from PySide6.QtGui import QKeyEvent, QIcon
 
 from .database import Database
 from .undo import UndoManager
-from .utils import calc_average, get_grade_style, get_symbolic_icon
+from .utils import get_grade_style
 from .widgets import NavButton, YearSelector
 from .pages import (
     DashboardPage, VotesPage, SubjectsPage,
@@ -23,11 +24,9 @@ from .classeviva import ClasseVivaClient
 from .sync_provider import SyncProviderRegistry
 from .providers import register_all_providers
 from .constants import (
-    SIDEBAR_WIDTH, NAV_BUTTON_WIDTH, NAV_BUTTON_HEIGHT,
-    MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT,
+    SIDEBAR_WIDTH, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT,
     MARGIN_SMALL, MARGIN_MEDIUM, SPACING_SMALL
 )
-
 
 class MainWindow(QMainWindow):
     """Main application window."""
@@ -112,7 +111,7 @@ class MainWindow(QMainWindow):
         sidebar_layout = QVBoxLayout(sidebar)
         sidebar_layout.setContentsMargins(MARGIN_SMALL, MARGIN_MEDIUM, MARGIN_SMALL, MARGIN_MEDIUM)
         sidebar_layout.setSpacing(SPACING_SMALL)
-        sidebar_layout.setAlignment(Qt.AlignTop)
+        sidebar_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
         # Navigation buttons
         self._nav_buttons = []
@@ -143,13 +142,13 @@ class MainWindow(QMainWindow):
 
         self._stats_title = QLabel(tr("Quick Stats"))
         self._stats_title.setStyleSheet("font-size: 10px; color: gray;")
-        self._stats_title.setAlignment(Qt.AlignCenter)
+        self._stats_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         stats_layout.addWidget(self._stats_title)
         
         self._quick_avg = QLabel("Avg: -")
-        self._quick_avg.setAlignment(Qt.AlignCenter)
+        self._quick_avg.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._quick_failing = QLabel("Fail: 0")
-        self._quick_failing.setAlignment(Qt.AlignCenter)
+        self._quick_failing.setAlignment(Qt.AlignmentFlag.AlignCenter)
         stats_layout.addWidget(self._quick_avg)
         stats_layout.addWidget(self._quick_failing)
         
@@ -163,7 +162,7 @@ class MainWindow(QMainWindow):
 
         self._year_title = QLabel(tr("School Year"))
         self._year_title.setStyleSheet("font-size: 10px; color: gray;")
-        self._year_title.setAlignment(Qt.AlignCenter)
+        self._year_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         year_layout.addWidget(self._year_title)
         
         self._year_selector = YearSelector()
@@ -176,8 +175,8 @@ class MainWindow(QMainWindow):
         
         # Separator
         sep = QFrame()
-        sep.setFrameShape(QFrame.VLine)
-        sep.setFrameShadow(QFrame.Sunken)
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setFrameShadow(QFrame.Shadow.Sunken)
         main_layout.addWidget(sep)
         
         # Content stack
@@ -243,12 +242,13 @@ class MainWindow(QMainWindow):
         # Get saved credentials
         credentials = self._db.get_provider_credentials(provider_id, field_names)
 
-        # Check all credentials present
+        # Check all credentials present (filter out None values)
         if not all(credentials.values()):
             return
 
-        # Attempt login
-        success, message = provider.login(credentials)
+        # Attempt login - filter out None values for type safety
+        valid_credentials: dict[str, str] = {k: v for k, v in credentials.items() if v is not None}
+        success, message = provider.login(valid_credentials)
         if success:
             # Notify settings page (if it has a method for this)
             # The settings page will handle UI updates
@@ -335,7 +335,7 @@ class MainWindow(QMainWindow):
         """Update the year selector with available years."""
         years = self._db.get_school_years()
         active = self._db.get_active_school_year()
-        active_id = active["id"] if active else None
+        active_id: int | None = active["id"] if active else None
         self._year_selector.set_years(years, active_id)
     
     def _on_year_changed(self, year_id: int):
@@ -399,42 +399,42 @@ class MainWindow(QMainWindow):
         modifiers = event.modifiers()
 
         # Help: ? (show shortcuts)
-        if key == Qt.Key_Question:
+        if key == Qt.Key.Key_Question:
             self._show_shortcuts_help()
             return
 
         # Undo: Ctrl+Z
-        if modifiers == Qt.ControlModifier and key == Qt.Key_Z:
+        if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_Z:
             self._undo()
             return
 
         # Redo: Ctrl+Shift+Z or Ctrl+Y
-        if key == Qt.Key_Z and modifiers == (Qt.ControlModifier | Qt.ShiftModifier):
+        if key == Qt.Key.Key_Z and modifiers == (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier):
             self._redo()
             return
-        if modifiers == Qt.ControlModifier and key == Qt.Key_Y:
+        if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_Y:
             self._redo()
             return
 
         # Page navigation with PgUp/PgDown
-        if key == Qt.Key_PageDown:
+        if key == Qt.Key.Key_PageDown:
             self._next_page()
             return
-        elif key == Qt.Key_PageUp:
+        elif key == Qt.Key.Key_PageUp:
             self._prev_page()
             return
 
         # Direct page access with Ctrl+1-8
-        if modifiers == Qt.ControlModifier:
-            page_keys = {
-                Qt.Key_1: 0,  # Dashboard
-                Qt.Key_2: 1,  # Votes
-                Qt.Key_3: 2,  # Subjects
-                Qt.Key_4: 3,  # Simulator
-                Qt.Key_5: 4,  # Calendar
-                Qt.Key_6: 5,  # Report Card
-                Qt.Key_7: 6,  # Statistics
-                Qt.Key_8: 7,  # Settings
+        if modifiers == Qt.KeyboardModifier.ControlModifier:
+            page_keys: dict[int, int] = {
+                Qt.Key.Key_1: 0,  # Dashboard
+                Qt.Key.Key_2: 1,  # Votes
+                Qt.Key.Key_3: 2,  # Subjects
+                Qt.Key.Key_4: 3,  # Simulator
+                Qt.Key.Key_5: 4,  # Calendar
+                Qt.Key.Key_6: 5,  # Report Card
+                Qt.Key.Key_7: 6,  # Statistics
+                Qt.Key.Key_8: 7,  # Settings
             }
             if key in page_keys:
                 self._switch_page(page_keys[key])
@@ -443,7 +443,7 @@ class MainWindow(QMainWindow):
         # Delegate to current page if it has key handling
         current_page = self._stack.currentWidget()
         if hasattr(current_page, 'handle_key'):
-            if current_page.handle_key(event):
+            if current_page.handle_key(event):  # type: ignore[union-attr]
                 return
 
         super().keyPressEvent(event)

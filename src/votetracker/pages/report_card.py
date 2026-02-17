@@ -2,6 +2,7 @@
 Report Card page for VoteTracker.
 Shows simulated report card with grades.
 """
+from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
@@ -17,7 +18,6 @@ from ..utils import (
 )
 from ..widgets import StatusIndicator, TermToggle
 from ..i18n import tr
-
 
 class ReportCardPage(QWidget):
     """Simulated report card page."""
@@ -73,12 +73,12 @@ class ReportCardPage(QWidget):
         
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll_widget = QWidget()
         self._grades_layout = QVBoxLayout(scroll_widget)
         self._grades_layout.setContentsMargins(0, 0, 0, 0)
         self._grades_layout.setSpacing(4)
-        self._grades_layout.setAlignment(Qt.AlignTop)
+        self._grades_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         scroll.setWidget(scroll_widget)
         report_layout.addWidget(scroll)
         
@@ -122,15 +122,17 @@ class ReportCardPage(QWidget):
         # Clear layout
         while self._grades_layout.count():
             item = self._grades_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            if item is not None:
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
         
         subjects = self._db.get_subjects_with_votes(term=self._current_term)
         
         if not subjects:
             empty = QLabel("No votes recorded yet")
             empty.setStyleSheet("color: gray; font-weight: bold; padding: 40px;")
-            empty.setAlignment(Qt.AlignCenter)
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._grades_layout.addWidget(empty)
             return
         
@@ -152,8 +154,8 @@ class ReportCardPage(QWidget):
         
         # Header separator
         line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFrameShadow(QFrame.Shadow.Sunken)
         self._grades_layout.addWidget(line)
         
         for subject in sorted(subjects):
@@ -187,8 +189,8 @@ class ReportCardPage(QWidget):
         
         # Footer separator
         line2 = QFrame()
-        line2.setFrameShape(QFrame.HLine)
-        line2.setFrameShadow(QFrame.Sunken)
+        line2.setFrameShape(QFrame.Shape.HLine)
+        line2.setFrameShadow(QFrame.Shadow.Sunken)
         self._grades_layout.addWidget(line2)
         
         # Overall average
@@ -208,8 +210,8 @@ class ReportCardPage(QWidget):
         self, 
         subject: str, 
         votes: list, 
-        type_label: str = None,
-        type_color: str = None
+        type_label: str | None = None,
+        type_color: str | None = None
     ):
         """Add a grade row to the report card."""
         avg = calc_average(votes)
@@ -260,7 +262,7 @@ class ReportCardPage(QWidget):
         grade_label = QLabel(f"<b>{final_grade}</b>")
         grade_label.setStyleSheet(get_grade_style(avg) + "font-size: 18px;")
         grade_label.setMinimumWidth(30)
-        grade_label.setAlignment(Qt.AlignCenter)
+        grade_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         row_layout.addWidget(grade_label)
         
         self._grades_layout.addWidget(row)
@@ -268,8 +270,7 @@ class ReportCardPage(QWidget):
     def _export_pdf(self):
         """Export report card to PDF."""
         try:
-            from reportlab.lib.pagesizes import A4
-            from reportlab.platypus import SimpleDocTemplate
+            import reportlab  # noqa: F401
         except ImportError:
             QMessageBox.warning(
                 self, "Missing Dependency",
@@ -523,16 +524,16 @@ class ReportCardPage(QWidget):
         modifiers = event.modifiers()
 
         # Ctrl+P: Export PDF
-        if modifiers == Qt.ControlModifier and key == Qt.Key_P:
+        if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_P:
             self._export_pdf()
             return True
 
         # 1/2: Switch term
-        if key == Qt.Key_1:
+        if key == Qt.Key.Key_1:
             self._term_toggle.set_term(1)
             self._on_term_changed(1)
             return True
-        if key == Qt.Key_2:
+        if key == Qt.Key.Key_2:
             self._term_toggle.set_term(2)
             self._on_term_changed(2)
             return True

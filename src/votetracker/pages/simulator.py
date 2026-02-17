@@ -2,6 +2,7 @@
 Simulator page for VoteTracker.
 Calculate required grades to reach target averages.
 """
+from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
@@ -12,7 +13,6 @@ from PySide6.QtCore import Qt
 from ..database import Database
 from ..utils import calc_average, get_grade_style
 from ..i18n import tr
-
 
 class SimulatorPage(QWidget):
     """Grade simulator page."""
@@ -212,7 +212,7 @@ class SimulatorPage(QWidget):
             
             value = QLabel(f"<b>{new_avg:.2f}</b>")
             value.setStyleSheet(get_grade_style(new_avg))
-            value.setAlignment(Qt.AlignCenter)
+            value.setAlignment(Qt.AlignmentFlag.AlignCenter)
             box_layout.addWidget(value)
             
             self._scenarios_layout.addWidget(box)
@@ -221,5 +221,6 @@ class SimulatorPage(QWidget):
         """Clear all scenario boxes."""
         while self._scenarios_layout.count():
             item = self._scenarios_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            w = item.widget() if item is not None else None
+            if w is not None:
+                w.deleteLater()

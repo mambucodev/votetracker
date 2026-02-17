@@ -2,6 +2,7 @@
 Custom Qt widgets for VoteTracker.
 Contains reusable UI components.
 """
+from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QLabel, QGroupBox, QVBoxLayout, QHBoxLayout, QFrame, QToolButton
@@ -13,7 +14,6 @@ from .utils import (
 )
 from .i18n import tr
 from .constants import NAV_BUTTON_WIDTH, NAV_BUTTON_HEIGHT
-
 
 class StatusIndicator(QLabel):
     """
@@ -47,7 +47,6 @@ class StatusIndicator(QLabel):
             self.setPixmap(icon.pixmap(20, 20))
             self.setStyleSheet("")
 
-
 class NavButton(QToolButton):
     """
     Navigation button with icon above text.
@@ -58,7 +57,7 @@ class NavButton(QToolButton):
     def __init__(self, icon_name: str, text: str, parent=None):
         super().__init__(parent)
         self.setCheckable(True)
-        self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.setFixedSize(NAV_BUTTON_WIDTH, NAV_BUTTON_HEIGHT)
 
         # Always use icons now (no emoji fallbacks)
@@ -74,7 +73,6 @@ class NavButton(QToolButton):
     def set_label(self, text: str):
         """Update the button label text."""
         self.setText(text)
-
 
 class DashboardSubjectCard(QGroupBox):
     """
@@ -127,8 +125,8 @@ class DashboardSubjectCard(QGroupBox):
         
         # Separator
         line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFrameShadow(QFrame.Sunken)
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFrameShadow(QFrame.Shadow.Sunken)
         layout.addWidget(line)
         
         # Details row
@@ -167,7 +165,6 @@ class DashboardSubjectCard(QGroupBox):
         details.addWidget(count_label)
         
         layout.addLayout(details)
-
 
 class SubjectCard(QGroupBox):
     """
@@ -256,8 +253,8 @@ class SubjectCard(QGroupBox):
             
             # Separator
             line = QFrame()
-            line.setFrameShape(QFrame.HLine)
-            line.setFrameShadow(QFrame.Sunken)
+            line.setFrameShape(QFrame.Shape.HLine)
+            line.setFrameShadow(QFrame.Shadow.Sunken)
             layout.addWidget(line)
             
             # Report card
@@ -272,7 +269,6 @@ class SubjectCard(QGroupBox):
             no_votes = QLabel("No votes yet")
             no_votes.setStyleSheet("color: gray; font-style: italic;")
             layout.addWidget(no_votes)
-
 
 class TermToggle(QFrame):
     """
@@ -324,7 +320,6 @@ class TermToggle(QFrame):
         self._btn1.setChecked(term == 1)
         self._btn2.setChecked(term == 2)
 
-
 class YearSelector(QFrame):
     """
     Widget for navigating between school years.
@@ -346,7 +341,7 @@ class YearSelector(QFrame):
         
         # Year label on top
         self._year_label = QLabel("-")
-        self._year_label.setAlignment(Qt.AlignCenter)
+        self._year_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._year_label.setStyleSheet("font-size: 11px; font-weight: bold;")
         layout.addWidget(self._year_label)
         
@@ -376,7 +371,7 @@ class YearSelector(QFrame):
         btn_layout.addWidget(self._next_btn)
         layout.addLayout(btn_layout)
     
-    def set_years(self, years: list, active_id: int = None):
+    def set_years(self, years: list, active_id: int | None = None):
         """Set available years and optionally select one."""
         self._years = years
         if not years:
@@ -420,7 +415,7 @@ class YearSelector(QFrame):
             self._update_display()
             self.year_changed.emit(self._years[self._current_index]["id"])
     
-    def get_current_year_id(self) -> int:
+    def get_current_year_id(self) -> int | None:
         if self._years and 0 <= self._current_index < len(self._years):
             return self._years[self._current_index]["id"]
         return None

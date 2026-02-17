@@ -2,16 +2,17 @@
 Settings page for VoteTracker.
 Import/export data and manage school years.
 """
+from __future__ import annotations
 
 import json
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QGroupBox, QTabWidget, QPlainTextEdit, QFileDialog, QMessageBox,
+    QGroupBox, QPlainTextEdit, QFileDialog, QMessageBox,
     QComboBox, QLineEdit, QCheckBox, QProgressBar, QScrollArea, QDialog,
-    QRadioButton, QButtonGroup, QStackedWidget
+    QRadioButton, QButtonGroup, QStackedWidget, QFrame
 )
-from PySide6.QtCore import Qt, Signal, QTimer, QThread, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QKeyEvent
 
 from ..database import Database, get_db_path
@@ -19,10 +20,9 @@ from ..utils import get_symbolic_icon
 from ..dialogs import ManageSchoolYearsDialog, ShortcutsHelpDialog, SubjectMappingDialog, ManageSubjectMappingsDialog
 from ..i18n import tr, get_language, set_language
 from ..classeviva import ClasseVivaClient, convert_classeviva_to_votetracker
-from ..sync_provider import SyncProviderRegistry
+from ..sync_provider import SyncProvider, SyncProviderRegistry
 from ..providers import register_all_providers
 from datetime import datetime
-
 
 class SettingsPage(QWidget):
     """Settings page with import/export and school year management."""
@@ -38,8 +38,31 @@ class SettingsPage(QWidget):
 
         # Initialize provider system
         register_all_providers()
-        self._provider_instances = {}  # provider_id -> provider instance
-        self._active_provider_id = None
+        self._provider_instances: dict[str, SyncProvider] = {}  # provider_id -> provider instance
+        self._active_provider_id: str | None = None
+
+        # Declare ClasseViva UI widgets (created in commented-out legacy section,
+        # but still referenced by legacy CV methods like _import_from_classeviva)
+        self._cv_username: QLineEdit = QLineEdit()
+        self._cv_password: QLineEdit = QLineEdit()
+        self._cv_save_creds: QCheckBox = QCheckBox()
+        self._cv_auto_login: QCheckBox = QCheckBox()
+        self._cv_creds_warning: QLabel = QLabel()
+        self._cv_test_btn: QPushButton = QPushButton()
+        self._cv_clear_creds_btn: QPushButton = QPushButton()
+        self._cv_status_label: QLabel = QLabel()
+        self._cv_import_btn: QPushButton = QPushButton()
+        self._cv_progress: QProgressBar = QProgressBar()
+        self._cv_last_import_label: QLabel = QLabel()
+        self._cv_import_status: QLabel = QLabel()
+        self._cv_auto_sync_enabled: QCheckBox = QCheckBox()
+        self._cv_sync_interval: QComboBox = QComboBox()
+        self._cv_show_notifications: QCheckBox = QCheckBox()
+        self._cv_auto_sync_status: QLabel = QLabel()
+        self._cv_next_sync_label: QLabel = QLabel()
+        self._cv_skip_duplicates: QCheckBox = QCheckBox()
+        self._cv_current_year_only: QCheckBox = QCheckBox()
+        self._cv_term_filter: QComboBox = QComboBox()
 
         self._setup_ui()
     
@@ -61,8 +84,8 @@ class SettingsPage(QWidget):
         # Scroll area for content
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QScrollArea.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         # Content widget
         content = QWidget()
@@ -123,7 +146,7 @@ class SettingsPage(QWidget):
 
         # Database location
         db_label = QLabel(tr("Database:") + " " + get_db_path())
-        db_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        db_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         db_label.setStyleSheet("color: #7f8c8d; font-size: 11px;")
         db_label.setWordWrap(True)
         data_layout.addWidget(db_label)
@@ -257,7 +280,7 @@ class SettingsPage(QWidget):
         none_layout = QVBoxLayout(none_page)
         none_label = QLabel(tr("No sync provider selected. Use manual data entry."))
         none_label.setStyleSheet("color: #95a5a6; font-style: italic; padding: 20px;")
-        none_label.setAlignment(Qt.AlignCenter)
+        none_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         none_layout.addWidget(none_label)
         self._provider_stack.addWidget(none_page)
         self._provider_pages["none"] = 0
@@ -265,6 +288,8 @@ class SettingsPage(QWidget):
         # Create a page for each registered provider
         for idx, (provider_id, provider_name) in enumerate(available_providers, start=1):
             provider = SyncProviderRegistry.get_provider(provider_id, self._db)
+            if provider is None:
+                continue
             page_widget = self._create_provider_page(provider_id, provider)
             self._provider_stack.addWidget(page_widget)
             self._provider_pages[provider_id] = idx
@@ -302,7 +327,7 @@ class SettingsPage(QWidget):
         password_layout = QHBoxLayout()
         password_layout.addWidget(QLabel(tr("Password") + ":"))
         self._cv_password = QLineEdit()
-        self._cv_password.setEchoMode(QLineEdit.Password)
+        self._cv_password.setEchoMode(QLineEdit.EchoMode.Password)
         password_layout.addWidget(self._cv_password, 1)
         account_layout.addLayout(password_layout)
 
@@ -528,7 +553,7 @@ class SettingsPage(QWidget):
             line_edit = QLineEdit()
             line_edit.setPlaceholderText(field_placeholder)
             if field_type == 'password':
-                line_edit.setEchoMode(QLineEdit.Password)
+                line_edit.setEchoMode(QLineEdit.EchoMode.Password)
 
             widgets['credential_fields'][field_name] = line_edit
             field_layout.addWidget(line_edit, 1)
@@ -888,11 +913,11 @@ class SettingsPage(QWidget):
             self, "Confirm Deletion",
             f"Are you sure you want to delete all votes in Term {term}?\n"
             "This action cannot be undone.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
         
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self._db.clear_votes(term=term)
             self.data_imported.emit()
             QMessageBox.information(
@@ -909,11 +934,11 @@ class SettingsPage(QWidget):
             self, "Confirm Deletion",
             f"Are you sure you want to delete ALL votes in {year_name}?\n"
             "This action cannot be undone.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self._db.clear_votes()
             self.data_imported.emit()
             QMessageBox.information(
@@ -1039,7 +1064,7 @@ class SettingsPage(QWidget):
 
     def _manage_subject_mappings(self):
         """Open the subject mappings management dialog."""
-        dialog = ManageSubjectMappingsDialog(self._db, self)
+        dialog = ManageSubjectMappingsDialog("classeviva", "ClasseViva", self._db, self)
         dialog.exec()
 
     def _import_from_classeviva(self):
@@ -1099,8 +1124,8 @@ class SettingsPage(QWidget):
         # Show mapping dialog if there are unmapped subjects
         if unmapped_subjects:
             self._cv_progress.setVisible(False)
-            dialog = SubjectMappingDialog(unmapped_subjects, self._db, self)
-            if dialog.exec() != QDialog.Accepted:
+            dialog = SubjectMappingDialog(unmapped_subjects, "classeviva", "ClasseViva", self._db, self)
+            if dialog.exec() != QDialog.DialogCode.Accepted:
                 # User cancelled mapping
                 self._cv_import_status.setText(tr("Import cancelled"))
                 self._cv_import_status.setStyleSheet("color: #f39c12;")
@@ -1119,7 +1144,6 @@ class SettingsPage(QWidget):
         imported_count = 0
         updated_count = 0
         skipped_count = 0
-        skip_duplicates = self._cv_skip_duplicates.isChecked()
 
         for grade in vt_grades:
             # Get active school year
@@ -1215,13 +1239,13 @@ class SettingsPage(QWidget):
         # Get main window to start/stop auto-sync
         main_window = self.window()
         if enabled:
-            main_window.start_auto_sync()
+            main_window.start_auto_sync()  # type: ignore[reportAttributeAccessIssue]
             self._cv_auto_sync_status.setText(tr("Auto-sync: Active"))
             self._cv_auto_sync_status.setStyleSheet("color: #27ae60;")
             self._cv_next_sync_label.setVisible(True)
             self._update_next_sync_label()
         else:
-            main_window.stop_auto_sync()
+            main_window.stop_auto_sync()  # type: ignore[reportAttributeAccessIssue]
             self._cv_auto_sync_status.setText(tr("Auto-sync: Disabled"))
             self._cv_auto_sync_status.setStyleSheet("color: #95a5a6;")
             self._cv_next_sync_label.setVisible(False)
@@ -1234,7 +1258,7 @@ class SettingsPage(QWidget):
         # Restart timer if auto-sync is enabled
         main_window = self.window()
         if self._cv_auto_sync_enabled.isChecked():
-            main_window.start_auto_sync()
+            main_window.start_auto_sync()  # type: ignore[reportAttributeAccessIssue]
             self._update_next_sync_label()
 
     def _update_next_sync_label(self):
@@ -1505,14 +1529,10 @@ class SettingsPage(QWidget):
             widgets['import_status'].setStyleSheet("color: #e74c3c;")
             return
 
-        print(f"DEBUG: Fetched {len(grades)} grades from provider")
-
         # Apply term filter
         term_filter = widgets['term_filter'].currentData()
         if term_filter > 0:
-            before_filter = len(grades)
             grades = [g for g in grades if g.get('term') == term_filter]
-            print(f"DEBUG: After term filter ({term_filter}): {len(grades)} grades (was {before_filter})")
 
         # Apply year filter
         if widgets['current_year_only'].isChecked():
@@ -1558,7 +1578,7 @@ class SettingsPage(QWidget):
 
             provider_name = provider.get_provider_name()
             dialog = SubjectMappingDialog(unmapped_subjects, provider_id, provider_name, self._db, self)
-            if dialog.exec() != QDialog.Accepted:
+            if dialog.exec() != QDialog.DialogCode.Accepted:
                 widgets['progress'].setVisible(False)
                 widgets['import_btn'].setEnabled(True)
                 widgets['import_status'].setText(tr("Import cancelled - subjects not mapped"))
@@ -1575,18 +1595,11 @@ class SettingsPage(QWidget):
         error_count = 0
         skip_duplicates = widgets['skip_duplicates'].isChecked()
 
-        print(f"DEBUG: Starting import of {len(grades)} grades")
-        print(f"DEBUG: Skip duplicates: {skip_duplicates}")
-
         for idx, grade in enumerate(grades):
             try:
-                print(f"DEBUG: Grade {idx+1}: {grade.get('subject')} - {grade.get('grade')} - {grade.get('date')} - Term {grade.get('term')}")
-
                 # Map subject
-                provider_subject = grade['subject']
-                vt_subject = subject_mappings.get(provider_subject, provider_subject)
-
-                print(f"DEBUG: Mapped {provider_subject} -> {vt_subject}")
+                provider_subject: str = grade['subject']
+                vt_subject: str = subject_mappings.get(provider_subject, provider_subject)
 
                 # Get or create subject
                 subject_id = self._db.get_subject_id(vt_subject)
@@ -1596,8 +1609,6 @@ class SettingsPage(QWidget):
 
                 # Get current term if not specified in grade
                 term = grade.get('term', self._db.get_current_term())
-
-                print(f"DEBUG: Term: {term}, School Year ID: {school_year_id}")
 
                 # Check if vote already exists by metadata (subject, date, type)
                 existing_vote = self._db.find_vote_by_metadata(
@@ -1617,7 +1628,6 @@ class SettingsPage(QWidget):
 
                     if has_changes:
                         # Update existing vote
-                        print(f"DEBUG: Updating existing vote (grade changed from {existing_vote['grade']} to {grade['grade']})")
                         self._db.update_vote(
                             vote_id=existing_vote['id'],
                             subject=vt_subject,
@@ -1630,11 +1640,9 @@ class SettingsPage(QWidget):
                         )
                         updated_count += 1
                         imported_count += 1
-                        print(f"DEBUG: Successfully updated!")
                     else:
                         # Exact duplicate - skip
                         if skip_duplicates:
-                            print(f"DEBUG: Skipping exact duplicate")
                             skipped_count += 1
                             continue
                         else:
@@ -1643,7 +1651,6 @@ class SettingsPage(QWidget):
                             continue
                 else:
                     # Add new vote
-                    print(f"DEBUG: Adding new vote to database...")
                     self._db.add_vote(
                         subject=vt_subject,
                         grade=grade['grade'],
@@ -1655,16 +1662,10 @@ class SettingsPage(QWidget):
                         school_year_id=school_year_id
                     )
                     imported_count += 1
-                    print(f"DEBUG: Successfully imported!")
 
-            except Exception as e:
-                print(f"ERROR importing grade {idx+1}: {e}")
-                import traceback
-                traceback.print_exc()
+            except Exception:
                 error_count += 1
                 continue
-
-        print(f"DEBUG: Import complete - New: {imported_count - updated_count}, Updated: {updated_count}, Skipped: {skipped_count}, Errors: {error_count}")
 
         # Hide progress
         widgets['progress'].setVisible(False)
@@ -1709,7 +1710,7 @@ class SettingsPage(QWidget):
 
     def _on_provider_auto_sync_toggled(self, provider_id: str, state):
         """Handle auto-sync toggle for a provider."""
-        enabled = state == Qt.Checked
+        enabled = state == Qt.CheckState.Checked
         self._db.set_provider_auto_sync_enabled(provider_id, enabled)
 
         widgets = self._provider_widgets.get(provider_id)
@@ -1735,13 +1736,13 @@ class SettingsPage(QWidget):
         key = event.key()
         modifiers = event.modifiers()
 
-        if modifiers == Qt.ControlModifier:
+        if modifiers == Qt.KeyboardModifier.ControlModifier:
             # Ctrl+I: Import from file
-            if key == Qt.Key_I:
+            if key == Qt.Key.Key_I:
                 self._import_from_file()
                 return True
             # Ctrl+E: Export to JSON
-            if key == Qt.Key_E:
+            if key == Qt.Key.Key_E:
                 self._export_to_json()
                 return True
 

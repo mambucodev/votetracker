@@ -2,6 +2,7 @@
 Statistics page for VoteTracker.
 Shows detailed analytics and grade distributions.
 """
+from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
@@ -15,7 +16,6 @@ from ..database import Database
 from ..utils import calc_average, get_status_color
 from ..widgets import TermToggle
 from ..i18n import tr
-
 
 class BarChart(QFrame):
     """Simple horizontal bar chart widget."""
@@ -39,12 +39,13 @@ class BarChart(QFrame):
         # Clear existing
         while self._layout.count():
             item = self._layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            w = item.widget() if item is not None else None
+            if w is not None:
+                w.deleteLater()
 
         if not self._data:
             empty = QLabel(tr("No data"))
-            empty.setAlignment(Qt.AlignCenter)
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._layout.addWidget(empty)
             return
 
@@ -70,7 +71,7 @@ class BarChart(QFrame):
             # Bar container
             bar_container = QFrame()
             bar_container.setFixedHeight(28)
-            bar_container.setFrameShape(QFrame.StyledPanel)
+            bar_container.setFrameShape(QFrame.Shape.StyledPanel)
             bar_layout = QHBoxLayout(bar_container)
             bar_layout.setContentsMargins(2, 2, 2, 2)
             bar_layout.setSpacing(0)
@@ -87,12 +88,11 @@ class BarChart(QFrame):
             # Value label
             val_lbl = QLabel(f"{value:.2f}")
             val_lbl.setFixedWidth(55)
-            val_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             val_lbl.setStyleSheet(f"font-weight: bold; color: {color};")
             row.addWidget(val_lbl)
 
             self._layout.addWidget(row_widget)
-
 
 class DistributionChart(QFrame):
     """Grade distribution histogram."""
@@ -106,7 +106,7 @@ class DistributionChart(QFrame):
         self._layout = QHBoxLayout(self)
         self._layout.setContentsMargins(10, 10, 10, 10)
         self._layout.setSpacing(6)
-        self._layout.setAlignment(Qt.AlignBottom | Qt.AlignHCenter)
+        self._layout.setAlignment(Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter)
 
     def set_data(self, grades: list):
         """Set distribution data from list of grades."""
@@ -137,12 +137,13 @@ class DistributionChart(QFrame):
         # Clear existing
         while self._layout.count():
             item = self._layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            w = item.widget() if item is not None else None
+            if w is not None:
+                w.deleteLater()
 
         if not self._data:
             empty = QLabel(tr("No data"))
-            empty.setAlignment(Qt.AlignCenter)
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._layout.addWidget(empty)
             return
 
@@ -157,7 +158,7 @@ class DistributionChart(QFrame):
 
             # Count label at top (fixed position)
             count_lbl = QLabel(str(count) if count > 0 else "")
-            count_lbl.setAlignment(Qt.AlignCenter)
+            count_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             count_lbl.setStyleSheet(f"font-weight: bold; color: {color};")
             count_lbl.setFixedHeight(20)
             col.addWidget(count_lbl)
@@ -171,18 +172,17 @@ class DistributionChart(QFrame):
             bar.setFixedWidth(40)
             bar.setFixedHeight(max(height, 3))
             bar.setStyleSheet(f"background: {color}; border-radius: 3px;")
-            col.addWidget(bar, 0, Qt.AlignCenter)
+            col.addWidget(bar, 0, Qt.AlignmentFlag.AlignCenter)
 
             # Range label at bottom
             range_lbl = QLabel(label)
-            range_lbl.setAlignment(Qt.AlignCenter)
+            range_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             range_lbl.setFixedHeight(20)
             col.addWidget(range_lbl)
 
             container = QWidget()
             container.setLayout(col)
             self._layout.addWidget(container)
-
 
 class TrendChart(QFrame):
     """Simple line chart showing grade trends over time."""
@@ -191,7 +191,7 @@ class TrendChart(QFrame):
         super().__init__(parent)
         self._data_points = []  # List of (date, grade)
         self.setMinimumHeight(200)
-        self.setFrameShape(QFrame.StyledPanel)
+        self.setFrameShape(QFrame.Shape.StyledPanel)
 
     def set_data(self, votes: list):
         """Set data from list of votes."""
@@ -214,11 +214,11 @@ class TrendChart(QFrame):
 
         if not self._data_points:
             painter = QPainter(self)
-            painter.drawText(self.rect(), Qt.AlignCenter, tr("No data"))
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, tr("No data"))
             return
 
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # Calculate drawing area with margins
         margin = 40
@@ -234,7 +234,7 @@ class TrendChart(QFrame):
             grade_range = 1
 
         # Draw grid lines with Y-axis labels
-        painter.setPen(QPen(QColor(150, 150, 150), 1, Qt.DotLine))
+        painter.setPen(QPen(QColor(150, 150, 150), 1, Qt.PenStyle.DotLine))
         for i in range(5):
             y = margin + (height * i / 4)
             painter.drawLine(margin, int(y), margin + width, int(y))
@@ -243,12 +243,12 @@ class TrendChart(QFrame):
             grade_val = max_grade - (grade_range * i / 4)
             painter.setPen(QColor(150, 150, 150))
             painter.drawText(5, int(y + 5), f"{grade_val:.1f}")
-            painter.setPen(QPen(QColor(150, 150, 150), 1, Qt.DotLine))
+            painter.setPen(QPen(QColor(150, 150, 150), 1, Qt.PenStyle.DotLine))
 
         # Draw passing threshold (6.0)
         if min_grade <= 6 <= max_grade:
             passing_y = margin + height * (1 - (6 - min_grade) / grade_range)
-            painter.setPen(QPen(QColor("#27ae60"), 1, Qt.DashLine))
+            painter.setPen(QPen(QColor("#27ae60"), 1, Qt.PenStyle.DashLine))
             painter.drawLine(margin, int(passing_y), margin + width, int(passing_y))
             # Label the passing line
             painter.setPen(QColor("#27ae60"))
@@ -300,9 +300,8 @@ class TrendChart(QFrame):
         try:
             date_obj = datetime.strptime(date_str, "%Y-%m-%d")
             return date_obj.strftime("%d/%m")
-        except:
+        except (ValueError, TypeError):
             return date_str[:10] if len(date_str) >= 10 else date_str
-
 
 class StatisticsPage(QWidget):
     """Statistics page with analytics and charts."""
@@ -335,7 +334,7 @@ class StatisticsPage(QWidget):
         # Scroll area for content
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll_widget = QWidget()
         scroll_layout = QVBoxLayout(scroll_widget)
         scroll_layout.setContentsMargins(0, 0, 0, 0)
@@ -525,8 +524,9 @@ class StatisticsPage(QWidget):
         # Clear existing
         while layout.count():
             item = layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            w = item.widget() if item is not None else None
+            if w is not None:
+                w.deleteLater()
 
         if not subjects:
             empty = QLabel(tr("No data"))
@@ -557,11 +557,11 @@ class StatisticsPage(QWidget):
         key = event.key()
 
         # 1/2: Switch term
-        if key == Qt.Key_1:
+        if key == Qt.Key.Key_1:
             self._term_toggle.set_term(1)
             self._on_term_changed(1)
             return True
-        if key == Qt.Key_2:
+        if key == Qt.Key.Key_2:
             self._term_toggle.set_term(2)
             self._on_term_changed(2)
             return True

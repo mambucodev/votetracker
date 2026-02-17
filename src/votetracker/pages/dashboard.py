@@ -2,6 +2,7 @@
 Dashboard page for VoteTracker.
 Shows overview statistics and subject cards.
 """
+from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
@@ -13,7 +14,6 @@ from ..database import Database
 from ..utils import calc_average, get_grade_style
 from ..widgets import DashboardSubjectCard
 from ..i18n import tr
-
 
 class DashboardPage(QWidget):
     """Dashboard page with statistics overview."""
@@ -43,7 +43,7 @@ class DashboardPage(QWidget):
         stats_layout = QVBoxLayout(self._stats_group)
         stats_layout.setContentsMargins(12, 12, 12, 12)
         stats_layout.setSpacing(12)
-        stats_layout.setAlignment(Qt.AlignCenter)  # Center horizontally
+        stats_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center horizontally
 
         # Store stat box tuples: (layout, label_widget, value_widget, key)
         self._stat_boxes = {}
@@ -76,12 +76,12 @@ class DashboardPage(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll_widget = QWidget()
         self._subjects_grid = QGridLayout(scroll_widget)
         self._subjects_grid.setContentsMargins(4, 4, 4, 4)
         self._subjects_grid.setSpacing(12)
-        self._subjects_grid.setAlignment(Qt.AlignTop)
+        self._subjects_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
         scroll.setWidget(scroll_widget)
         overview_layout.addWidget(scroll)
 
@@ -91,15 +91,15 @@ class DashboardPage(QWidget):
         """Create a statistics display box. Returns (layout, label_widget, value_widget)."""
         box = QVBoxLayout()
         box.setSpacing(4)
-        box.setAlignment(Qt.AlignCenter)  # Center the content
+        box.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center the content
 
         label_widget = QLabel(label)
         label_widget.setStyleSheet("color: gray; font-size: 12px;")
-        label_widget.setAlignment(Qt.AlignCenter)
+        label_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         value_widget = QLabel(value)
         value_widget.setStyleSheet("font-size: 24px; font-weight: bold;")
-        value_widget.setAlignment(Qt.AlignCenter)
+        value_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         box.addWidget(label_widget)
         box.addWidget(value_widget)
@@ -111,13 +111,15 @@ class DashboardPage(QWidget):
         # Clear existing items
         while self._recent_container.count():
             item = self._recent_container.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            if item is not None:
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
 
         if not votes:
             empty = QLabel(tr("No votes recorded yet"))
             empty.setStyleSheet("color: gray; padding: 20px;")
-            empty.setAlignment(Qt.AlignCenter)
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._recent_container.addWidget(empty)
             return
 
@@ -137,8 +139,8 @@ class DashboardPage(QWidget):
             # Add separator between items (but not after the last one)
             if i < len(recent_votes) - 1:
                 separator = QFrame()
-                separator.setFrameShape(QFrame.HLine)
-                separator.setFrameShadow(QFrame.Plain)
+                separator.setFrameShape(QFrame.Shape.HLine)
+                separator.setFrameShadow(QFrame.Shadow.Plain)
                 separator.setFixedHeight(1)
                 separator.setStyleSheet("background-color: rgba(128, 128, 128, 0.3);")
                 self._recent_container.addWidget(separator)
@@ -153,7 +155,7 @@ class DashboardPage(QWidget):
     def _create_recent_grade_item(self, vote: dict) -> QWidget:
         """Create a widget for a single recent grade item."""
         item = QFrame()
-        item.setFrameShape(QFrame.StyledPanel)
+        item.setFrameShape(QFrame.Shape.StyledPanel)
         item_layout = QHBoxLayout(item)
         item_layout.setContentsMargins(8, 6, 8, 6)
         item_layout.setSpacing(12)
@@ -169,7 +171,7 @@ class DashboardPage(QWidget):
         grade_label = QLabel(f"{grade:.2f}" if grade > 0 else "+/-")
         grade_label.setStyleSheet(get_grade_style(grade) + "font-weight: bold; font-size: 16px;")
         grade_label.setFixedWidth(50)
-        grade_label.setAlignment(Qt.AlignCenter)
+        grade_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         item_layout.addWidget(grade_label)
 
         # Vote type
@@ -186,7 +188,7 @@ class DashboardPage(QWidget):
                 from datetime import datetime
                 date_obj = datetime.strptime(date_str, "%Y-%m-%d")
                 formatted_date = date_obj.strftime("%d/%m/%Y")
-            except:
+            except (ValueError, TypeError):
                 formatted_date = date_str
         else:
             formatted_date = "-"
@@ -208,7 +210,7 @@ class DashboardPage(QWidget):
 
         return item
 
-    def set_term_filter(self, term: int = None):
+    def set_term_filter(self, term: int | None = None):
         """Set term filter (None for all terms)."""
         self._current_term = term
     
@@ -254,13 +256,15 @@ class DashboardPage(QWidget):
         # Clear subjects grid
         while self._subjects_grid.count():
             item = self._subjects_grid.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            if item is not None:
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
         
         if not subjects_with_votes:
             empty = QLabel(tr("No votes recorded yet"))
             empty.setStyleSheet("color: gray; font-weight: bold; padding: 40px;")
-            empty.setAlignment(Qt.AlignCenter)
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._subjects_grid.addWidget(empty, 0, 0, 1, 3)
             return
         

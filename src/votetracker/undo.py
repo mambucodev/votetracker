@@ -2,28 +2,26 @@
 Undo/Redo manager for VoteTracker.
 Tracks vote operations and allows undoing/redoing them.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, List
+from typing import Any
 from enum import Enum
 
 from PySide6.QtCore import QObject, Signal
-
 
 class ActionType(Enum):
     ADD = "add"
     EDIT = "edit"
     DELETE = "delete"
 
-
 @dataclass
 class UndoAction:
     """Represents an undoable action."""
     action_type: ActionType
-    vote_id: Optional[int]  # None for ADD before execution
-    vote_data: Dict[str, Any]  # The vote data
-    previous_data: Optional[Dict[str, Any]] = None  # For EDIT: previous state
-
+    vote_id: int | None  # None for ADD before execution
+    vote_data: dict[str, Any]  # The vote data
+    previous_data: dict[str, Any] | None = None  # For EDIT: previous state
 
 class UndoManager(QObject):
     """Manages undo/redo stacks for vote operations."""
@@ -33,8 +31,8 @@ class UndoManager(QObject):
     def __init__(self, db, max_history: int = 50):
         super().__init__()
         self._db = db
-        self._undo_stack: List[UndoAction] = []
-        self._redo_stack: List[UndoAction] = []
+        self._undo_stack: list[UndoAction] = []
+        self._redo_stack: list[UndoAction] = []
         self._max_history = max_history
 
     def can_undo(self) -> bool:
@@ -55,7 +53,7 @@ class UndoManager(QObject):
         action = self._redo_stack[-1]
         return f"Redo {action.action_type.value} {action.vote_data.get('subject', '')}"
 
-    def record_add(self, vote_id: int, vote_data: Dict[str, Any]):
+    def record_add(self, vote_id: int, vote_data: dict[str, Any]):
         """Record an add operation."""
         action = UndoAction(
             action_type=ActionType.ADD,
@@ -64,7 +62,7 @@ class UndoManager(QObject):
         )
         self._push_undo(action)
 
-    def record_edit(self, vote_id: int, previous_data: Dict[str, Any], new_data: Dict[str, Any]):
+    def record_edit(self, vote_id: int, previous_data: dict[str, Any], new_data: dict[str, Any]):
         """Record an edit operation."""
         action = UndoAction(
             action_type=ActionType.EDIT,
@@ -74,7 +72,7 @@ class UndoManager(QObject):
         )
         self._push_undo(action)
 
-    def record_delete(self, vote_id: int, vote_data: Dict[str, Any]):
+    def record_delete(self, vote_id: int, vote_data: dict[str, Any]):
         """Record a delete operation."""
         action = UndoAction(
             action_type=ActionType.DELETE,
@@ -105,12 +103,13 @@ class UndoManager(QObject):
         elif action.action_type == ActionType.EDIT:
             # Undo edit = restore previous data
             prev = action.previous_data
-            self._db.update_vote(
-                action.vote_id,
-                prev["subject"], prev["grade"], prev["type"],
-                prev["date"], prev["description"],
-                prev["term"], prev.get("weight", 1.0)
-            )
+            if prev is not None:
+                self._db.update_vote(
+                    action.vote_id,
+                    prev["subject"], prev["grade"], prev["type"],
+                    prev["date"], prev["description"],
+                    prev["term"], prev.get("weight", 1.0)
+                )
 
         elif action.action_type == ActionType.DELETE:
             # Undo delete = re-add

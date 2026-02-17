@@ -2,9 +2,9 @@
 Subject matching utility for ClasseViva import.
 Provides fuzzy matching and auto-suggestions for mapping ClasseViva subjects to VoteTracker subjects.
 """
+from __future__ import annotations
 
-from typing import List, Dict, Optional, Tuple
-
+from typing import Any
 
 # Common subject keyword mappings (Italian/English variations)
 SUBJECT_KEYWORDS = {
@@ -29,13 +29,11 @@ SUBJECT_KEYWORDS = {
     "German": ["tedesco", "german", "lingua tedesca"],
 }
 
-
 def normalize_subject(subject: str) -> str:
     """Normalize subject name for comparison (lowercase, strip whitespace)."""
     return subject.lower().strip()
 
-
-def find_best_match(cv_subject: str, vt_subjects: List[str]) -> Optional[Tuple[str, float]]:
+def find_best_match(cv_subject: str, vt_subjects: list[str]) -> tuple[str, float] | None:
     """
     Find the best matching VoteTracker subject for a ClasseViva subject.
 
@@ -93,13 +91,12 @@ def find_best_match(cv_subject: str, vt_subjects: List[str]) -> Optional[Tuple[s
             best_match = vt_subject
 
     # Only return matches with confidence > 0.6
-    if best_score > 0.6:
+    if best_score > 0.6 and best_match is not None:
         return (best_match, best_score)
 
     return None
 
-
-def suggest_canonical_name(cv_subject: str) -> Optional[str]:
+def suggest_canonical_name(cv_subject: str) -> str | None:
     """
     Suggest a canonical subject name based on keywords.
 
@@ -117,8 +114,7 @@ def suggest_canonical_name(cv_subject: str) -> Optional[str]:
 
     return None
 
-
-def get_auto_suggestions(cv_subject: str, vt_subjects: List[str]) -> Dict[str, any]:
+def get_auto_suggestions(cv_subject: str, vt_subjects: list[str]) -> dict[str, Any]:
     """
     Get auto-suggestion for mapping a ClasseViva subject.
 
@@ -142,22 +138,24 @@ def get_auto_suggestions(cv_subject: str, vt_subjects: List[str]) -> Dict[str, a
 
     # Try to find existing match
     match = find_best_match(cv_subject, vt_subjects)
-    if match:
+    confidence: float = 0.0
+    if match is not None:
         result["suggested_match"] = match[0]
         result["confidence"] = match[1]
+        confidence = match[1]
 
         # High confidence - suggest mapping
-        if match[1] > 0.8:
+        if confidence > 0.8:
             result["action"] = "map"
         else:
             result["action"] = "manual"
 
     # If no good existing match, suggest creating a canonical name
-    if not match or match[1] < 0.8:
+    if match is None or confidence < 0.8:
         canonical = suggest_canonical_name(cv_subject)
         if canonical:
             result["suggested_new"] = canonical
-            if not match or match[1] < 0.7:
+            if match is None or confidence < 0.7:
                 result["action"] = "create"
 
     return result

@@ -2,17 +2,17 @@
 Database module for VoteTracker.
 Handles SQLite database operations for subjects, votes, school years, and settings.
 """
+from __future__ import annotations
 
 import os
 import sys
 import sqlite3
 import base64
 import logging
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Any
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
-
 
 def get_data_dir() -> str:
     """Get the application data directory following XDG specification."""
@@ -28,11 +28,9 @@ def get_data_dir() -> str:
     os.makedirs(data_dir, exist_ok=True)
     return data_dir
 
-
 def get_db_path() -> str:
     """Get the database file path."""
     return os.path.join(get_data_dir(), "votes.db")
-
 
 class Database:
     """SQLite database manager for votes, subjects, school years, and settings."""
@@ -196,7 +194,7 @@ class Database:
     # SCHOOL YEARS
     # ========================================================================
     
-    def get_school_years(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
+    def get_school_years(self, force_refresh: bool = False) -> list[dict[str, Any]]:
         """
         Get all school years ordered by start year descending (cached).
 
@@ -217,7 +215,7 @@ class Database:
                 self._year_cache = [dict(row) for row in cursor.fetchall()]
         return [dict(y) for y in self._year_cache]  # Return deep copy
     
-    def get_active_school_year(self) -> Optional[Dict[str, Any]]:
+    def get_active_school_year(self) -> dict[str, Any] | None:
         """Get the currently active school year."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -255,7 +253,7 @@ class Database:
                 conn.commit()
                 self._year_cache = None  # Invalidate cache
                 return True
-        except sqlite3.IntegrityError as e:
+        except sqlite3.IntegrityError:
             logger.warning(f"School year {year_name} already exists")
             return False
         except sqlite3.Error as e:
@@ -307,7 +305,7 @@ class Database:
     # SETTINGS
     # ========================================================================
     
-    def get_setting(self, key: str, default: str = None) -> Optional[str]:
+    def get_setting(self, key: str, default: str | None = None) -> str | None:
         """Get a setting value."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -327,7 +325,7 @@ class Database:
     
     def get_current_term(self) -> int:
         """Get the current term (1 or 2)."""
-        return int(self.get_setting("current_term", "1"))
+        return int(self.get_setting("current_term", "1") or "1")
     
     def set_current_term(self, term: int):
         """Set the current term (1 or 2)."""
@@ -346,7 +344,7 @@ class Database:
         self.set_setting("classeviva_username", encoded_user)
         self.set_setting("classeviva_password", encoded_pass)
 
-    def get_classeviva_credentials(self) -> Tuple[Optional[str], Optional[str]]:
+    def get_classeviva_credentials(self) -> tuple[str | None, str | None]:
         """Retrieve stored ClasseViva credentials."""
         encoded_user = self.get_setting("classeviva_username")
         encoded_pass = self.get_setting("classeviva_password")
@@ -372,7 +370,7 @@ class Database:
         return user is not None and pwd is not None
 
     # ClasseViva sync settings
-    def get_last_sync_time(self) -> Optional[str]:
+    def get_last_sync_time(self) -> str | None:
         """Get the last ClasseViva sync timestamp."""
         return self.get_setting("classeviva_last_sync")
 
@@ -390,7 +388,7 @@ class Database:
 
     def get_sync_interval(self) -> int:
         """Get the auto-sync interval in minutes."""
-        return int(self.get_setting("classeviva_sync_interval", "60"))
+        return int(self.get_setting("classeviva_sync_interval", "60") or "60")
 
     def set_sync_interval(self, minutes: int):
         """Set the auto-sync interval in minutes."""
@@ -404,11 +402,11 @@ class Database:
         """Save a ClasseViva to VoteTracker subject mapping."""
         self.set_setting(f"cv_mapping_{cv_subject}", vt_subject)
 
-    def get_subject_mapping(self, cv_subject: str) -> Optional[str]:
+    def get_subject_mapping(self, cv_subject: str) -> str | None:
         """Get the VoteTracker subject for a ClasseViva subject."""
         return self.get_setting(f"cv_mapping_{cv_subject}")
 
-    def get_all_subject_mappings(self) -> Dict[str, str]:
+    def get_all_subject_mappings(self) -> dict[str, str]:
         """Get all ClasseViva subject mappings."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -436,7 +434,7 @@ class Database:
     # Provider-agnostic methods for managing multiple sync providers
     # (ClasseViva, Axios, etc.)
 
-    def get_active_provider(self) -> Optional[str]:
+    def get_active_provider(self) -> str | None:
         """
         Get the currently active sync provider.
 
@@ -451,7 +449,7 @@ class Database:
             return "classeviva"
         return active
 
-    def set_active_provider(self, provider_id: Optional[str]):
+    def set_active_provider(self, provider_id: str | None):
         """
         Set the active sync provider.
 
@@ -460,7 +458,7 @@ class Database:
         """
         self.set_setting("active_sync_provider", provider_id or "")
 
-    def save_provider_credentials(self, provider_id: str, credentials: Dict[str, str]):
+    def save_provider_credentials(self, provider_id: str, credentials: dict[str, str]):
         """
         Save credentials for a provider.
 
@@ -473,7 +471,7 @@ class Database:
             encoded_value = base64.b64encode(value.encode()).decode()
             self.set_setting(f"{provider_id}_{field_name}", encoded_value)
 
-    def get_provider_credentials(self, provider_id: str, field_names: List[str]) -> Dict[str, Optional[str]]:
+    def get_provider_credentials(self, provider_id: str, field_names: list[str]) -> dict[str, str | None]:
         """
         Get credentials for a provider.
 
@@ -496,7 +494,7 @@ class Database:
                 credentials[field_name] = None
         return credentials
 
-    def clear_provider_credentials(self, provider_id: str, field_names: List[str]):
+    def clear_provider_credentials(self, provider_id: str, field_names: list[str]):
         """
         Clear credentials for a provider.
 
@@ -507,7 +505,7 @@ class Database:
         for field_name in field_names:
             self.set_setting(f"{provider_id}_{field_name}", "")
 
-    def has_provider_credentials(self, provider_id: str, field_names: List[str]) -> bool:
+    def has_provider_credentials(self, provider_id: str, field_names: list[str]) -> bool:
         """
         Check if all required credentials are stored for a provider.
 
@@ -532,7 +530,7 @@ class Database:
         """
         self.set_setting(f"{provider_id}_mapping_{source_subject}", target_subject)
 
-    def get_provider_subject_mapping(self, provider_id: str, source_subject: str) -> Optional[str]:
+    def get_provider_subject_mapping(self, provider_id: str, source_subject: str) -> str | None:
         """
         Get the VoteTracker subject for a provider's subject.
 
@@ -545,7 +543,7 @@ class Database:
         """
         return self.get_setting(f"{provider_id}_mapping_{source_subject}")
 
-    def get_all_provider_subject_mappings(self, provider_id: str) -> Dict[str, str]:
+    def get_all_provider_subject_mappings(self, provider_id: str) -> dict[str, str]:
         """
         Get all subject mappings for a provider.
 
@@ -588,7 +586,7 @@ class Database:
             conn.commit()
 
     # Provider sync settings
-    def get_provider_last_sync(self, provider_id: str) -> Optional[str]:
+    def get_provider_last_sync(self, provider_id: str) -> str | None:
         """Get last sync timestamp for provider."""
         return self.get_setting(f"{provider_id}_last_sync")
 
@@ -606,7 +604,7 @@ class Database:
 
     def get_provider_sync_interval(self, provider_id: str) -> int:
         """Get auto-sync interval in minutes for provider."""
-        return int(self.get_setting(f"{provider_id}_sync_interval", "60"))
+        return int(self.get_setting(f"{provider_id}_sync_interval", "60") or "60")
 
     def set_provider_sync_interval(self, provider_id: str, minutes: int):
         """Set auto-sync interval in minutes for provider."""
@@ -624,7 +622,7 @@ class Database:
     # SUBJECTS
     # ========================================================================
     
-    def get_subjects(self, force_refresh: bool = False) -> List[str]:
+    def get_subjects(self, force_refresh: bool = False) -> list[str]:
         """
         Get all subject names ordered alphabetically (cached).
 
@@ -641,7 +639,7 @@ class Database:
                 self._subject_cache = [row["name"] for row in cursor.fetchall()]
         return self._subject_cache.copy()  # Return copy to prevent external mutation
     
-    def get_subject_id(self, name: str) -> Optional[int]:
+    def get_subject_id(self, name: str) -> int | None:
         """Get subject ID by name."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -649,7 +647,7 @@ class Database:
             row = cursor.fetchone()
             return row["id"] if row else None
     
-    def add_subject(self, name: str) -> Optional[int]:
+    def add_subject(self, name: str) -> int | None:
         """
         Add a new subject.
 
@@ -736,10 +734,10 @@ class Database:
     
     def get_votes(
         self, 
-        subject: str = None, 
-        school_year_id: int = None,
-        term: int = None
-    ) -> List[Dict[str, Any]]:
+        subject: str | None = None, 
+        school_year_id: int | None = None,
+        term: int | None = None
+    ) -> list[dict[str, Any]]:
         """
         Get votes with optional filters.
         If school_year_id is None, uses the active school year.
@@ -759,7 +757,7 @@ class Database:
                 JOIN subjects s ON v.subject_id = s.id
                 WHERE v.school_year_id = ?
             """
-            params = [school_year_id]
+            params: list[Any] = [school_year_id]
             
             if subject:
                 query += " AND s.name = ?"
@@ -781,10 +779,10 @@ class Database:
         vote_type: str,
         date: str,
         description: str,
-        term: int = None,
+        term: int | None = None,
         weight: float = 1.0,
-        school_year_id: int = None
-    ) -> Optional[int]:
+        school_year_id: int | None = None
+    ) -> int | None:
         """
         Add a new vote.
 
@@ -868,7 +866,7 @@ class Database:
             logger.error(f"Unexpected error updating vote {vote_id}: {e}")
             return False
     
-    def get_vote(self, vote_id: int) -> Optional[Dict[str, Any]]:
+    def get_vote(self, vote_id: int) -> dict[str, Any] | None:
         """Get a single vote by ID."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -908,7 +906,7 @@ class Database:
         grade: float,
         date: str,
         vote_type: str,
-        school_year_id: int = None
+        school_year_id: int | None = None
     ) -> bool:
         """
         Check if a vote with the same characteristics already exists.
@@ -952,8 +950,8 @@ class Database:
         subject: str,
         date: str,
         vote_type: str,
-        school_year_id: int = None
-    ) -> dict:
+        school_year_id: int | None = None
+    ) -> dict[str, Any] | None:
         """
         Find an existing vote by subject, date, and type (ignoring grade value).
         Used for updating grades when teachers edit them.
@@ -1003,7 +1001,7 @@ class Database:
                 }
             return None
 
-    def get_grade_statistics(self) -> Dict[str, Any]:
+    def get_grade_statistics(self) -> dict[str, Any]:
         """
         Get aggregated grade statistics in a single query.
 
@@ -1070,9 +1068,9 @@ class Database:
 
     def get_subjects_with_votes(
         self, 
-        school_year_id: int = None,
-        term: int = None
-    ) -> List[str]:
+        school_year_id: int | None = None,
+        term: int | None = None
+    ) -> list[str]:
         """Get subjects that have votes in the specified school year/term."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -1087,7 +1085,7 @@ class Database:
                 JOIN votes v ON s.id = v.subject_id
                 WHERE v.school_year_id = ?
             """
-            params = [school_year_id]
+            params: list[Any] = [school_year_id]
             
             if term is not None:
                 query += " AND v.term = ?"
@@ -1102,7 +1100,7 @@ class Database:
     # IMPORT / EXPORT
     # ========================================================================
     
-    def import_votes(self, votes: List[Dict[str, Any]], school_year_id: int = None) -> bool:
+    def import_votes(self, votes: list[dict[str, Any]], school_year_id: int | None = None) -> bool:
         """
         Import votes from a list of dictionaries.
 
@@ -1122,7 +1120,7 @@ class Database:
 
                 # Map Italian type names
                 type_map = {"Scritto": "Written", "Orale": "Oral", "Pratico": "Practical"}
-                vote_type = type_map.get(vote_type, vote_type)
+                vote_type = type_map.get(str(vote_type), str(vote_type))
 
                 result = self.add_vote(
                     subject, grade, vote_type, date, description,
@@ -1135,11 +1133,11 @@ class Database:
             logger.error(f"Error importing votes: {e}")
             return False
     
-    def export_votes(self, school_year_id: int = None, term: int = None) -> List[Dict[str, Any]]:
+    def export_votes(self, school_year_id: int | None = None, term: int | None = None) -> list[dict[str, Any]]:
         """Export votes to a list of dictionaries."""
         return self.get_votes(school_year_id=school_year_id, term=term)
     
-    def clear_votes(self, school_year_id: int = None, term: int = None) -> bool:
+    def clear_votes(self, school_year_id: int | None = None, term: int | None = None) -> bool:
         """
         Clear votes with optional filters.
 
@@ -1177,7 +1175,7 @@ class Database:
     # GRADE GOALS
     # ========================================================================
 
-    def set_grade_goal(self, subject: str, target_grade: float, school_year_id: int = None, term: int = None) -> bool:
+    def set_grade_goal(self, subject: str, target_grade: float, school_year_id: int | None = None, term: int | None = None) -> bool:
         """
         Set or update grade goal for a subject.
 
@@ -1215,7 +1213,7 @@ class Database:
             logger.error(f"Unexpected error setting grade goal: {e}")
             return False
 
-    def get_grade_goal(self, subject: str, school_year_id: int = None, term: int = None) -> Optional[float]:
+    def get_grade_goal(self, subject: str, school_year_id: int | None = None, term: int | None = None) -> float | None:
         """
         Get grade goal for a subject.
 
@@ -1251,7 +1249,7 @@ class Database:
             logger.error(f"Unexpected error getting grade goal: {e}")
             return None
 
-    def delete_grade_goal(self, subject: str, school_year_id: int = None, term: int = None) -> bool:
+    def delete_grade_goal(self, subject: str, school_year_id: int | None = None, term: int | None = None) -> bool:
         """
         Delete grade goal for a subject.
 
@@ -1287,7 +1285,7 @@ class Database:
             logger.error(f"Unexpected error deleting grade goal: {e}")
             return False
 
-    def get_all_grade_goals(self, school_year_id: int = None, term: int = None) -> Dict[str, float]:
+    def get_all_grade_goals(self, school_year_id: int | None = None, term: int | None = None) -> dict[str, float]:
         """
         Get all grade goals for current year/term.
 
@@ -1320,7 +1318,7 @@ class Database:
             logger.error(f"Unexpected error getting all grade goals: {e}")
             return {}
 
-    def calculate_needed_grade(self, subject: str, target_avg: float, school_year_id: int = None, term: int = None, weight: float = 1.0) -> Optional[float]:
+    def calculate_needed_grade(self, subject: str, target_avg: float, school_year_id: int | None = None, term: int | None = None, weight: float = 1.0) -> float | None:
         """
         Calculate what grade is needed next to reach target average.
 

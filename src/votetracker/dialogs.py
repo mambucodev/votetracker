@@ -2,8 +2,8 @@
 Dialog classes for VoteTracker.
 Contains all popup dialogs for adding/editing data.
 """
+from __future__ import annotations
 
-from typing import Dict, Optional, List, Tuple
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QPushButton, QLineEdit, QComboBox, QDoubleSpinBox,
@@ -18,14 +18,13 @@ from .utils import get_symbolic_icon
 from .i18n import tr, PRESET_SUBJECTS, get_translated_subjects
 from .subject_matcher import get_auto_suggestions
 
-
 class AddVoteDialog(QDialog):
     """Dialog for adding or editing a vote."""
     
     def __init__(
         self, 
         db: Database, 
-        vote: Dict = None, 
+        vote: dict | None = None, 
         current_term: int = 1,
         parent=None
     ):
@@ -142,7 +141,7 @@ class AddVoteDialog(QDialog):
         # Weight
         self._weight_spin.setValue(self._vote.get("weight", 1.0))
     
-    def get_vote_data(self) -> Dict:
+    def get_vote_data(self) -> dict:
         """Get the entered vote data."""
         return {
             "subject": self._subject_combo.currentText(),
@@ -153,7 +152,6 @@ class AddVoteDialog(QDialog):
             "description": self._desc_edit.text(),
             "weight": self._weight_spin.value()
         }
-
 
 class AddSubjectDialog(QDialog):
     """Dialog for adding a new subject."""
@@ -196,7 +194,6 @@ class AddSubjectDialog(QDialog):
         """Get the entered subject name."""
         return self._name_edit.text().strip()
 
-
 class EditSubjectDialog(QDialog):
     """Dialog for editing or deleting a subject."""
     
@@ -204,8 +201,8 @@ class EditSubjectDialog(QDialog):
         super().__init__(parent)
         self._subject_name = subject_name
         self._vote_count = vote_count
-        self.action: Optional[str] = None  # "rename" or "delete"
-        self.new_name: Optional[str] = None
+        self.action: str | None = None  # "rename" or "delete"
+        self.new_name: str | None = None
         
         self.setWindowTitle(f"Edit Subject: {subject_name}")
         self.setMinimumWidth(300)
@@ -270,15 +267,14 @@ class EditSubjectDialog(QDialog):
                 f"Are you sure you want to delete '{self._subject_name}' "
                 f"and all {self._vote_count} associated votes?\n\n"
                 "This action cannot be undone.",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
             )
-            if reply != QMessageBox.Yes:
+            if reply != QMessageBox.StandardButton.Yes:
                 return
         
         self.action = "delete"
         self.accept()
-
 
 class AddSchoolYearDialog(QDialog):
     """Dialog for adding a new school year."""
@@ -354,7 +350,6 @@ class AddSchoolYearDialog(QDialog):
         """Get the selected start year."""
         return self._year_spin.value()
 
-
 class ManageSchoolYearsDialog(QDialog):
     """Dialog for managing school years."""
     
@@ -377,7 +372,8 @@ class ManageSchoolYearsDialog(QDialog):
         # List
         from PySide6.QtWidgets import QListWidget
         self._list = QListWidget()
-        self._list.setSelectionMode(QListWidget.SingleSelection)
+        from PySide6.QtWidgets import QAbstractItemView
+        self._list.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         layout.addWidget(self._list)
         
         # Buttons row
@@ -421,7 +417,7 @@ class ManageSchoolYearsDialog(QDialog):
             
             from PySide6.QtWidgets import QListWidgetItem
             item = QListWidgetItem(text)
-            item.setData(Qt.UserRole, year["id"])
+            item.setData(Qt.ItemDataRole.UserRole, year["id"])
             self._list.addItem(item)
         
         # Update button states
@@ -433,7 +429,7 @@ class ManageSchoolYearsDialog(QDialog):
         years = self._db.get_school_years()
         dialog = AddSchoolYearDialog(years, self)
         
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             start_year = dialog.get_start_year()
             if self._db.add_school_year(start_year):
                 self._changed = True
@@ -444,16 +440,16 @@ class ManageSchoolYearsDialog(QDialog):
         if not item:
             return
         
-        year_id = item.data(Qt.UserRole)
+        year_id = item.data(Qt.ItemDataRole.UserRole)
         reply = QMessageBox.warning(
             self, "Confirm Deletion",
             "Are you sure you want to delete this school year?\n"
             "All votes in this year will be deleted.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
         
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             if self._db.delete_school_year(year_id):
                 self._changed = True
                 self._refresh_list()
@@ -463,7 +459,7 @@ class ManageSchoolYearsDialog(QDialog):
         if not item:
             return
         
-        year_id = item.data(Qt.UserRole)
+        year_id = item.data(Qt.ItemDataRole.UserRole)
         self._db.set_active_school_year(year_id)
         self._changed = True
         self._refresh_list()
@@ -471,7 +467,6 @@ class ManageSchoolYearsDialog(QDialog):
     def was_changed(self) -> bool:
         """Check if any changes were made."""
         return self._changed
-
 
 class ShortcutsHelpDialog(QDialog):
     """Dialog showing keyboard shortcuts help."""
@@ -557,16 +552,15 @@ class ShortcutsHelpDialog(QDialog):
         # Close hint
         hint = QLabel("Press ? or Esc to close")
         hint.setStyleSheet("color: gray; font-size: 11px;")
-        hint.setAlignment(Qt.AlignCenter)
+        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(hint)
 
     def keyPressEvent(self, event):
         """Close on ? or Esc."""
-        if event.key() in (Qt.Key_Question, Qt.Key_Escape):
+        if event.key() in (Qt.Key.Key_Question, Qt.Key.Key_Escape):
             self.accept()
         else:
             super().keyPressEvent(event)
-
 
 class OnboardingWizard(QDialog):
     """First-run wizard to set up school year and subjects."""
@@ -593,12 +587,12 @@ class OnboardingWizard(QDialog):
         # Welcome header
         title = QLabel(tr("Welcome to VoteTracker!"))
         title.setStyleSheet("font-size: 24px; font-weight: bold;")
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
         subtitle = QLabel(tr("Let's set up your grade tracker in a few simple steps."))
         subtitle.setStyleSheet("font-size: 14px; color: gray;")
-        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(subtitle)
 
         layout.addSpacing(10)
@@ -629,10 +623,10 @@ class OnboardingWizard(QDialog):
         subjects_layout.addWidget(subjects_hint)
 
         # Grid of checkboxes
-        from PySide6.QtWidgets import QCheckBox, QGridLayout, QScrollArea
+        from PySide6.QtWidgets import QGridLayout, QFrame as _QFrame
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QScrollArea.NoFrame)
+        scroll.setFrameShape(_QFrame.Shape.NoFrame)
         scroll.setMaximumHeight(150)
 
         grid_widget = QWidget()
@@ -719,11 +713,10 @@ class OnboardingWizard(QDialog):
         self._db.set_setting("onboarding_complete", "1")
         self.accept()
 
-
 class SubjectMappingDialog(QDialog):
     """Dialog for mapping provider subjects to VoteTracker subjects."""
 
-    def __init__(self, source_subjects: List[str], provider_id: str, provider_name: str,
+    def __init__(self, source_subjects: list[str], provider_id: str, provider_name: str,
                  db: Database, parent=None):
         """
         Args:
@@ -768,10 +761,10 @@ class SubjectMappingDialog(QDialog):
             tr("VoteTracker Subject"),
             ""
         ])
-        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
-        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        self._table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
+        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
         self._table.setColumnWidth(1, 40)
         self._table.setColumnWidth(3, 80)
         self._table.verticalHeader().setVisible(False)
@@ -784,13 +777,13 @@ class SubjectMappingDialog(QDialog):
         for i, source_subject in enumerate(self._source_subjects):
             # Provider subject (read-only)
             source_item = QTableWidgetItem(source_subject)
-            source_item.setFlags(source_item.flags() & ~Qt.ItemIsEditable)
+            source_item.setFlags(source_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self._table.setItem(i, 0, source_item)
 
             # Arrow
             arrow_item = QTableWidgetItem("→")
-            arrow_item.setFlags(arrow_item.flags() & ~Qt.ItemIsEditable)
-            arrow_item.setTextAlignment(Qt.AlignCenter)
+            arrow_item.setFlags(arrow_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            arrow_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self._table.setItem(i, 1, arrow_item)
 
             # VoteTracker subject (dropdown)
@@ -838,8 +831,8 @@ class SubjectMappingDialog(QDialog):
             if suggestion["confidence"] > 0:
                 conf_text = f"{int(suggestion['confidence'] * 100)}%"
                 conf_item = QTableWidgetItem(conf_text)
-                conf_item.setFlags(conf_item.flags() & ~Qt.ItemIsEditable)
-                conf_item.setTextAlignment(Qt.AlignCenter)
+                conf_item.setFlags(conf_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                conf_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
                 # Color code confidence
                 if suggestion["confidence"] > 0.8:
@@ -894,8 +887,14 @@ class SubjectMappingDialog(QDialog):
     def _save_mappings(self):
         """Save the mappings and close dialog."""
         for i in range(self._table.rowCount()):
-            source_subject = self._table.item(i, 0).text()
-            combo = self._table.cellWidget(i, 2)
+            source_item = self._table.item(i, 0)
+            if source_item is None:
+                continue
+            source_subject = source_item.text()
+            widget = self._table.cellWidget(i, 2)
+            if not isinstance(widget, QComboBox):
+                continue
+            combo = widget
 
             # Get selected or entered value
             vt_subject = None
@@ -916,10 +915,9 @@ class SubjectMappingDialog(QDialog):
 
         self.accept()
 
-    def get_mappings(self) -> Dict[str, str]:
+    def get_mappings(self) -> dict[str, str]:
         """Get the subject mappings."""
         return self._mappings
-
 
 class ManageSubjectMappingsDialog(QDialog):
     """Dialog for viewing and editing existing provider subject mappings."""
@@ -965,9 +963,9 @@ class ManageSubjectMappingsDialog(QDialog):
             tr("VoteTracker Subject"),
             ""
         ])
-        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
+        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
         self._table.setColumnWidth(2, 80)
         self._table.verticalHeader().setVisible(False)
 
@@ -1005,7 +1003,7 @@ class ManageSubjectMappingsDialog(QDialog):
         for i, (source_subject, vt_subject) in enumerate(sorted(mappings.items())):
             # Provider subject (read-only)
             source_item = QTableWidgetItem(source_subject)
-            source_item.setFlags(source_item.flags() & ~Qt.ItemIsEditable)
+            source_item.setFlags(source_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self._table.setItem(i, 0, source_item)
 
             # VoteTracker subject (dropdown)
@@ -1059,10 +1057,10 @@ class ManageSubjectMappingsDialog(QDialog):
                     self,
                     tr("Create New Subject"),
                     tr("Subject '{name}' doesn't exist. Create it?").format(name=new_vt_subject),
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.Yes
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes
                 )
-                if reply == QMessageBox.Yes:
+                if reply == QMessageBox.StandardButton.Yes:
                     self._db.add_subject(new_vt_subject)
                 else:
                     # Revert change
@@ -1080,11 +1078,11 @@ class ManageSubjectMappingsDialog(QDialog):
             tr("Confirm Deletion"),
             tr("Delete mapping for '{subject}'?").format(subject=source_subject) + "\n" +
             tr("This won't delete any grades, but future imports will ask for mapping again."),
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self._db.clear_provider_subject_mapping(self._provider_id, source_subject)
             self._changed = True
             self._load_mappings()
@@ -1100,11 +1098,11 @@ class ManageSubjectMappingsDialog(QDialog):
             tr("Confirm Clear All"),
             tr("Delete ALL {count} subject mappings?").format(count=len(mappings)) + "\n" +
             tr("This won't delete any grades, but future imports will ask for mapping again."),
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
         )
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             self._db.clear_all_provider_subject_mappings(self._provider_id)
             self._changed = True
             self._load_mappings()
@@ -1115,9 +1113,9 @@ class ManageSubjectMappingsDialog(QDialog):
             item = self._table.item(i, 0)
             if item and item.text() == source_subject:
                 current_mapping = self._db.get_provider_subject_mapping(self._provider_id, source_subject)
-                combo = self._table.cellWidget(i, 1)
-                if combo and current_mapping:
-                    combo.setCurrentText(current_mapping)
+                widget = self._table.cellWidget(i, 1)
+                if isinstance(widget, QComboBox) and current_mapping:
+                    widget.setCurrentText(current_mapping)
                 break
 
     def was_changed(self) -> bool:
@@ -1127,7 +1125,7 @@ class ManageSubjectMappingsDialog(QDialog):
 class SelectStudentDialog(QDialog):
     """Dialog for selecting a student when multiple are available."""
 
-    def __init__(self, students: List[Tuple[str, str]], parent=None):
+    def __init__(self, students: list[tuple[str, str]], parent=None):
         """
         Initialize dialog.
 
@@ -1180,6 +1178,6 @@ class SelectStudentDialog(QDialog):
         btn_layout.addWidget(select_btn)
         layout.addLayout(btn_layout)
 
-    def get_selected_student_id(self) -> Optional[str]:
+    def get_selected_student_id(self) -> str | None:
         """Get the selected student ID."""
         return self._student_combo.currentData()

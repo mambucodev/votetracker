@@ -2,13 +2,12 @@
 Cross-platform icon provider for VoteTracker.
 Provides icons with proper fallbacks for Windows and other platforms.
 """
+from __future__ import annotations
 
-from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor
+from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtWidgets import QStyle, QApplication
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt
 from PySide6.QtSvg import QSvgRenderer
-from typing import Optional
-
 
 # Mapping of our icon names to Qt StandardPixmap icons
 # Note: Only using StandardPixmap for icons that look good across all platforms
@@ -27,7 +26,6 @@ STANDARD_ICON_MAP = {
     "folder": QStyle.StandardPixmap.SP_DirIcon,
     "x-office-document": QStyle.StandardPixmap.SP_FileIcon,
 }
-
 
 def create_simple_svg_icon(icon_type: str, size: int = 24, color: str = "#000000") -> QIcon:
     """
@@ -120,15 +118,14 @@ def create_simple_svg_icon(icon_type: str, size: int = 24, color: str = "#000000
     # Create pixmap from SVG
     renderer = QSvgRenderer(svg_data.encode())
     pixmap = QPixmap(size, size)
-    pixmap.fill(Qt.transparent)
+    pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
     renderer.render(painter)
     painter.end()
 
     return QIcon(pixmap)
 
-
-def get_icon(name: str, fallback_type: Optional[str] = None) -> QIcon:
+def get_icon(name: str, fallback_type: str | None = None) -> QIcon:
     """
     Get an icon with intelligent fallback system optimized for Windows.
 
@@ -147,7 +144,7 @@ def get_icon(name: str, fallback_type: Optional[str] = None) -> QIcon:
     # Try Qt Standard Icons first (platform-native, work great on Windows)
     if name in STANDARD_ICON_MAP:
         app = QApplication.instance()
-        if app:
+        if app and isinstance(app, QApplication):
             icon = app.style().standardIcon(STANDARD_ICON_MAP[name])
             if not icon.isNull():
                 return icon
@@ -192,13 +189,11 @@ def get_icon(name: str, fallback_type: Optional[str] = None) -> QIcon:
     svg_type = svg_type_map.get(name, "document")
     return create_simple_svg_icon(svg_type)
 
-
 def has_icon(name: str) -> bool:
     """
     Check if an icon is available (always returns True now since we have SVG fallbacks).
     """
     return True  # We always have a fallback
-
 
 def get_icon_fallback(name: str) -> str:
     """

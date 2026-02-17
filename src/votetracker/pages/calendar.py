@@ -2,6 +2,7 @@
 Calendar page for VoteTracker.
 Shows grades plotted on a calendar view.
 """
+from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QCalendarWidget,
@@ -15,7 +16,6 @@ from ..utils import calc_average, get_status_color, get_grade_style, StatusColor
 from ..widgets import TermToggle
 from ..i18n import tr
 
-
 class GradeCalendar(QCalendarWidget):
     """Custom calendar widget that highlights dates with grades."""
 
@@ -24,7 +24,7 @@ class GradeCalendar(QCalendarWidget):
         self._dates_with_grades = {}  # {date_str: avg_grade}
         self._grades_by_date = {}
         self.setGridVisible(False)
-        self.setVerticalHeaderFormat(QCalendarWidget.NoVerticalHeader)
+        self.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
 
     def set_grade_dates(self, grades_by_date: dict):
         """Set which dates have grades and their averages."""
@@ -42,9 +42,6 @@ class GradeCalendar(QCalendarWidget):
     def _update_date_formats(self):
         """Apply text formatting to highlight dates with grades."""
         from PySide6.QtGui import QTextCharFormat
-
-        # Reset all dates first
-        default_format = QTextCharFormat()
 
         for date_str, avg in self._dates_with_grades.items():
             qdate = QDate.fromString(date_str, "yyyy-MM-dd")
@@ -66,16 +63,15 @@ class GradeCalendar(QCalendarWidget):
 
             # Draw a colored circle/dot indicator at bottom of cell
             painter.save()
-            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
             painter.setBrush(QBrush(color))
-            painter.setPen(Qt.NoPen)
+            painter.setPen(Qt.PenStyle.NoPen)
 
             dot_size = 8
             x = rect.center().x() - dot_size // 2
             y = rect.bottom() - dot_size - 3
             painter.drawEllipse(x, y, dot_size, dot_size)
             painter.restore()
-
 
 class CalendarPage(QWidget):
     """Calendar view page showing grades by date."""
@@ -133,12 +129,12 @@ class CalendarPage(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll_widget = QWidget()
         self._grades_layout = QVBoxLayout(scroll_widget)
         self._grades_layout.setContentsMargins(0, 0, 0, 0)
         self._grades_layout.setSpacing(8)
-        self._grades_layout.setAlignment(Qt.AlignTop)
+        self._grades_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         scroll.setWidget(scroll_widget)
         grades_layout.addWidget(scroll)
 
@@ -191,8 +187,9 @@ class CalendarPage(QWidget):
         # Clear existing grades
         while self._grades_layout.count():
             item = self._grades_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            w = item.widget() if item is not None else None
+            if w is not None:
+                w.deleteLater()
 
         votes = self._grades_by_date.get(date_str, [])
 
@@ -218,7 +215,7 @@ class CalendarPage(QWidget):
     def _create_grade_item(self, vote: dict) -> QFrame:
         """Create a widget for displaying a single grade."""
         frame = QFrame()
-        frame.setFrameShape(QFrame.StyledPanel)
+        frame.setFrameShape(QFrame.Shape.StyledPanel)
         layout = QHBoxLayout(frame)
         layout.setContentsMargins(10, 8, 10, 8)
 
@@ -296,11 +293,11 @@ class CalendarPage(QWidget):
         key = event.key()
 
         # 1/2: Switch term
-        if key == Qt.Key_1:
+        if key == Qt.Key.Key_1:
             self._term_toggle.set_term(1)
             self._on_term_changed(1)
             return True
-        if key == Qt.Key_2:
+        if key == Qt.Key.Key_2:
             self._term_toggle.set_term(2)
             self._on_term_changed(2)
             return True

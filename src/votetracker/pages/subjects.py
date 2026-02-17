@@ -2,6 +2,7 @@
 Subjects page for VoteTracker.
 Shows all subjects with stats and management options.
 """
+from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -15,7 +16,6 @@ from ..utils import calc_average, round_report_card, get_symbolic_icon
 from ..widgets import SubjectCard
 from ..dialogs import AddSubjectDialog, EditSubjectDialog
 from ..i18n import tr
-
 
 class SubjectsPage(QWidget):
     """Subjects management page."""
@@ -54,19 +54,19 @@ class SubjectsPage(QWidget):
         # Grid in scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll_widget = QWidget()
         self._grid = QGridLayout(scroll_widget)
         self._grid.setContentsMargins(4, 4, 4, 4)
         self._grid.setSpacing(12)
-        self._grid.setAlignment(Qt.AlignTop)
+        self._grid.setAlignment(Qt.AlignmentFlag.AlignTop)
         scroll.setWidget(scroll_widget)
         content_layout.addWidget(scroll)
 
         # Placeholder
         self._placeholder = QLabel(tr("No votes recorded yet"))
         self._placeholder.setStyleSheet("color: gray; font-weight: bold;")
-        self._placeholder.setAlignment(Qt.AlignCenter)
+        self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._placeholder.hide()
         content_layout.addWidget(self._placeholder)
 
@@ -82,8 +82,10 @@ class SubjectsPage(QWidget):
         # Clear grid
         while self._grid.count():
             item = self._grid.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            if item is not None:
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
 
         subjects = self._db.get_subjects()
         
@@ -123,7 +125,7 @@ class SubjectsPage(QWidget):
         """Add a new subject."""
         dialog = AddSubjectDialog(self)
 
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             name = dialog.get_name()
             if name:
                 if self._db.add_subject(name):
@@ -138,8 +140,8 @@ class SubjectsPage(QWidget):
         votes = self._db.get_votes(subject_name)
         dialog = EditSubjectDialog(subject_name, len(votes), self)
 
-        if dialog.exec() == QDialog.Accepted:
-            if dialog.action == "rename":
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            if dialog.action == "rename" and dialog.new_name is not None:
                 if self._db.rename_subject(subject_name, dialog.new_name):
                     self.subject_changed.emit()
                 else:
@@ -157,7 +159,7 @@ class SubjectsPage(QWidget):
         modifiers = event.modifiers()
 
         # Ctrl+N: Add new subject
-        if modifiers == Qt.ControlModifier and key == Qt.Key_N:
+        if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_N:
             self._add_subject()
             return True
 

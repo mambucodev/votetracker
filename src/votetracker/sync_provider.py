@@ -4,10 +4,9 @@ Sync Provider Abstraction Layer
 This module provides the base abstraction for external grade sync providers
 (ClasseViva, Axios, etc.) with a registry pattern for provider management.
 """
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Tuple, Optional
-
 
 class SyncProvider(ABC):
     """
@@ -39,7 +38,7 @@ class SyncProvider(ABC):
         pass
 
     @abstractmethod
-    def get_credential_fields(self) -> List[Dict[str, str]]:
+    def get_credential_fields(self) -> list[dict[str, str]]:
         """
         Get credential field definitions for this provider.
 
@@ -59,7 +58,7 @@ class SyncProvider(ABC):
         pass
 
     @abstractmethod
-    def login(self, credentials: Dict[str, str]) -> Tuple[bool, str]:
+    def login(self, credentials: dict[str, str]) -> tuple[bool, str]:
         """
         Authenticate with the provider.
 
@@ -75,14 +74,14 @@ class SyncProvider(ABC):
         pass
 
     @abstractmethod
-    def get_grades(self) -> Tuple[bool, List[Dict], str]:
+    def get_grades(self) -> tuple[bool, list[dict], str]:
         """
         Fetch grades from the provider.
 
         Must be called after successful login().
 
         Returns:
-            Tuple of (success: bool, grades: List[Dict], message: str)
+            Tuple of (success: bool, grades: list[Dict], message: str)
             - success: True if fetch succeeded
             - grades: List of grade dicts in VoteTracker format:
                 {
@@ -114,7 +113,7 @@ class SyncProvider(ABC):
         self._authenticated = False
         self._user_display_name = None
 
-    def get_user_display_name(self) -> Optional[str]:
+    def get_user_display_name(self) -> str | None:
         """
         Get authenticated user's display name.
 
@@ -134,7 +133,6 @@ class SyncProvider(ABC):
         """
         # Default: use lowercase provider name with spaces removed
         return self.get_provider_name().lower().replace(" ", "")
-
 
 class SyncProviderRegistry:
     """
@@ -156,12 +154,12 @@ class SyncProviderRegistry:
             provider_class: Provider class (must inherit from SyncProvider)
         """
         if not issubclass(provider_class, SyncProvider):
-            raise ValueError(f"Provider class must inherit from SyncProvider")
+            raise ValueError("Provider class must inherit from SyncProvider")
 
         cls._providers[provider_id] = provider_class
 
     @classmethod
-    def get_provider(cls, provider_id: str, database) -> Optional[SyncProvider]:
+    def get_provider(cls, provider_id: str, database) -> SyncProvider | None:
         """
         Get or create provider instance.
 
@@ -183,7 +181,7 @@ class SyncProviderRegistry:
         return cls._instances[provider_id]
 
     @classmethod
-    def get_available_providers(cls) -> List[Tuple[str, str]]:
+    def get_available_providers(cls) -> list[tuple[str, str]]:
         """
         Get list of available providers.
 

@@ -2,6 +2,7 @@
 Votes page for VoteTracker.
 Shows vote list with filtering and CRUD operations.
 """
+from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -18,13 +19,12 @@ from ..widgets import TermToggle
 from ..dialogs import AddVoteDialog
 from ..i18n import tr
 
-
 class VotesPage(QWidget):
     """Votes list page with CRUD operations."""
 
     vote_changed = Signal()
 
-    def __init__(self, db: Database, undo_manager: UndoManager = None, parent=None):
+    def __init__(self, db: Database, undo_manager: UndoManager | None = None, parent=None):
         super().__init__(parent)
         self._db = db
         self._undo_manager = undo_manager
@@ -80,16 +80,16 @@ class VotesPage(QWidget):
         self._table.setHorizontalHeaderLabels([
             tr("Date"), tr("Subject"), tr("Description"), tr("Term"), tr("Type"), tr("Grade"), "ID"
         ])
-        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        self._table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        self._table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self._table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self._table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self._table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self._table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
         self._table.verticalHeader().setVisible(False)
-        self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self._table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self._table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setColumnHidden(6, True)  # Hide ID column
         self._table.doubleClicked.connect(self._edit_vote)
         table_layout.addWidget(self._table)
@@ -97,7 +97,7 @@ class VotesPage(QWidget):
         # Placeholder
         self._placeholder = QLabel(tr("No votes recorded yet"))
         self._placeholder.setStyleSheet("color: gray; font-weight: bold;")
-        self._placeholder.setAlignment(Qt.AlignCenter)
+        self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._placeholder.hide()
         table_layout.addWidget(self._placeholder)
 
@@ -196,7 +196,7 @@ class VotesPage(QWidget):
             # Term
             term = vote.get("term", 1)
             term_item = QTableWidgetItem(f"{term}°")
-            term_item.setTextAlignment(Qt.AlignCenter)
+            term_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self._table.setItem(row, 3, term_item)
             
             # Type with color
@@ -214,7 +214,7 @@ class VotesPage(QWidget):
             grade = vote.get("grade", 0)
             grade_item = QTableWidgetItem(f"{grade:.2f}")
             grade_item.setForeground(get_status_color(grade))
-            grade_item.setTextAlignment(Qt.AlignCenter)
+            grade_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self._table.setItem(row, 5, grade_item)
             
             # ID (hidden)
@@ -225,7 +225,7 @@ class VotesPage(QWidget):
         current_term = self._term_toggle.get_term()
         dialog = AddVoteDialog(self._db, current_term=current_term, parent=self)
 
-        if dialog.exec() == QDialog.Accepted:
+        if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_vote_data()
             vote_id = self._db.add_vote(
                 data["subject"], data["grade"], data["type"],
@@ -242,7 +242,10 @@ class VotesPage(QWidget):
         if row < 0:
             return
 
-        vote_id = int(self._table.item(row, 6).text())
+        id_item = self._table.item(row, 6)
+        if id_item is None:
+            return
+        vote_id = int(id_item.text())
         vote = self._db.get_vote(vote_id)
 
         if vote:
@@ -252,7 +255,7 @@ class VotesPage(QWidget):
                 self._db, vote, current_term=current_term, parent=self
             )
 
-            if dialog.exec() == QDialog.Accepted:
+            if dialog.exec() == QDialog.DialogCode.Accepted:
                 data = dialog.get_vote_data()
                 self._db.update_vote(
                     vote_id, data["subject"], data["grade"], data["type"],
@@ -272,11 +275,14 @@ class VotesPage(QWidget):
         reply = QMessageBox.question(
             self, tr("Confirm Deletion"),
             tr("Are you sure you want to delete this vote?"),
-            QMessageBox.Yes | QMessageBox.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
 
-        if reply == QMessageBox.Yes:
-            vote_id = int(self._table.item(row, 6).text())
+        if reply == QMessageBox.StandardButton.Yes:
+            id_item = self._table.item(row, 6)
+            if id_item is None:
+                return
+            vote_id = int(id_item.text())
             vote_data = self._db.get_vote(vote_id)
             self._db.delete_vote(vote_id)
             if self._undo_manager and vote_data:
@@ -289,29 +295,29 @@ class VotesPage(QWidget):
         modifiers = event.modifiers()
 
         # Ctrl+N: Add new vote
-        if modifiers == Qt.ControlModifier and key == Qt.Key_N:
+        if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_N:
             if self._add_btn.isEnabled():
                 self._add_vote()
             return True
 
         # Delete: Delete selected vote
-        if key == Qt.Key_Delete:
+        if key == Qt.Key.Key_Delete:
             if self._table.currentRow() >= 0:
                 self._delete_vote()
             return True
 
         # Enter/Return: Edit selected vote
-        if key in (Qt.Key_Return, Qt.Key_Enter):
+        if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             if self._table.currentRow() >= 0:
                 self._edit_vote()
             return True
 
         # 1/2: Switch term
-        if key == Qt.Key_1:
+        if key == Qt.Key.Key_1:
             self._term_toggle.set_term(1)
             self._on_term_changed(1)
             return True
-        if key == Qt.Key_2:
+        if key == Qt.Key.Key_2:
             self._term_toggle.set_term(2)
             self._on_term_changed(2)
             return True

@@ -2,6 +2,7 @@
 Windows-specific styling for VoteTracker.
 Provides a modern, clean look optimized for Windows 10/11.
 """
+from __future__ import annotations
 
 WINDOWS_STYLESHEET = """
 /* Main Window */
@@ -369,7 +370,6 @@ QFrame[frameShape="4"], QFrame[frameShape="5"] {
     color: #d4d4d4;
 }
 """
-
 
 def apply_windows_style(app):
     """

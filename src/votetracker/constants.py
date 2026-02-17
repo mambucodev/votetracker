@@ -1,6 +1,7 @@
 """
 Constants for VoteTracker application.
 """
+from __future__ import annotations
 
 # ============================================================================
 # GRADE CONSTANTS

@@ -4,9 +4,9 @@ Sync Provider Implementations
 This package contains all sync provider implementations (ClasseViva, Axios, etc.)
 and handles provider registration with the SyncProviderRegistry.
 """
+from __future__ import annotations
 
 from ..sync_provider import SyncProviderRegistry
-
 
 def _is_axios_available():
     """Check if lxml is installed (required by Axios provider)."""
@@ -15,7 +15,6 @@ def _is_axios_available():
         return True
     except ImportError:
         return False
-
 
 def register_all_providers():
     """

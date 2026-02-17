@@ -4,14 +4,13 @@ Axios Sync Provider Implementation - New Registro Famiglie
 Integrates with Axios Italia's NEW electronic register system (registrofamiglie.axioscloud.it).
 Replaces the old family.axioscloud.it system which is deprecated for 2025/2026.
 """
+from __future__ import annotations
 
 import json
 import re
-from typing import List, Dict, Tuple, Optional
-from datetime import datetime
+
 import requests
 from ..sync_provider import SyncProvider
-
 
 class AxiosProvider(SyncProvider):
     """Axios implementation using NEW Registro Famiglie (registrofamiglie.axioscloud.it)."""
@@ -29,7 +28,7 @@ class AxiosProvider(SyncProvider):
         """Get human-readable provider name."""
         return "Axios"
 
-    def get_credential_fields(self) -> List[Dict[str, str]]:
+    def get_credential_fields(self) -> list[dict[str, str]]:
         """
         Get credential field definitions for Axios.
 
@@ -57,7 +56,7 @@ class AxiosProvider(SyncProvider):
             }
         ]
 
-    def login(self, credentials: Dict[str, str]) -> Tuple[bool, str]:
+    def login(self, credentials: dict[str, str]) -> tuple[bool, str]:
         """
         Authenticate with Axios Registro Famiglie.
 
@@ -163,12 +162,12 @@ class AxiosProvider(SyncProvider):
         except Exception as e:
             return False, f"Error: {str(e)}"
 
-    def get_grades(self) -> Tuple[bool, List[Dict], str]:
+    def get_grades(self) -> tuple[bool, list[dict], str]:
         """
         Fetch grades from Axios Registro Famiglie.
 
         Returns:
-            Tuple of (success: bool, grades: List[Dict], message: str)
+            Tuple of (success: bool, grades: list[Dict], message: str)
             Grades are in VoteTracker format after conversion
         """
         if not self._session or not self._authenticated:
@@ -343,7 +342,7 @@ class AxiosProvider(SyncProvider):
         except Exception as e:
             return False, [], f"Error: {str(e)}"
 
-    def _convert_axios_grades(self, raw_grades: List[Dict]) -> List[Dict]:
+    def _convert_axios_grades(self, raw_grades: list[dict]) -> list[dict]:
         """
         Convert Axios grades to VoteTracker format.
 
@@ -436,7 +435,7 @@ class AxiosProvider(SyncProvider):
 
                 vt_grades.append(vt_grade)
 
-            except Exception as e:
+            except Exception:
                 # Skip grades that can't be converted
                 continue
 
@@ -451,3 +450,113 @@ class AxiosProvider(SyncProvider):
         if self._session:
             self._session.close()
         self._session = None
+
+
+# ============================================================================
+# Standalone helper functions (used by tests and external callers)
+# ============================================================================
+
+def _map_grade_type(tipo: str) -> str:
+    """
+    Map Axios grade type string to VoteTracker type.
+
+    Args:
+        tipo: Grade type string from Axios (e.g., "Orale", "Scritto", "Pratico")
+
+    Returns:
+        VoteTracker type string ("Written", "Oral", or "Practical")
+    """
+    tipo_lower = tipo.lower()
+    if 'oral' in tipo_lower:
+        return 'Oral'
+    elif 'scritt' in tipo_lower or 'written' in tipo_lower or 'grafic' in tipo_lower:
+        return 'Written'
+    elif 'pratic' in tipo_lower or 'practical' in tipo_lower or 'laboratorio' in tipo_lower:
+        return 'Practical'
+    else:
+        return 'Written'  # Default
+
+
+def _parse_term_from_date(date_str: str) -> int:
+    """
+    Parse term number from a date string (YYYY-MM-DD).
+
+    Term 1: September (9) through January (1)
+    Term 2: February (2) through August (8)
+
+    Args:
+        date_str: Date in YYYY-MM-DD format
+
+    Returns:
+        Term number (1 or 2), defaults to 1 for invalid dates
+    """
+    try:
+        parts = date_str.split('-')
+        month = int(parts[1])
+        if 1 <= month <= 12:
+            if month >= 9 or month <= 1:
+                return 1
+            else:
+                return 2
+        return 1  # Invalid month
+    except (IndexError, ValueError):
+        return 1  # Default to term 1
+
+
+def convert_axios_to_votetracker(grades: list[dict]) -> list[dict]:
+    """
+    Convert a list of Axios grades to VoteTracker format.
+
+    Args:
+        grades: List of grade dicts with keys: subject, value, kind, date, comment, weight
+
+    Returns:
+        List of grades in VoteTracker format
+    """
+    vt_grades = []
+
+    for grade in grades:
+        try:
+            subject = grade.get('subject', '').strip()
+            if not subject:
+                continue
+
+            value = grade.get('value')
+            if value is None:
+                continue
+
+            try:
+                grade_float = float(value)
+            except (ValueError, TypeError):
+                continue
+
+            date = grade.get('date', '')
+            if not date:
+                continue
+
+            kind = grade.get('kind', 'Written')
+            vote_type = _map_grade_type(kind)
+
+            description = grade.get('comment', '') or ''
+            weight = grade.get('weight', 1.0) or 1.0
+
+            try:
+                weight = float(weight)
+            except (ValueError, TypeError):
+                weight = 1.0
+
+            term = _parse_term_from_date(date)
+
+            vt_grades.append({
+                'subject': subject,
+                'grade': grade_float,
+                'type': vote_type,
+                'date': date,
+                'description': description,
+                'weight': weight,
+                'term': term,
+            })
+        except Exception:
+            continue
+
+    return vt_grades

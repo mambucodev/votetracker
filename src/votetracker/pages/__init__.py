@@ -2,6 +2,7 @@
 Page widgets for VoteTracker.
 Each module contains a page widget for the main application.
 """
+from __future__ import annotations
 
 from .dashboard import DashboardPage
 from .votes import VotesPage

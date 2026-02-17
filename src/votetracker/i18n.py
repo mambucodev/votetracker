@@ -2,6 +2,7 @@
 Internationalization (i18n) module for VoteTracker.
 Supports English and Italian translations.
 """
+from __future__ import annotations
 
 import locale
 
@@ -545,29 +546,25 @@ PRESET_SUBJECTS = [
     "Computer Science", "Religion", "Geography", "Chemistry", "Biology"
 ]
 
-
 def get_system_language() -> str:
     """Detect system language, return 'it' or 'en'."""
     try:
         lang = locale.getdefaultlocale()[0]
         if lang and lang.startswith("it"):
             return "it"
-    except:
+    except Exception:
         pass
     return "en"
-
 
 def get_language() -> str:
     """Get current language."""
     return _current_lang
-
 
 def set_language(lang: str):
     """Set current language ('en' or 'it')."""
     global _current_lang
     if lang in TRANSLATIONS:
         _current_lang = lang
-
 
 def init_language(db=None):
     """Initialize language from database or system."""
@@ -579,12 +576,10 @@ def init_language(db=None):
             return
     _current_lang = get_system_language()
 
-
 def tr(key: str) -> str:
     """Translate a string to current language."""
     translations = TRANSLATIONS.get(_current_lang, TRANSLATIONS["en"])
     return translations.get(key, key)
-
 
 def get_translated_subjects() -> list:
     """Get preset subjects translated to current language."""
