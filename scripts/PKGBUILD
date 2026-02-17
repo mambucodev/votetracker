@@ -1,11 +1,12 @@
 # Maintainer: Your Name <your@email.com>
 pkgname=votetracker
-pkgver=2.8.0
+pkgver=2.8.1
 pkgrel=1
+install=votetracker.install
 pkgdesc="School grade management application"
 arch=('any')
 license=('MIT')
-depends=('python' 'pyside6' 'pyside6-svg' 'python-reportlab' 'python-requests')
+depends=('python' 'pyside6' 'python-reportlab' 'python-requests')
 optdepends=('python-lxml: Axios Italia electronic register integration')
 
 # No source - we use local files
@@ -25,6 +26,7 @@ package() {
     install -dm755 "$pkgdir/usr/lib/python$_pyver/site-packages/votetracker/providers"
 
     install -Dm644 src/votetracker/*.py -t "$pkgdir/usr/lib/python$_pyver/site-packages/votetracker/"
+    install -Dm644 src/votetracker/icon.png "$pkgdir/usr/lib/python$_pyver/site-packages/votetracker/icon.png"
     install -Dm644 src/votetracker/pages/*.py -t "$pkgdir/usr/lib/python$_pyver/site-packages/votetracker/pages/"
     install -Dm644 src/votetracker/providers/*.py -t "$pkgdir/usr/lib/python$_pyver/site-packages/votetracker/providers/"
 
