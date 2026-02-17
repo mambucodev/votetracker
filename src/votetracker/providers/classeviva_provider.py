@@ -4,11 +4,10 @@ ClasseViva Sync Provider Implementation
 Wraps the ClasseVivaClient as a SyncProvider for use with the provider
 abstraction system.
 """
+from __future__ import annotations
 
-from typing import List, Dict, Tuple
 from ..sync_provider import SyncProvider
 from ..classeviva import ClasseVivaClient, convert_classeviva_to_votetracker
-
 
 class ClasseVivaProvider(SyncProvider):
     """ClasseViva implementation as a sync provider."""
@@ -21,7 +20,7 @@ class ClasseVivaProvider(SyncProvider):
         """Get human-readable provider name."""
         return "ClasseViva"
 
-    def get_credential_fields(self) -> List[Dict[str, str]]:
+    def get_credential_fields(self) -> list[dict[str, str]]:
         """
         Get credential field definitions for ClasseViva.
 
@@ -43,7 +42,7 @@ class ClasseVivaProvider(SyncProvider):
             }
         ]
 
-    def login(self, credentials: Dict[str, str]) -> Tuple[bool, str]:
+    def login(self, credentials: dict[str, str]) -> tuple[bool, str]:
         """
         Authenticate with ClasseViva.
 
@@ -71,12 +70,12 @@ class ClasseVivaProvider(SyncProvider):
 
         return success, message
 
-    def get_grades(self) -> Tuple[bool, List[Dict], str]:
+    def get_grades(self) -> tuple[bool, list[dict], str]:
         """
         Fetch grades from ClasseViva.
 
         Returns:
-            Tuple of (success: bool, grades: List[Dict], message: str)
+            Tuple of (success: bool, grades: list[Dict], message: str)
             Grades are in VoteTracker format after conversion
         """
         if not self.is_authenticated() or not self._client:

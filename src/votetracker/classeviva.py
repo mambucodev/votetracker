@@ -2,17 +2,14 @@
 ClasseViva API integration module.
 Handles authentication and grade fetching from Spaggiari's ClasseViva electronic register.
 """
+from __future__ import annotations
 
 import requests
-import re
-from typing import List, Dict, Optional, Tuple
-from datetime import datetime
-
 
 class ClasseVivaClient:
     """Client for interacting with ClasseViva REST API."""
 
-    def __init__(self, username: str = None, password: str = None):
+    def __init__(self, username: str | None = None, password: str | None = None):
         self.base_url = "https://web.spaggiari.eu/rest/"
         self.token = None
         self.student_id = None
@@ -23,7 +20,7 @@ class ClasseVivaClient:
         # Numeric student ID will be set after login
         self._student_id_numeric = None
 
-    def _get_headers(self, auth: bool = False) -> Dict[str, str]:
+    def _get_headers(self, auth: bool = False) -> dict[str, str]:
         """Get required headers for API requests."""
         headers = {
             "User-Agent": "CVVS/std/4.2.3 Android/12",
@@ -36,7 +33,7 @@ class ClasseVivaClient:
 
         return headers
 
-    def login(self, username: str = None, password: str = None) -> Tuple[bool, str]:
+    def login(self, username: str | None = None, password: str | None = None) -> tuple[bool, str]:
         """
         Authenticate with ClasseViva.
 
@@ -102,12 +99,12 @@ class ClasseVivaClient:
         except Exception as e:
             return False, f"Error: {str(e)}"
 
-    def get_grades(self) -> Tuple[bool, List[Dict], str]:
+    def get_grades(self) -> tuple[bool, list[dict], str]:
         """
         Fetch grades from ClasseViva.
 
         Returns:
-            Tuple of (success: bool, grades: List[Dict], message: str)
+            Tuple of (success: bool, grades: list[Dict], message: str)
         """
         if not self.is_authenticated():
             return False, [], "Not authenticated - please log in first"
@@ -158,8 +155,7 @@ class ClasseVivaClient:
         full_name = f"{self.user_info.get('firstName', '')} {self.user_info.get('lastName', '')}".strip()
         return full_name
 
-
-def convert_classeviva_to_votetracker(grades: List[Dict]) -> List[Dict]:
+def convert_classeviva_to_votetracker(grades: list[dict]) -> list[dict]:
     """
     Convert ClasseViva grade format to VoteTracker format.
 
@@ -199,9 +195,10 @@ def convert_classeviva_to_votetracker(grades: List[Dict]) -> List[Dict]:
         if weight is None:
             weight = 1.0
 
-        # Parse term from periodDesc (e.g., "1° Quadrimestre" → 1)
+        # Parse term from periodPos / periodDesc
         period_desc = grade.get("periodDesc", "")
-        term = _parse_term(period_desc)
+        period_pos = grade.get("periodPos")
+        term = _parse_term(period_desc, period_pos)
 
         # Build VoteTracker-compatible dict
         votetracker_grade = {
@@ -217,7 +214,6 @@ def convert_classeviva_to_votetracker(grades: List[Dict]) -> List[Dict]:
         votetracker_grades.append(votetracker_grade)
 
     return votetracker_grades
-
 
 def _map_grade_type(component_desc: str) -> str:
     """
@@ -241,18 +237,27 @@ def _map_grade_type(component_desc: str) -> str:
         # Default to Written for unknown types
         return "Written"
 
-
-def _parse_term(period_desc: str) -> int:
+def _parse_term(period_desc: str, period_pos: int | None = None) -> int:
     """
-    Parse term number from ClasseViva period description.
+    Parse term number from ClasseViva period data.
+
+    Uses periodPos (numeric position) as the primary signal, falling back
+    to periodDesc string matching. The ClasseViva API sometimes returns
+    a generic periodDesc like "Quadrimestre" without a number prefix,
+    but periodPos reliably distinguishes terms (1 = first, >1 = second).
 
     Args:
         period_desc: Period description (e.g., "1° Quadrimestre", "2° Quadrimestre")
+        period_pos: Numeric period position from API (1 = term 1, >1 = term 2)
 
     Returns:
         Term number (1 or 2), defaults to 1 if cannot parse
     """
-    # Look for "1°" or "2°" or "primo" or "secondo"
+    # Primary: use periodPos if available
+    if period_pos is not None:
+        return 2 if period_pos > 1 else 1
+
+    # Fallback: parse from description string
     if "2" in period_desc or "secondo" in period_desc.lower():
         return 2
     else:
