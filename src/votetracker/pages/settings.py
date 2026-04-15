@@ -83,13 +83,7 @@ class SettingsPage(QWidget):
         main_layout.setSpacing(0)
 
         # Title bar (not scrolled)
-        title_widget = QWidget()
-        title_layout = QVBoxLayout(title_widget)
-        title_layout.setContentsMargins(20, 20, 20, 12)
-        title = QLabel("Settings")
-        title.setStyleSheet(STYLE_PAGE_TITLE)
-        title_layout.addWidget(title)
-        main_layout.addWidget(title_widget)
+        self._build_title_bar(main_layout)
 
         # Scroll area for content
         scroll = QScrollArea()
@@ -103,9 +97,31 @@ class SettingsPage(QWidget):
         layout.setContentsMargins(20, 8, 20, 20)
         layout.setSpacing(SPACING_XLARGE)
 
-        # =====================================================================
-        # GENERAL SETTINGS
-        # =====================================================================
+        # Build each section
+        self._build_general_section(layout)
+        self._build_data_section(layout)
+        self._build_sync_section(layout)
+        self._build_help_section(layout)
+
+        # Add stretch at the end
+        layout.addStretch()
+
+        # Set scroll widget
+        scroll.setWidget(content)
+        main_layout.addWidget(scroll)
+
+    def _build_title_bar(self, parent_layout):
+        """Build the title bar (not scrolled) and add to parent_layout."""
+        title_widget = QWidget()
+        title_layout = QVBoxLayout(title_widget)
+        title_layout.setContentsMargins(20, 20, 20, 12)
+        title = QLabel("Settings")
+        title.setStyleSheet(STYLE_PAGE_TITLE)
+        title_layout.addWidget(title)
+        parent_layout.addWidget(title_widget)
+
+    def _build_general_section(self, parent_layout):
+        """Build the General Settings group box."""
         general_group = QGroupBox(tr("General"))
         general_layout = QVBoxLayout(general_group)
         general_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
@@ -144,11 +160,10 @@ class SettingsPage(QWidget):
         term_row.addStretch()
         general_layout.addLayout(term_row)
 
-        layout.addWidget(general_group)
+        parent_layout.addWidget(general_group)
 
-        # =====================================================================
-        # DATA MANAGEMENT
-        # =====================================================================
+    def _build_data_section(self, parent_layout):
+        """Build the Data Management group box."""
         data_group = QGroupBox(tr("Data Management"))
         data_layout = QVBoxLayout(data_group)
         data_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
@@ -234,11 +249,10 @@ class SettingsPage(QWidget):
         clear_btn_layout.addStretch()
         data_layout.addLayout(clear_btn_layout)
 
-        layout.addWidget(data_group)
+        parent_layout.addWidget(data_group)
 
-        # =====================================================================
-        # SYNC INTEGRATION (Provider-based)
-        # =====================================================================
+    def _build_sync_section(self, parent_layout):
+        """Build the Sync Integration (provider-based) group box."""
         sync_group = QGroupBox(tr("Sync Integration"))
         sync_layout = QVBoxLayout(sync_group)
         sync_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
@@ -307,7 +321,7 @@ class SettingsPage(QWidget):
 
         sync_layout.addWidget(self._provider_stack)
 
-        layout.addWidget(sync_group)
+        parent_layout.addWidget(sync_group)
 
         # Keep old ClasseViva section commented out for reference during transition
         # =====================================================================
@@ -492,9 +506,8 @@ class SettingsPage(QWidget):
         """
         # End of old ClasseViva section
 
-        # =====================================================================
-        # HELP & INFO
-        # =====================================================================
+    def _build_help_section(self, parent_layout):
+        """Build the Help & Information group box."""
         help_group = QGroupBox(tr("Help & Information"))
         help_layout = QVBoxLayout(help_group)
         help_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
@@ -512,14 +525,7 @@ class SettingsPage(QWidget):
         version_label.setStyleSheet("color: #7f8c8d; font-size: 11px;")
         help_layout.addWidget(version_label)
 
-        layout.addWidget(help_group)
-
-        # Add stretch at the end
-        layout.addStretch()
-
-        # Set scroll widget
-        scroll.setWidget(content)
-        main_layout.addWidget(scroll)
+        parent_layout.addWidget(help_group)
 
     def _create_provider_page(self, provider_id: str, provider):
         """
