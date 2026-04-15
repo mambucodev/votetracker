@@ -20,7 +20,6 @@ from .pages import (
 )
 from .dialogs import ShortcutsHelpDialog, OnboardingWizard
 from .i18n import init_language, tr
-from .classeviva import ClasseVivaClient
 from .sync_provider import SyncProviderRegistry
 from .providers import register_all_providers
 from .constants import (
@@ -40,8 +39,6 @@ class MainWindow(QMainWindow):
         # Register sync providers
         register_all_providers()
 
-        # Initialize ClasseViva client (keep for backward compatibility)
-        self._cv_client = ClasseVivaClient()
         self._auto_sync_timer = None
 
         # Initialize language from db or system

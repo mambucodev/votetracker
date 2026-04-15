@@ -1,6 +1,16 @@
 """
 ClasseViva API integration module.
-Handles authentication and grade fetching from Spaggiari's ClasseViva electronic register.
+
+Low-level HTTP client and response-conversion helpers for Spaggiari's
+ClasseViva electronic register. This module is an implementation detail
+of :mod:`.providers.classeviva_provider` — new code should depend on the
+provider abstraction (``SyncProvider`` / ``SyncProviderRegistry``), not
+on this module directly.
+
+The legacy settings page still imports :class:`ClasseVivaClient` and
+:func:`convert_classeviva_to_votetracker` to drive the "direct import"
+UI section; that section is scheduled for removal once the provider UI
+fully replaces it.
 """
 from __future__ import annotations
 
