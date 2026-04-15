@@ -38,6 +38,7 @@ MARGIN_LARGE = 20
 SPACING_SMALL = 4
 SPACING_MEDIUM = 8
 SPACING_LARGE = 12
+SPACING_XLARGE = 16
 
 # ============================================================================
 # COLOR CONSTANTS
