@@ -1,6 +1,6 @@
 # Maintainer: Your Name <your@email.com>
 pkgname=votetracker
-pkgver=2.8.1
+pkgver=2.9.0
 pkgrel=1
 install=votetracker.install
 pkgdesc="School grade management application"
