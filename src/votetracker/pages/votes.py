@@ -18,6 +18,8 @@ from ..utils import get_symbolic_icon, get_status_color, StatusColors
 from ..widgets import TermToggle
 from ..dialogs import AddVoteDialog
 from ..i18n import tr
+from ..styles import STYLE_PAGE_TITLE
+from ..constants import MARGIN_LARGE, SPACING_MEDIUM, SPACING_LARGE, SPACING_XLARGE
 
 class VotesPage(QWidget):
     """Votes list page with CRUD operations."""
@@ -32,13 +34,13 @@ class VotesPage(QWidget):
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(MARGIN_LARGE, MARGIN_LARGE, MARGIN_LARGE, MARGIN_LARGE)
+        layout.setSpacing(SPACING_LARGE)
 
         # Header
         header = QHBoxLayout()
         self._title = QLabel(tr("Votes List"))
-        self._title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        self._title.setStyleSheet(STYLE_PAGE_TITLE)
         header.addWidget(self._title)
         header.addStretch()
 
@@ -47,7 +49,7 @@ class VotesPage(QWidget):
         self._term_toggle.term_changed.connect(self._on_term_changed)
         header.addWidget(self._term_toggle)
 
-        header.addSpacing(16)
+        header.addSpacing(SPACING_XLARGE)
 
         self._add_btn = QPushButton(tr("Add Vote"))
         self._add_btn.setIcon(get_symbolic_icon("list-add"))
@@ -58,7 +60,7 @@ class VotesPage(QWidget):
 
         # Filter
         filter_layout = QHBoxLayout()
-        filter_layout.setSpacing(8)
+        filter_layout.setSpacing(SPACING_MEDIUM)
         self._filter_label = QLabel(tr("Filter:"))
         filter_layout.addWidget(self._filter_label)
         self._filter_combo = QComboBox()
@@ -105,7 +107,7 @@ class VotesPage(QWidget):
 
         # Action buttons
         action_layout = QHBoxLayout()
-        action_layout.setSpacing(8)
+        action_layout.setSpacing(SPACING_MEDIUM)
 
         self._edit_btn = QPushButton(tr("Edit"))
         self._edit_btn.setIcon(get_symbolic_icon("document-edit"))
