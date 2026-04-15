@@ -22,6 +22,16 @@ from ..i18n import tr, get_language, set_language
 from ..classeviva import ClasseVivaClient, convert_classeviva_to_votetracker
 from ..sync_provider import SyncProvider, SyncProviderRegistry
 from ..providers import register_all_providers
+from ..constants import (
+    MARGIN_MEDIUM,
+    SPACING_MEDIUM,
+    SPACING_LARGE,
+    SPACING_XLARGE,
+)
+from ..styles import (
+    STYLE_PAGE_TITLE,
+    STYLE_BOLD,
+)
 from datetime import datetime
 
 class SettingsPage(QWidget):
@@ -77,7 +87,7 @@ class SettingsPage(QWidget):
         title_layout = QVBoxLayout(title_widget)
         title_layout.setContentsMargins(20, 20, 20, 12)
         title = QLabel("Settings")
-        title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        title.setStyleSheet(STYLE_PAGE_TITLE)
         title_layout.addWidget(title)
         main_layout.addWidget(title_widget)
 
@@ -91,15 +101,15 @@ class SettingsPage(QWidget):
         content = QWidget()
         layout = QVBoxLayout(content)
         layout.setContentsMargins(20, 8, 20, 20)
-        layout.setSpacing(16)
+        layout.setSpacing(SPACING_XLARGE)
 
         # =====================================================================
         # GENERAL SETTINGS
         # =====================================================================
         general_group = QGroupBox(tr("General"))
         general_layout = QVBoxLayout(general_group)
-        general_layout.setContentsMargins(12, 12, 12, 12)
-        general_layout.setSpacing(12)
+        general_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        general_layout.setSpacing(SPACING_LARGE)
 
         # Language
         lang_row = QHBoxLayout()
@@ -141,8 +151,8 @@ class SettingsPage(QWidget):
         # =====================================================================
         data_group = QGroupBox(tr("Data Management"))
         data_layout = QVBoxLayout(data_group)
-        data_layout.setContentsMargins(12, 12, 12, 12)
-        data_layout.setSpacing(12)
+        data_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        data_layout.setSpacing(SPACING_LARGE)
 
         # Database location
         db_label = QLabel(tr("Database:") + " " + get_db_path())
@@ -153,7 +163,7 @@ class SettingsPage(QWidget):
 
         # Import section
         import_label = QLabel(tr("Import Votes (JSON)"))
-        import_label.setStyleSheet("font-weight: bold;")
+        import_label.setStyleSheet(STYLE_BOLD)
         data_layout.addWidget(import_label)
 
         self._json_input = QPlainTextEdit()
@@ -167,7 +177,7 @@ class SettingsPage(QWidget):
         data_layout.addWidget(self._json_input)
 
         import_btn_layout = QHBoxLayout()
-        import_btn_layout.setSpacing(8)
+        import_btn_layout.setSpacing(SPACING_MEDIUM)
 
         import_btn = QPushButton(tr("Import"))
         import_btn.setIcon(get_symbolic_icon("document-import"))
@@ -209,7 +219,7 @@ class SettingsPage(QWidget):
         data_layout.addWidget(clear_label)
 
         clear_btn_layout = QHBoxLayout()
-        clear_btn_layout.setSpacing(8)
+        clear_btn_layout.setSpacing(SPACING_MEDIUM)
 
         clear_term_btn = QPushButton(tr("Delete Current Term"))
         clear_term_btn.setIcon(get_symbolic_icon("edit-delete"))
@@ -231,14 +241,14 @@ class SettingsPage(QWidget):
         # =====================================================================
         sync_group = QGroupBox(tr("Sync Integration"))
         sync_layout = QVBoxLayout(sync_group)
-        sync_layout.setContentsMargins(12, 12, 12, 12)
-        sync_layout.setSpacing(12)
+        sync_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        sync_layout.setSpacing(SPACING_LARGE)
 
         # Provider selection section
         provider_select_group = QGroupBox(tr("Sync Provider"))
         provider_select_layout = QVBoxLayout(provider_select_group)
-        provider_select_layout.setContentsMargins(12, 12, 12, 12)
-        provider_select_layout.setSpacing(8)
+        provider_select_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        provider_select_layout.setSpacing(SPACING_MEDIUM)
 
         select_hint = QLabel(tr("Select a sync provider to automatically import grades:"))
         select_hint.setWordWrap(True)
@@ -306,14 +316,14 @@ class SettingsPage(QWidget):
         """
         cv_group = QGroupBox(tr("ClasseViva Integration"))
         cv_layout = QVBoxLayout(cv_group)
-        cv_layout.setContentsMargins(12, 12, 12, 12)
-        cv_layout.setSpacing(12)
+        cv_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        cv_layout.setSpacing(SPACING_LARGE)
 
         # Account section
         account_group = QGroupBox(tr("Account"))
         account_layout = QVBoxLayout(account_group)
-        account_layout.setContentsMargins(12, 12, 12, 12)
-        account_layout.setSpacing(8)
+        account_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        account_layout.setSpacing(SPACING_MEDIUM)
 
         # Username field
         username_layout = QHBoxLayout()
@@ -372,8 +382,8 @@ class SettingsPage(QWidget):
         # Manual Import section
         manual_group = QGroupBox(tr("Manual Import"))
         manual_layout = QVBoxLayout(manual_group)
-        manual_layout.setContentsMargins(12, 12, 12, 12)
-        manual_layout.setSpacing(8)
+        manual_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        manual_layout.setSpacing(SPACING_MEDIUM)
 
         self._cv_import_btn = QPushButton(tr("Import Grades Now"))
         self._cv_import_btn.setIcon(get_symbolic_icon("document-import"))
@@ -398,8 +408,8 @@ class SettingsPage(QWidget):
         # Auto-Sync section
         auto_sync_group = QGroupBox(tr("Automatic Sync"))
         auto_sync_layout = QVBoxLayout(auto_sync_group)
-        auto_sync_layout.setContentsMargins(12, 12, 12, 12)
-        auto_sync_layout.setSpacing(8)
+        auto_sync_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        auto_sync_layout.setSpacing(SPACING_MEDIUM)
 
         self._cv_auto_sync_enabled = QCheckBox(tr("Enable automatic sync"))
         self._cv_auto_sync_enabled.stateChanged.connect(self._on_auto_sync_toggled)
@@ -437,8 +447,8 @@ class SettingsPage(QWidget):
         # Options section
         options_group = QGroupBox(tr("Options"))
         options_layout = QVBoxLayout(options_group)
-        options_layout.setContentsMargins(12, 12, 12, 12)
-        options_layout.setSpacing(8)
+        options_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        options_layout.setSpacing(SPACING_MEDIUM)
 
         self._cv_skip_duplicates = QCheckBox(tr("Skip grades already in database"))
         self._cv_skip_duplicates.setChecked(True)
@@ -463,8 +473,8 @@ class SettingsPage(QWidget):
         # Subject Mappings section
         mappings_group = QGroupBox(tr("Subject Mappings"))
         mappings_layout = QVBoxLayout(mappings_group)
-        mappings_layout.setContentsMargins(12, 12, 12, 12)
-        mappings_layout.setSpacing(8)
+        mappings_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        mappings_layout.setSpacing(SPACING_MEDIUM)
 
         mappings_hint = QLabel(tr("View and edit how ClasseViva subjects are mapped to your VoteTracker subjects."))
         mappings_hint.setWordWrap(True)
@@ -487,8 +497,8 @@ class SettingsPage(QWidget):
         # =====================================================================
         help_group = QGroupBox(tr("Help & Information"))
         help_layout = QVBoxLayout(help_group)
-        help_layout.setContentsMargins(12, 12, 12, 12)
-        help_layout.setSpacing(12)
+        help_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        help_layout.setSpacing(SPACING_LARGE)
 
         # Keyboard shortcuts
         shortcuts_btn = QPushButton(tr("Keyboard Shortcuts"))
@@ -525,7 +535,7 @@ class SettingsPage(QWidget):
         page = QWidget()
         page_layout = QVBoxLayout(page)
         page_layout.setContentsMargins(0, 0, 0, 0)
-        page_layout.setSpacing(12)
+        page_layout.setSpacing(SPACING_LARGE)
 
         # Store UI elements for this provider
         widgets = {}
@@ -536,8 +546,8 @@ class SettingsPage(QWidget):
         # =====================
         account_group = QGroupBox(tr("Account"))
         account_layout = QVBoxLayout(account_group)
-        account_layout.setContentsMargins(12, 12, 12, 12)
-        account_layout.setSpacing(8)
+        account_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        account_layout.setSpacing(SPACING_MEDIUM)
 
         # Create input fields dynamically from provider definition
         widgets['credential_fields'] = {}
@@ -608,8 +618,8 @@ class SettingsPage(QWidget):
         # =====================
         import_group = QGroupBox(tr("Manual Import"))
         import_layout = QVBoxLayout(import_group)
-        import_layout.setContentsMargins(12, 12, 12, 12)
-        import_layout.setSpacing(8)
+        import_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        import_layout.setSpacing(SPACING_MEDIUM)
 
         import_btn = QPushButton(tr("Import Grades Now"))
         import_btn.setIcon(get_symbolic_icon("document-import"))
@@ -640,8 +650,8 @@ class SettingsPage(QWidget):
         # =====================
         auto_sync_group = QGroupBox(tr("Automatic Sync"))
         auto_sync_layout = QVBoxLayout(auto_sync_group)
-        auto_sync_layout.setContentsMargins(12, 12, 12, 12)
-        auto_sync_layout.setSpacing(8)
+        auto_sync_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        auto_sync_layout.setSpacing(SPACING_MEDIUM)
 
         auto_sync_check = QCheckBox(tr("Enable automatic sync"))
         auto_sync_check.stateChanged.connect(lambda state: self._on_provider_auto_sync_toggled(provider_id, state))
@@ -680,8 +690,8 @@ class SettingsPage(QWidget):
         # =====================
         options_group = QGroupBox(tr("Options"))
         options_layout = QVBoxLayout(options_group)
-        options_layout.setContentsMargins(12, 12, 12, 12)
-        options_layout.setSpacing(8)
+        options_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        options_layout.setSpacing(SPACING_MEDIUM)
 
         skip_duplicates_check = QCheckBox(tr("Skip grades already in database"))
         skip_duplicates_check.setChecked(True)
@@ -711,8 +721,8 @@ class SettingsPage(QWidget):
         # =====================
         mappings_group = QGroupBox(tr("Subject Mappings"))
         mappings_layout = QVBoxLayout(mappings_group)
-        mappings_layout.setContentsMargins(12, 12, 12, 12)
-        mappings_layout.setSpacing(8)
+        mappings_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        mappings_layout.setSpacing(SPACING_MEDIUM)
 
         provider_name = provider.get_provider_name()
         mappings_hint = QLabel(tr("View and edit how {provider} subjects are mapped to your VoteTracker subjects.").format(provider=provider_name))
