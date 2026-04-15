@@ -14,6 +14,16 @@ from ..database import Database
 from ..utils import calc_average, get_grade_style
 from ..widgets import DashboardSubjectCard
 from ..i18n import tr
+from ..styles import (
+    STYLE_PAGE_TITLE, STYLE_STAT_VALUE, STYLE_MUTED, STYLE_MUTED_CAPTION,
+    STYLE_MUTED_SMALL, STYLE_MUTED_ITALIC_SMALL, STYLE_EMPTY_STATE,
+    STYLE_EMPTY_STATE_LARGE, STYLE_BOLD, STYLE_SEPARATOR,
+    stat_value_colored, grade_cell,
+)
+from ..constants import (
+    MARGIN_LARGE, MARGIN_MEDIUM,
+    SPACING_SMALL, SPACING_LARGE, SPACING_XLARGE,
+)
 
 class DashboardPage(QWidget):
     """Dashboard page with statistics overview."""
@@ -26,23 +36,23 @@ class DashboardPage(QWidget):
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
+        layout.setContentsMargins(MARGIN_LARGE, MARGIN_LARGE, MARGIN_LARGE, MARGIN_LARGE)
+        layout.setSpacing(SPACING_XLARGE)
 
         # Title
         self._title = QLabel(tr("Dashboard"))
-        self._title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        self._title.setStyleSheet(STYLE_PAGE_TITLE)
         layout.addWidget(self._title)
 
         # Top section: Statistics (left) and Recent Grades (right)
         top_section = QHBoxLayout()
-        top_section.setSpacing(12)
+        top_section.setSpacing(SPACING_LARGE)
 
         # Stats group (left side, narrower)
         self._stats_group = QGroupBox(tr("Statistics"))
         stats_layout = QVBoxLayout(self._stats_group)
-        stats_layout.setContentsMargins(12, 12, 12, 12)
-        stats_layout.setSpacing(12)
+        stats_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
+        stats_layout.setSpacing(SPACING_LARGE)
         stats_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center horizontally
 
         # Store stat box tuples: (layout, label_widget, value_widget, key)
@@ -57,12 +67,12 @@ class DashboardPage(QWidget):
         # Recent grades widget (right side, wider)
         self._recent_group = QGroupBox(tr("Recent Grades"))
         recent_layout = QVBoxLayout(self._recent_group)
-        recent_layout.setContentsMargins(12, 12, 12, 12)
+        recent_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
         recent_layout.setSpacing(6)
 
         # Container for recent grades list
         self._recent_container = QVBoxLayout()
-        self._recent_container.setSpacing(4)
+        self._recent_container.setSpacing(SPACING_SMALL)
         recent_layout.addLayout(self._recent_container)
 
         top_section.addWidget(self._recent_group, 2)  # Larger proportion (2x stats)
@@ -72,15 +82,15 @@ class DashboardPage(QWidget):
         # Subjects overview
         self._overview_group = QGroupBox(tr("Subjects Overview"))
         overview_layout = QVBoxLayout(self._overview_group)
-        overview_layout.setContentsMargins(12, 12, 12, 12)
+        overview_layout.setContentsMargins(MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM, MARGIN_MEDIUM)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll_widget = QWidget()
         self._subjects_grid = QGridLayout(scroll_widget)
-        self._subjects_grid.setContentsMargins(4, 4, 4, 4)
-        self._subjects_grid.setSpacing(12)
+        self._subjects_grid.setContentsMargins(SPACING_SMALL, SPACING_SMALL, SPACING_SMALL, SPACING_SMALL)
+        self._subjects_grid.setSpacing(SPACING_LARGE)
         self._subjects_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
         scroll.setWidget(scroll_widget)
         overview_layout.addWidget(scroll)
@@ -90,15 +100,15 @@ class DashboardPage(QWidget):
     def _create_stat_box(self, label: str, value: str):
         """Create a statistics display box. Returns (layout, label_widget, value_widget)."""
         box = QVBoxLayout()
-        box.setSpacing(4)
+        box.setSpacing(SPACING_SMALL)
         box.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center the content
 
         label_widget = QLabel(label)
-        label_widget.setStyleSheet("color: gray; font-size: 12px;")
+        label_widget.setStyleSheet(STYLE_MUTED_CAPTION)
         label_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         value_widget = QLabel(value)
-        value_widget.setStyleSheet("font-size: 24px; font-weight: bold;")
+        value_widget.setStyleSheet(STYLE_STAT_VALUE)
         value_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         box.addWidget(label_widget)
@@ -118,7 +128,7 @@ class DashboardPage(QWidget):
 
         if not votes:
             empty = QLabel(tr("No votes recorded yet"))
-            empty.setStyleSheet("color: gray; padding: 20px;")
+            empty.setStyleSheet(STYLE_EMPTY_STATE)
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._recent_container.addWidget(empty)
             return
@@ -142,7 +152,7 @@ class DashboardPage(QWidget):
                 separator.setFrameShape(QFrame.Shape.HLine)
                 separator.setFrameShadow(QFrame.Shadow.Plain)
                 separator.setFixedHeight(1)
-                separator.setStyleSheet("background-color: rgba(128, 128, 128, 0.3);")
+                separator.setStyleSheet(STYLE_SEPARATOR)
                 self._recent_container.addWidget(separator)
 
             # Add stretch between items for even distribution
@@ -158,18 +168,18 @@ class DashboardPage(QWidget):
         item.setFrameShape(QFrame.Shape.StyledPanel)
         item_layout = QHBoxLayout(item)
         item_layout.setContentsMargins(8, 6, 8, 6)
-        item_layout.setSpacing(12)
+        item_layout.setSpacing(SPACING_LARGE)
 
         # Subject name
         subject_label = QLabel(vote.get('subject', ''))
-        subject_label.setStyleSheet("font-weight: bold;")
+        subject_label.setStyleSheet(STYLE_BOLD)
         subject_label.setMinimumWidth(120)
         item_layout.addWidget(subject_label)
 
         # Grade value
         grade = vote.get('grade', 0)
         grade_label = QLabel(f"{grade:.2f}" if grade > 0 else "+/-")
-        grade_label.setStyleSheet(get_grade_style(grade) + "font-weight: bold; font-size: 16px;")
+        grade_label.setStyleSheet(grade_cell(get_grade_style(grade)))
         grade_label.setFixedWidth(50)
         grade_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         item_layout.addWidget(grade_label)
@@ -177,7 +187,7 @@ class DashboardPage(QWidget):
         # Vote type
         vote_type = vote.get('type', '')
         type_label = QLabel(tr(vote_type) if vote_type else "-")
-        type_label.setStyleSheet("color: gray;")
+        type_label.setStyleSheet(STYLE_MUTED)
         type_label.setFixedWidth(80)
         item_layout.addWidget(type_label)
 
@@ -194,7 +204,7 @@ class DashboardPage(QWidget):
             formatted_date = "-"
 
         date_label = QLabel(formatted_date)
-        date_label.setStyleSheet("color: gray; font-size: 11px;")
+        date_label.setStyleSheet(STYLE_MUTED_SMALL)
         date_label.setFixedWidth(80)
         item_layout.addWidget(date_label)
 
@@ -202,7 +212,7 @@ class DashboardPage(QWidget):
         description = vote.get('description', '')
         if description:
             desc_label = QLabel(description)
-            desc_label.setStyleSheet("color: gray; font-style: italic; font-size: 11px;")
+            desc_label.setStyleSheet(STYLE_MUTED_ITALIC_SMALL)
             desc_label.setWordWrap(False)
             item_layout.addWidget(desc_label, 1)
         else:
@@ -248,7 +258,7 @@ class DashboardPage(QWidget):
         _, failing_val = self._stat_boxes["Failing"]
         failing_val.setText(f"<b>{failing}</b>")
         color = "#e74c3c" if failing > 0 else "#27ae60"
-        failing_val.setStyleSheet(f"font-size: 24px; font-weight: bold; color: {color};")
+        failing_val.setStyleSheet(stat_value_colored(color))
 
         # Update recent grades
         self._update_recent_grades(votes)
@@ -263,7 +273,7 @@ class DashboardPage(QWidget):
         
         if not subjects_with_votes:
             empty = QLabel(tr("No votes recorded yet"))
-            empty.setStyleSheet("color: gray; font-weight: bold; padding: 40px;")
+            empty.setStyleSheet(STYLE_EMPTY_STATE_LARGE)
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._subjects_grid.addWidget(empty, 0, 0, 1, 3)
             return
