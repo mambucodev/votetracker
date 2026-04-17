@@ -58,6 +58,8 @@ pub fn run() {
             // domain
             commands::calculate_needed_grade,
             commands::subject_mapping_suggestion,
+            commands::save_provider_mapping,
+            commands::list_provider_mappings,
             // undo / redo
             commands::undo_state,
             commands::undo,

@@ -322,6 +322,27 @@ pub fn subject_mapping_suggestion(
     Ok(subject_match::auto_suggestion(&source_subject, &vt))
 }
 
+#[tauri::command]
+pub fn save_provider_mapping(
+    state: State<'_, AppState>,
+    provider_id: String,
+    source_subject: String,
+    target_subject: String,
+) -> Result<(), String> {
+    let conn = state.db.pool().get().map_err(err)?;
+    crate::db::settings::save_mapping(&conn, &provider_id, &source_subject, &target_subject)
+        .map_err(err)
+}
+
+#[tauri::command]
+pub fn list_provider_mappings(
+    state: State<'_, AppState>,
+    provider_id: String,
+) -> Result<std::collections::HashMap<String, String>, String> {
+    let conn = state.db.pool().get().map_err(err)?;
+    crate::db::settings::all_mappings(&conn, &provider_id).map_err(err)
+}
+
 // ---------- Undo / redo ----------
 
 #[tauri::command]

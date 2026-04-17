@@ -6,11 +6,13 @@ import { TopBar } from "@/components/TopBar";
 import { Button } from "@/components/primitives/Button";
 import { ConfirmDialog } from "@/components/primitives/ConfirmDialog";
 import { Field, NumberInput, Select, TextInput } from "@/components/primitives/Field";
+import { SubjectMappingDialog } from "@/components/dialogs/SubjectMappingDialog";
 import {
   activeYear,
   addYear,
   deleteYear,
   getSetting,
+  listProviderMappings,
   listSubjects,
   listVotes,
   listYears,
@@ -247,6 +249,19 @@ function ProviderPanel({ provider }: { provider: ProviderDescriptor }) {
   const [interval, setInterval] = useState(60);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("");
+  const [mappingOpen, setMappingOpen] = useState(false);
+  const [mappingSources, setMappingSources] = useState<string[]>([]);
+
+  async function openMapping() {
+    try {
+      const mappings = await listProviderMappings(provider.id);
+      setMappingSources(Object.keys(mappings).sort());
+    } catch (e) {
+      console.error(e);
+      setMappingSources([]);
+    }
+    setMappingOpen(true);
+  }
 
   useEffect(() => {
     (async () => {
@@ -338,6 +353,9 @@ function ProviderPanel({ provider }: { provider: ProviderDescriptor }) {
           <strong>{lastSync ?? tr("Never")}</strong>
         </div>
         <div style={{ flex: 1 }} />
+        <Button variant="ghost" size="sm" onClick={openMapping}>
+          {tr("Configure Subject Mapping")}
+        </Button>
         <Button variant="secondary" size="sm" onClick={saveCreds}>
           {tr("Save")}
         </Button>
@@ -346,6 +364,12 @@ function ProviderPanel({ provider }: { provider: ProviderDescriptor }) {
         </Button>
       </div>
       {status && <div className="pp-status muted">{status}</div>}
+      <SubjectMappingDialog
+        open={mappingOpen}
+        onClose={() => setMappingOpen(false)}
+        providerId={provider.id}
+        sourceSubjects={mappingSources}
+      />
     </div>
   );
 }

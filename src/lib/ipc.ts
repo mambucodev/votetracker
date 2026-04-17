@@ -81,6 +81,20 @@ export const calculateNeededGrade = (opts: {
 export const subjectMappingSuggestion = (sourceSubject: string) =>
   invoke<AutoSuggestion>("subject_mapping_suggestion", { sourceSubject });
 
+export const saveProviderMapping = (
+  providerId: string,
+  sourceSubject: string,
+  targetSubject: string,
+) =>
+  invoke<void>("save_provider_mapping", {
+    providerId,
+    sourceSubject,
+    targetSubject,
+  });
+
+export const listProviderMappings = (providerId: string) =>
+  invoke<Record<string, string>>("list_provider_mappings", { providerId });
+
 // ---------- Undo / redo ----------
 
 export const undoState = () => invoke<UndoState>("undo_state");
