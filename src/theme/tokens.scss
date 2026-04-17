@@ -2,6 +2,14 @@
 // Claude.ai-inspired warm neutrals + single coral accent gradient.
 // Light and dark palettes live side-by-side under [data-theme].
 
+:root {
+  // typography
+  --font-sans: "Geist Variable", "Geist", ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace,
+    "SF Mono", Menlo, Consolas, monospace;
+}
+
 :root,
 :root[data-theme="light"] {
   // surfaces
