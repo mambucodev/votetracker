@@ -4,6 +4,7 @@ import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { TopBar } from "@/components/TopBar";
 import { Button } from "@/components/primitives/Button";
+import { ConfirmDialog } from "@/components/primitives/ConfirmDialog";
 import { Field, NumberInput, Select, TextInput } from "@/components/primitives/Field";
 import {
   activeYear,
@@ -54,6 +55,7 @@ export default function Settings() {
   const [years, setYears] = useState<SchoolYear[]>([]);
   const [newYear, setNewYear] = useState(new Date().getFullYear());
   const [lang, setLangState] = useState<Lang>(getLang());
+  const [yearToDelete, setYearToDelete] = useState<number | null>(null);
 
   useEffect(() => {
     listYears().then(setYears).catch(console.error);
@@ -117,9 +119,14 @@ export default function Settings() {
     setYears(ys);
   }
 
-  async function removeYear(id: number) {
-    if (!window.confirm("Delete year? Grades in this year will be removed.")) return;
-    await deleteYear(id);
+  function removeYear(id: number) {
+    setYearToDelete(id);
+  }
+
+  async function confirmRemoveYear() {
+    if (yearToDelete == null) return;
+    await deleteYear(yearToDelete);
+    setYearToDelete(null);
     setYears(await listYears());
   }
 
@@ -220,6 +227,16 @@ export default function Settings() {
           ))}
         </div>
       </section>
+      <ConfirmDialog
+        open={yearToDelete != null}
+        title={tr("Delete year?")}
+        body={tr("Grades in this year will be removed.")}
+        confirmLabel={tr("Delete")}
+        cancelLabel={tr("Cancel")}
+        danger
+        onConfirm={confirmRemoveYear}
+        onClose={() => setYearToDelete(null)}
+      />
     </>
   );
 }
