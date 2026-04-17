@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type CSSProperties } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
 import { Button } from "@/components/primitives/Button";
 import { listVotes } from "@/lib/ipc";
@@ -28,6 +29,19 @@ function iso(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/** Weighted average of a day's votes, excluding grades ≤ 0 (mirrors `calc_average`). */
+function dayAverage(votes: Vote[]): number {
+  let sum = 0;
+  let wSum = 0;
+  for (const v of votes) {
+    if (v.grade <= 0) continue;
+    const w = v.weight || 1;
+    sum += v.grade * w;
+    wSum += w;
+  }
+  return wSum > 0 ? sum / wSum : 0;
 }
 
 export default function CalendarPage() {
@@ -62,6 +76,18 @@ export default function CalendarPage() {
     setCurrent({ year: next.getFullYear(), month: next.getMonth() });
   }
 
+  // Compute which row the selected cell sits in so we can splice a full-width
+  // `.cal-expand` strip right after that row.
+  const selectedRowIndex = useMemo(() => {
+    if (!selected) return -1;
+    for (let r = 0; r < matrix.length; r++) {
+      for (const d of matrix[r]) {
+        if (iso(d) === selected) return r;
+      }
+    }
+    return -1;
+  }, [selected, matrix]);
+
   const selectedVotes = selected ? byDate.get(selected) ?? [] : [];
 
   return (
@@ -70,12 +96,12 @@ export default function CalendarPage() {
         title="Calendar"
         right={
           <div className="cal-nav">
-            <Button variant="ghost" size="sm" onClick={() => shift(-1)}>
-              ‹
+            <Button variant="ghost" size="sm" onClick={() => shift(-1)} aria-label="Previous month">
+              <ChevronLeft size={16} />
             </Button>
             <span className="cal-month">{monthName}</span>
-            <Button variant="ghost" size="sm" onClick={() => shift(1)}>
-              ›
+            <Button variant="ghost" size="sm" onClick={() => shift(1)} aria-label="Next month">
+              <ChevronRight size={16} />
             </Button>
           </div>
         }
@@ -87,46 +113,73 @@ export default function CalendarPage() {
               {d}
             </div>
           ))}
-          {matrix.flat().map((d) => {
-            const k = iso(d);
-            const votes = byDate.get(k) ?? [];
-            const inMonth = d.getMonth() === current.month;
-            return (
-              <button
-                key={k}
-                className={`cal-cell ${inMonth ? "" : "dim"} ${selected === k ? "selected" : ""}`}
-                onClick={() => setSelected(k)}
-              >
-                <div className="cal-date">{d.getDate()}</div>
-                <div className="cal-dots">
-                  {votes.slice(0, 5).map((v, i) => (
-                    <span
-                      key={i}
-                      className="dot"
-                      style={{ background: gradeColor(v.grade) }}
-                    />
-                  ))}
-                  {votes.length > 5 && <span className="more">+{votes.length - 5}</span>}
+          {matrix.map((row, rowIdx) => (
+            <Fragment key={`row-${rowIdx}`}>
+              {row.map((d) => {
+                const k = iso(d);
+                const dayVotes = byDate.get(k) ?? [];
+                const inMonth = d.getMonth() === current.month;
+                const tintPct = Math.min(35, dayVotes.length * 10);
+                const avg = dayAverage(dayVotes);
+                const tintStyle =
+                  dayVotes.length > 0 && avg > 0
+                    ? ({
+                        "--cell-grade-color": gradeColor(avg),
+                        "--cell-tint-pct": `${tintPct}%`,
+                      } as CSSProperties)
+                    : undefined;
+                return (
+                  <button
+                    key={k}
+                    className={`cal-cell ${inMonth ? "" : "dim"} ${selected === k ? "selected" : ""}`}
+                    style={tintStyle}
+                    onClick={() => setSelected((s) => (s === k ? null : k))}
+                  >
+                    <div className="cal-date">{d.getDate()}</div>
+                    <div className="cal-dots">
+                      {dayVotes.slice(0, 5).map((v, i) => (
+                        <span
+                          key={i}
+                          className="dot"
+                          style={{ background: gradeColor(v.grade) }}
+                        />
+                      ))}
+                      {dayVotes.length > 5 && <span className="more">+{dayVotes.length - 5}</span>}
+                    </div>
+                  </button>
+                );
+              })}
+              {selectedRowIndex === rowIdx && selected && (
+                <div
+                  key={`expand-${selected}`}
+                  className="cal-expand open"
+                  role="region"
+                  aria-label={`Grades for ${selected}`}
+                >
+                  <div className="cal-expand-inner">
+                    <div className="cal-expand-head">
+                      <span className="cal-expand-date">{selected}</span>
+                      {selectedVotes.length === 0 && <span className="muted">—</span>}
+                    </div>
+                    <div className="cal-expand-list">
+                      {selectedVotes.map((v) => (
+                        <div key={v.id ?? `${v.subject}-${v.grade}`} className="cal-expand-chip">
+                          <span className="chip-subject">{v.subject}</span>
+                          <span
+                            className="chip-grade"
+                            style={{ color: gradeColor(v.grade) }}
+                          >
+                            <strong>{formatGrade(v.grade)}</strong>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </button>
-            );
-          })}
+              )}
+            </Fragment>
+          ))}
         </div>
-
-        {selected && (
-          <aside className="cal-drawer">
-            <div className="drawer-title">{selected}</div>
-            {selectedVotes.length === 0 && <div className="muted">—</div>}
-            {selectedVotes.map((v) => (
-              <div key={v.id} className="drawer-row">
-                <span>{v.subject}</span>
-                <span style={{ color: gradeColor(v.grade) }}>
-                  <strong>{formatGrade(v.grade)}</strong>
-                </span>
-              </div>
-            ))}
-          </aside>
-        )}
       </section>
     </>
   );
