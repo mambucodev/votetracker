@@ -5,6 +5,10 @@
 //! release opens without any on-disk migration.
 
 pub mod schema;
+pub mod school_years;
+pub mod settings;
+pub mod subjects;
+pub mod votes;
 
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;

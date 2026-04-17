@@ -73,9 +73,10 @@ mod tests {
 
     #[test]
     fn weight_of_new_vote_changes_answer() {
-        // Two 6s, new vote weighted 2: need (7*5 - 12) / 2 = 11.5 → capped at 10.
+        // Two 6s, new vote weighted 2: need (7*(2+2) - 12) / 2 = (28 - 12) / 2 = 8.
+        // Heavier new vote brings the needed grade *down* — it pulls the average harder.
         let votes = vec![(6.0, 1.0), (6.0, 1.0)];
         let got = calculate_needed_grade(&votes, 7.0, 2.0).unwrap();
-        assert_eq!(got, 10.0);
+        assert!((got - 8.0).abs() < 1e-9);
     }
 }
