@@ -49,9 +49,26 @@ export default function Simulator() {
     ? votes.filter((v) => v.subject === subject)
     : votes;
   const current = avg(mine);
+
+  // Replicate the backend formula locally so we can distinguish a real
+  // needed-10 from a capped > 10 (out-of-reach) result. The backend clamps
+  // to 10 before returning, which loses that information.
+  const totalWeighted = mine.reduce(
+    (a, v) => a + (v.grade > 0 ? v.grade * v.weight : 0),
+    0,
+  );
+  const totalWeight = mine.reduce(
+    (a, v) => a + (v.grade > 0 ? v.weight : 0),
+    0,
+  );
+  const rawNeeded =
+    totalWeight === 0
+      ? target
+      : (target * (totalWeight + weight) - totalWeighted) / weight;
+  const outOfReach = needed != null && rawNeeded > 10;
+
   const projected = needed != null
-    ? (mine.reduce((a, v) => a + (v.grade > 0 ? v.grade * v.weight : 0), 0) + needed * weight) /
-      (mine.reduce((a, v) => a + (v.grade > 0 ? v.weight : 0), 0) + weight)
+    ? (totalWeighted + needed * weight) / (totalWeight + weight)
     : current;
 
   return (
@@ -96,11 +113,17 @@ export default function Simulator() {
             value={
               needed == null
                 ? "—"
-                : needed > 10
+                : outOfReach
                   ? tr("Out of reach")
                   : formatGrade(needed)
             }
-            color={needed == null ? "var(--text-subtle)" : gradeColor(needed)}
+            color={
+              needed == null
+                ? "var(--text-subtle)"
+                : outOfReach
+                  ? "var(--grade-insufficient)"
+                  : gradeColor(needed)
+            }
             emphasis
           />
           <ResultCard

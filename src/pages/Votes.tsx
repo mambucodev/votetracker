@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
 import { Button } from "@/components/primitives/Button";
 import { Select } from "@/components/primitives/Field";
@@ -73,7 +74,7 @@ export default function Votes() {
             size="sm"
             onClick={() => setDialog({ open: true, editing: null })}
           >
-            + {tr("Add vote")}
+            <Plus size={14} strokeWidth={2} /> {tr("Add vote")}
           </Button>
         }
       />

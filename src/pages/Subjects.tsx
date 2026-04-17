@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
 import { Button } from "@/components/primitives/Button";
 import { AddSubjectDialog } from "@/components/dialogs/AddSubjectDialog";
@@ -8,6 +9,7 @@ import { useDataRefresh } from "@/lib/hooks/useDataRefresh";
 import { formatGrade, gradeColor } from "@/lib/format";
 import { tr } from "@/lib/i18n";
 import type { Vote } from "@/lib/types";
+import "./Subjects.scss";
 
 function average(vs: Vote[]) {
   const valid = vs.filter((v) => v.grade > 0);
@@ -53,7 +55,7 @@ export default function Subjects() {
             size="sm"
             onClick={() => setDialog({ open: true, editing: null })}
           >
-            + {tr("Add subject")}
+            <Plus size={14} strokeWidth={2} /> {tr("Add subject")}
           </Button>
         }
       />

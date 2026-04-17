@@ -1,0 +1,57 @@
+// Shared SCSS for subject-card grids used by the Dashboard AND the
+// Subjects page. Keep this file scope-free so consumers only need to
+// `@use` it in their page stylesheet.
+
+.subject-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+
+.subject-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .sc-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .sc-avg {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sc-count {
+    font-size: 11px;
+    color: var(--text-subtle);
+  }
+
+  .sc-spark {
+    margin-top: 6px;
+    height: 36px;
+  }
+
+  .sc-spark-placeholder {
+    height: 36px;
+  }
+}

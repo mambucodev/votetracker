@@ -55,7 +55,7 @@ export function Sidebar() {
         <span className="brand-mark" />
         <div>
           <div className="brand-name">VoteTracker</div>
-          <div className="brand-version">3.0.0</div>
+          <div className="brand-version">v3.0</div>
         </div>
       </div>
 

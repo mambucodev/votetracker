@@ -127,7 +127,7 @@ export default function Dashboard() {
               {formatGrade(overallAvg)}
             </div>
             <div className={`hero-delta ${deltaClass}`}>
-              <DeltaIcon size={14} strokeWidth={2.25} />
+              {hasDelta && <DeltaIcon size={14} strokeWidth={2.25} />}
               <span>{deltaLabel}</span>
             </div>
           </div>

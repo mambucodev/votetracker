@@ -177,7 +177,7 @@ export default function Settings() {
               {tr("Export JSON")}
             </Button>
             <Button
-              variant="ghost"
+              variant="secondary"
               onClick={() => invoke("open_data_dir").catch(console.error)}
             >
               {tr("Open Data Folder")}

@@ -97,7 +97,7 @@ export default function Statistics() {
               <Tooltip />
               <Bar dataKey="avg" radius={[0, 6, 6, 0]}>
                 {barData.map((d, i) => (
-                  <Cell key={i} fill={gradeColor(d.avg).startsWith("var") ? "url(#accent)" : gradeColor(d.avg)} />
+                  <Cell key={i} fill={gradeColor(d.avg)} />
                 ))}
               </Bar>
             </BarChart>
