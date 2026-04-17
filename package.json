@@ -1,7 +1,7 @@
 {
   "name": "votetracker",
   "private": true,
-  "version": "3.0.0-dev",
+  "version": "3.0.0",
   "type": "module",
   "description": "School grade management application (Tauri rewrite)",
   "scripts": {

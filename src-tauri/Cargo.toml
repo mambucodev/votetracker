@@ -1,6 +1,6 @@
 [package]
 name = "votetracker"
-version = "3.0.0-dev"
+version = "3.0.0"
 description = "School grade management application"
 authors = ["VoteTracker"]
 license = "MIT"
