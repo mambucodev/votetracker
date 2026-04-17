@@ -1,4 +1,4 @@
-# Python
+# ---------- Python (legacy-python/) ----------
 __pycache__/
 *.py[cod]
 *.so
@@ -6,32 +6,54 @@ __pycache__/
 *.egg-info/
 *.egg
 .eggs/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Build
+# ---------- Build ----------
 dist/
 build/
 *.spec
+legacy-python/scripts/pkg/
+legacy-python/scripts/src/
+*.pkg.tar.*
 
-# Virtual environments
+# ---------- Virtual environments ----------
 venv/
 .venv/
 env/
 
-# IDE
+# ---------- Node / Vite / React ----------
+node_modules/
+dist-ssr/
+*.local
+.vite/
+stats.html
+
+# ---------- Rust / Tauri ----------
+target/
+src-tauri/target/
+src-tauri/gen/schemas/
+*.pdb
+
+# ---------- IDE ----------
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+pyrightconfig.json
 
-# OS
+# ---------- OS ----------
 .DS_Store
 Thumbs.db
 
-# Arch Linux build (makepkg creates these in scripts/)
-scripts/pkg/
-scripts/src/
-*.pkg.tar.*
+# ---------- Claude Code session artifacts ----------
+.claude/
+CLAUDE.local.md
 
-# User data (don't commit personal grades!)
+# ---------- User data (never commit real grades!) ----------
 *.db
+*.sqlite
+*.sqlite3
