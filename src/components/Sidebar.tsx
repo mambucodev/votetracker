@@ -1,5 +1,17 @@
 import { NavLink } from "react-router-dom";
 import { useEffect, useState } from "react";
+import {
+  LayoutDashboard,
+  ClipboardList,
+  BookOpen,
+  Calculator,
+  CalendarDays,
+  FileText,
+  BarChart3,
+  Settings as SettingsIcon,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { activeYear, listYears, setActiveYear } from "@/lib/ipc";
 import { useApp } from "@/lib/store";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -8,14 +20,14 @@ import { tr } from "@/lib/i18n";
 import "./Sidebar.scss";
 
 const NAV = [
-  { to: "/", label: "Dashboard" },
-  { to: "/votes", label: "Votes" },
-  { to: "/subjects", label: "Subjects" },
-  { to: "/simulator", label: "Simulator" },
-  { to: "/calendar", label: "Calendar" },
-  { to: "/report-card", label: "Report Card" },
-  { to: "/statistics", label: "Statistics" },
-  { to: "/settings", label: "Settings" },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/votes", label: "Votes", icon: ClipboardList },
+  { to: "/subjects", label: "Subjects", icon: BookOpen },
+  { to: "/simulator", label: "Simulator", icon: Calculator },
+  { to: "/calendar", label: "Calendar", icon: CalendarDays },
+  { to: "/report-card", label: "Report Card", icon: FileText },
+  { to: "/statistics", label: "Statistics", icon: BarChart3 },
+  { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export function Sidebar() {
@@ -48,16 +60,20 @@ export function Sidebar() {
       </div>
 
       <nav className="nav">
-        {NAV.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === "/"}
-            className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
-          >
-            {tr(item.label)}
-          </NavLink>
-        ))}
+        {NAV.map((item) => {
+          const IconComponent = item.icon;
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === "/"}
+              className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+            >
+              <IconComponent size={16} strokeWidth={1.75} />
+              <span>{tr(item.label)}</span>
+            </NavLink>
+          );
+        })}
       </nav>
 
       <div className="sidebar-footer">
@@ -80,7 +96,7 @@ export function Sidebar() {
           title={tr("Theme")}
           aria-label="Toggle theme"
         >
-          {resolved === "dark" ? "☾" : "☀"}
+          {resolved === "dark" ? <Moon size={14} /> : <Sun size={14} />}
         </button>
       </div>
     </aside>
