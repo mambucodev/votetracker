@@ -13,6 +13,7 @@ import Onboarding from "./pages/Onboarding";
 import { useShortcuts } from "./lib/hooks/useShortcuts";
 import { useMenuEvents } from "./lib/hooks/useMenuEvents";
 import { ShortcutsHelpDialog } from "./components/dialogs/ShortcutsHelpDialog";
+import { CommandPalette } from "./components/CommandPalette";
 import { getSetting, setSetting } from "./lib/ipc";
 import { setLang, type Lang } from "./lib/i18n";
 import "./styles/app.scss";
@@ -61,6 +62,7 @@ export default function App() {
         </Routes>
       </main>
       <ShortcutsHelpDialog />
+      <CommandPalette />
     </div>
   );
 }
