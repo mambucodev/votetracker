@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capabilities: events, dialog for save/open, dialog/fs for JSON import/export, shell-open for data folder, os plugin for theme detection.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-set-title",
+    "core:menu:default",
+    "core:event:default",
+    "core:webview:default",
+    "core:app:default",
+    "dialog:default",
+    "fs:default",
+    "os:default",
+    "shell:allow-open"
+  ]
+}

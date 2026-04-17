@@ -1,0 +1,102 @@
+// ---------- VoteTracker design tokens ----------
+// Claude.ai-inspired warm neutrals + single coral accent gradient.
+// Light and dark palettes live side-by-side under [data-theme].
+
+:root,
+:root[data-theme="light"] {
+  // surfaces
+  --surface: #faf9f5;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f4f2ec;
+  --surface-hover: #efece4;
+
+  // text
+  --text: #201f1d;
+  --text-muted: #6b6862;
+  --text-subtle: #9a958c;
+  --text-inverted: #faf9f5;
+
+  // borders
+  --border: color-mix(in srgb, #201f1d 8%, transparent);
+  --border-strong: color-mix(in srgb, #201f1d 16%, transparent);
+  --focus-ring: color-mix(in srgb, #d97757 40%, transparent);
+
+  // accent (single coral gradient)
+  --accent-100: #fdf1ea;
+  --accent-300: #f2bf9b;
+  --accent-500: #d97757;
+  --accent-700: #a8502f;
+  --accent-gradient: linear-gradient(135deg, #d97757 0%, #f2bf9b 100%);
+  --accent-gradient-soft: linear-gradient(
+    135deg,
+    color-mix(in srgb, #d97757 14%, transparent) 0%,
+    color-mix(in srgb, #f2bf9b 10%, transparent) 100%
+  );
+
+  // grade status colors
+  --grade-excellent: #1f9d55;
+  --grade-good: #27ae60;
+  --grade-sufficient: #c79617;
+  --grade-warning: #e08a1a;
+  --grade-insufficient: #d64545;
+
+  // chart theme
+  --chart-axis: color-mix(in srgb, var(--text-muted) 60%, transparent);
+  --chart-grid: color-mix(in srgb, var(--text) 8%, transparent);
+  --chart-accent: var(--accent-500);
+
+  // elevation
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.06);
+
+  // radii
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  // motion
+  --dur-fast: 120ms;
+  --dur-med: 200ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:root[data-theme="dark"] {
+  --surface: #1f1d1b;
+  --surface-raised: #26231f;
+  --surface-sunken: #1a1817;
+  --surface-hover: #2d2a26;
+
+  --text: #e9e6df;
+  --text-muted: #a9a49a;
+  --text-subtle: #716d65;
+  --text-inverted: #1f1d1b;
+
+  --border: color-mix(in srgb, #e9e6df 10%, transparent);
+  --border-strong: color-mix(in srgb, #e9e6df 20%, transparent);
+  --focus-ring: color-mix(in srgb, #f2bf9b 42%, transparent);
+
+  --accent-100: #3a241a;
+  --accent-300: #c8986f;
+  --accent-500: #e28963;
+  --accent-700: #f2bf9b;
+  --accent-gradient: linear-gradient(135deg, #e28963 0%, #f2bf9b 100%);
+  --accent-gradient-soft: linear-gradient(
+    135deg,
+    color-mix(in srgb, #e28963 18%, transparent) 0%,
+    color-mix(in srgb, #f2bf9b 12%, transparent) 100%
+  );
+
+  --grade-excellent: #4fd28c;
+  --grade-good: #3dbd74;
+  --grade-sufficient: #e0b250;
+  --grade-warning: #f0a848;
+  --grade-insufficient: #f07070;
+
+  --chart-axis: color-mix(in srgb, var(--text-muted) 70%, transparent);
+  --chart-grid: color-mix(in srgb, var(--text) 10%, transparent);
+  --chart-accent: var(--accent-500);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
