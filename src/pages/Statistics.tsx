@@ -16,6 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { TopBar } from "@/components/TopBar";
 import { listVotes } from "@/lib/ipc";
 import { useApp } from "@/lib/store";
@@ -35,6 +36,7 @@ function avg(vs: Vote[]) {
 export default function Statistics() {
   const { year, term } = useApp();
   const [votes, setVotes] = useState<Vote[]>([]);
+  const [radarOpen, setRadarOpen] = useState(false);
 
   useDataRefresh(() => {
     listVotes({ schoolYearId: year?.id, term }).then(setVotes).catch(console.error);
@@ -73,13 +75,15 @@ export default function Statistics() {
     trend.push({ date: v.date, avg: Number((cumS / cumW).toFixed(2)) });
   }
 
+  const canShowRadar = barData.length >= 4;
+
   return (
     <>
       <TopBar title="Statistics" />
       <section className="page-content stats">
-        <div className="chart-card">
+        <div className="chart-card stats-hero">
           <h3>Subject averages</h3>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={340}>
             <BarChart data={barData} layout="vertical">
               <defs>
                 <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
@@ -100,50 +104,64 @@ export default function Statistics() {
           </ResponsiveContainer>
         </div>
 
-        <div className="chart-card">
-          <h3>Distribution</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={bins}>
-              <CartesianGrid stroke="var(--chart-grid)" />
-              <XAxis dataKey="bin" stroke="var(--chart-axis)" fontSize={11} />
-              <YAxis stroke="var(--chart-axis)" fontSize={11} allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="count" fill="url(#accent)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <div className="stats-side">
+          <div className="stats-side-stack">
+            <div className="chart-card">
+              <h3>Distribution</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={bins}>
+                  <CartesianGrid stroke="var(--chart-grid)" />
+                  <XAxis dataKey="bin" stroke="var(--chart-axis)" fontSize={11} />
+                  <YAxis stroke="var(--chart-axis)" fontSize={11} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="url(#accent)" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
-        <div className="chart-card">
-          <h3>Trend</h3>
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={trend}>
-              <CartesianGrid stroke="var(--chart-grid)" />
-              <XAxis dataKey="date" stroke="var(--chart-axis)" fontSize={11} />
-              <YAxis domain={[0, 10]} stroke="var(--chart-axis)" fontSize={11} />
-              <Tooltip />
-              <Line type="monotone" dataKey="avg" stroke="#d97757" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {barData.length >= 4 && (
-          <div className="chart-card">
-            <h3>Subjects radar</h3>
-            <ResponsiveContainer width="100%" height={280}>
-              <RadarChart data={barData}>
-                <PolarGrid stroke="var(--chart-grid)" />
-                <PolarAngleAxis dataKey="subject" stroke="var(--chart-axis)" fontSize={11} />
-                <PolarRadiusAxis domain={[0, 10]} stroke="var(--chart-axis)" fontSize={10} />
-                <Radar
-                  dataKey="avg"
-                  stroke="#d97757"
-                  fill="url(#accent)"
-                  fillOpacity={0.4}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
+            <div className="chart-card">
+              <h3>Trend</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={trend}>
+                  <CartesianGrid stroke="var(--chart-grid)" />
+                  <XAxis dataKey="date" stroke="var(--chart-axis)" fontSize={11} />
+                  <YAxis domain={[0, 10]} stroke="var(--chart-axis)" fontSize={11} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="avg" stroke="#d97757" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        )}
+
+          {canShowRadar && (
+            <div className="chart-card stats-radar">
+              <button
+                type="button"
+                className="stats-radar-toggle"
+                onClick={() => setRadarOpen((v) => !v)}
+                aria-expanded={radarOpen}
+              >
+                <h3>Subjects radar</h3>
+                {radarOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              {radarOpen && (
+                <ResponsiveContainer width="100%" height={380}>
+                  <RadarChart data={barData}>
+                    <PolarGrid stroke="var(--chart-grid)" />
+                    <PolarAngleAxis dataKey="subject" stroke="var(--chart-axis)" fontSize={11} />
+                    <PolarRadiusAxis domain={[0, 10]} stroke="var(--chart-axis)" fontSize={10} />
+                    <Radar
+                      dataKey="avg"
+                      stroke="#d97757"
+                      fill="url(#accent)"
+                      fillOpacity={0.4}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          )}
+        </div>
       </section>
     </>
   );
