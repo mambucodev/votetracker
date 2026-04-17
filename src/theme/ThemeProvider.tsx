@@ -88,6 +88,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Allow the menu-event router (`vt:toggle-theme`) to flip the theme
+  // without needing to reach into the hook directly.
+  useEffect(() => {
+    const onToggle = () => toggle();
+    window.addEventListener("vt:toggle-theme", onToggle);
+    return () => window.removeEventListener("vt:toggle-theme", onToggle);
+  }, [toggle]);
+
   const value = useMemo<ThemeCtx>(
     () => ({ preference, resolved, setPreference, toggle }),
     [preference, resolved, setPreference, toggle],

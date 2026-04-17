@@ -1,0 +1,25 @@
+.confirm-dialog-body {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.confirm-dialog-confirm--danger {
+  color: #fff;
+  background: var(--grade-insufficient);
+  border-color: var(--grade-insufficient);
+
+  &:hover:not(:disabled) {
+    background: color-mix(
+      in srgb,
+      var(--grade-insufficient) 88%,
+      #000
+    );
+    border-color: color-mix(
+      in srgb,
+      var(--grade-insufficient) 88%,
+      #000
+    );
+    filter: none;
+  }
+}

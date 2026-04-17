@@ -11,12 +11,15 @@ import Statistics from "./pages/Statistics";
 import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";
 import { useShortcuts } from "./lib/hooks/useShortcuts";
+import { useMenuEvents } from "./lib/hooks/useMenuEvents";
+import { ShortcutsHelpDialog } from "./components/dialogs/ShortcutsHelpDialog";
 import { getSetting, setSetting } from "./lib/ipc";
 import { setLang, type Lang } from "./lib/i18n";
 import "./styles/app.scss";
 
 export default function App() {
   useShortcuts();
+  useMenuEvents();
   const [onboardNeeded, setOnboardNeeded] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -57,6 +60,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <ShortcutsHelpDialog />
     </div>
   );
 }

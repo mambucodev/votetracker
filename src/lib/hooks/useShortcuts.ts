@@ -27,6 +27,7 @@ export function useShortcuts() {
         tag === "input" || tag === "textarea" || t?.isContentEditable;
 
       const mod = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
 
       if (!typing && e.key === "?") {
         window.dispatchEvent(new CustomEvent("vt:shortcuts-help"));
@@ -51,21 +52,54 @@ export function useShortcuts() {
         e.preventDefault();
       }
 
-      if (mod && !e.shiftKey && e.key.toLowerCase() === "z") {
+      if (mod && !e.shiftKey && key === "z") {
         undo().catch(() => {});
         e.preventDefault();
+        return;
       }
       if (
-        (mod && e.shiftKey && e.key.toLowerCase() === "z") ||
-        (mod && e.key.toLowerCase() === "y")
+        (mod && e.shiftKey && key === "z") ||
+        (mod && key === "y")
       ) {
         redo().catch(() => {});
         e.preventDefault();
+        return;
       }
 
-      if (mod && e.shiftKey && e.key.toLowerCase() === "t") {
+      if (mod && e.shiftKey && key === "t") {
         toggle();
         e.preventDefault();
+        return;
+      }
+
+      // Ctrl+N — new vote (works anywhere)
+      if (mod && !e.shiftKey && key === "n") {
+        window.dispatchEvent(new CustomEvent("vt:new-vote"));
+        e.preventDefault();
+        return;
+      }
+
+      // Ctrl+I — import JSON (route to settings, then dispatch)
+      if (mod && !e.shiftKey && key === "i") {
+        if (window.location.pathname !== "/settings") navigate("/settings");
+        window.dispatchEvent(new CustomEvent("vt:import-json"));
+        e.preventDefault();
+        return;
+      }
+
+      // Ctrl+E — export JSON (route to settings, then dispatch)
+      if (mod && !e.shiftKey && key === "e") {
+        if (window.location.pathname !== "/settings") navigate("/settings");
+        window.dispatchEvent(new CustomEvent("vt:export-json"));
+        e.preventDefault();
+        return;
+      }
+
+      // Ctrl+R — sync now (preventDefault to override webview reload)
+      if (mod && !e.shiftKey && key === "r") {
+        window.dispatchEvent(new CustomEvent("vt:sync-now"));
+        e.preventDefault();
+        return;
       }
     }
 
