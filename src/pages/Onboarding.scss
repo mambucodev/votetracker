@@ -1,0 +1,82 @@
+.onboarding {
+  position: fixed;
+  inset: 0;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 40px;
+
+  .ob-card {
+    max-width: 540px;
+    width: 100%;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: var(--shadow-2);
+
+    h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+  }
+
+  .step-indicator {
+    display: flex;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+
+    .active {
+      color: var(--accent-500);
+      font-weight: 600;
+    }
+  }
+
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    cursor: pointer;
+
+    &:has(input:checked) {
+      background: var(--accent-gradient-soft);
+      border-color: var(--accent-500);
+      color: var(--text);
+    }
+
+    input {
+      margin: 0;
+    }
+  }
+
+  .ob-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+}

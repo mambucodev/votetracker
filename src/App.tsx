@@ -1,50 +1,59 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Route, Routes, Navigate } from "react-router-dom";
+import { Sidebar } from "./components/Sidebar";
+import Dashboard from "./pages/Dashboard";
+import Votes from "./pages/Votes";
+import Subjects from "./pages/Subjects";
+import Simulator from "./pages/Simulator";
+import CalendarPage from "./pages/Calendar";
+import ReportCard from "./pages/ReportCard";
+import Statistics from "./pages/Statistics";
+import Settings from "./pages/Settings";
+import Onboarding from "./pages/Onboarding";
+import { useShortcuts } from "./lib/hooks/useShortcuts";
+import { getSetting, setSetting } from "./lib/ipc";
+import { setLang, type Lang } from "./lib/i18n";
 import "./styles/app.scss";
 
-function Placeholder({ title }: { title: string }) {
-  return (
-    <section className="placeholder">
-      <h1>{title}</h1>
-      <p className="muted">
-        This page is being rebuilt. See{" "}
-        <code>docs/REWRITE_SPEC.md</code> for the feature spec and{" "}
-        <code>legacy-python/src/votetracker/pages/</code> for the reference
-        implementation.
-      </p>
-    </section>
-  );
-}
-
 export default function App() {
+  useShortcuts();
+  const [onboardNeeded, setOnboardNeeded] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const done = await getSetting("onboarding_complete");
+      setOnboardNeeded(done !== "1");
+
+      const lang = await getSetting("language");
+      if (lang) setLang(lang as Lang);
+      else {
+        const fallback = navigator.language?.toLowerCase().startsWith("it")
+          ? "it"
+          : "en";
+        setLang(fallback);
+        await setSetting("language", fallback);
+      }
+    })().catch(console.error);
+  }, []);
+
+  if (onboardNeeded === null) return null;
+  if (onboardNeeded) {
+    return <Onboarding onDone={() => setOnboardNeeded(false)} />;
+  }
+
   return (
     <div className="app-shell">
-      <aside className="app-sidebar">
-        <div className="brand">
-          <span className="brand-mark" />
-          <span className="brand-name">VoteTracker</span>
-          <span className="brand-version">3.0.0-dev</span>
-        </div>
-        <nav className="nav">
-          <a href="/" className="nav-item active">Dashboard</a>
-          <a href="/votes" className="nav-item">Votes</a>
-          <a href="/subjects" className="nav-item">Subjects</a>
-          <a href="/simulator" className="nav-item">Simulator</a>
-          <a href="/calendar" className="nav-item">Calendar</a>
-          <a href="/report-card" className="nav-item">Report Card</a>
-          <a href="/statistics" className="nav-item">Statistics</a>
-          <a href="/settings" className="nav-item">Settings</a>
-        </nav>
-      </aside>
+      <Sidebar />
       <main className="app-main">
         <Routes>
-          <Route path="/" element={<Placeholder title="Dashboard" />} />
-          <Route path="/votes" element={<Placeholder title="Votes" />} />
-          <Route path="/subjects" element={<Placeholder title="Subjects" />} />
-          <Route path="/simulator" element={<Placeholder title="Simulator" />} />
-          <Route path="/calendar" element={<Placeholder title="Calendar" />} />
-          <Route path="/report-card" element={<Placeholder title="Report Card" />} />
-          <Route path="/statistics" element={<Placeholder title="Statistics" />} />
-          <Route path="/settings" element={<Placeholder title="Settings" />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/votes" element={<Votes />} />
+          <Route path="/subjects" element={<Subjects />} />
+          <Route path="/simulator" element={<Simulator />} />
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/report-card" element={<ReportCard />} />
+          <Route path="/statistics" element={<Statistics />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

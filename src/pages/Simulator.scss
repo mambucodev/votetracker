@@ -1,0 +1,46 @@
+.simulator {
+  .sim-inputs {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 12px;
+  }
+
+  .sim-results {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .sim-note {
+    font-size: 13px;
+    color: var(--text-muted);
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface-sunken);
+  }
+}
+
+.result-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+
+  .rc-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .rc-value {
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-top: 4px;
+  }
+
+  &.emphasis {
+    background: var(--accent-gradient-soft);
+    border-color: color-mix(in srgb, var(--accent-500) 40%, var(--border));
+  }
+}

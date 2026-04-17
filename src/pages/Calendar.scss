@@ -1,0 +1,111 @@
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  .cal-month {
+    min-width: 160px;
+    text-align: center;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+}
+
+.cal-head {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 6px 0;
+  letter-spacing: 0.06em;
+}
+
+.cal-cell {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  min-height: 70px;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &.dim {
+    color: var(--text-subtle);
+  }
+  &:hover {
+    background: var(--surface-hover);
+  }
+  &.selected {
+    border-color: var(--accent-500);
+    background: var(--accent-gradient-soft);
+  }
+
+  .cal-date {
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .cal-dots {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .more {
+      font-size: 10px;
+      color: var(--text-muted);
+      line-height: 1;
+    }
+  }
+}
+
+.cal-drawer {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: fit-content;
+
+  .drawer-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .drawer-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 13px;
+    border-bottom: 1px dashed var(--border);
+    &:last-child {
+      border: none;
+    }
+  }
+}

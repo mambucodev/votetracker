@@ -1,0 +1,92 @@
+.settings {
+  .section {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    h3 {
+      margin: 0;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+  }
+
+  .row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+
+    &.align-end {
+      align-items: flex-end;
+    }
+  }
+
+  .year-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .year-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--border);
+
+    &:last-child {
+      border: none;
+    }
+  }
+
+  .provider-panel {
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .pp-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .pp-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+
+      @media (max-width: 900px) {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .pp-controls {
+      gap: 12px;
+    }
+
+    .auto-sync {
+      display: inline-flex;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .pp-last {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .pp-status {
+      font-size: 12px;
+    }
+  }
+}
