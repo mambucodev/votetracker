@@ -1,0 +1,124 @@
+.toast-stack {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 9999;
+  pointer-events: none;
+  max-width: 360px;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--surface-raised) 85%, transparent);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-muted);
+  box-shadow: var(--shadow-2);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.35;
+  animation: toast-in var(--dur-med) var(--ease);
+
+  &.toast--info {
+    border-left-color: var(--accent-500);
+  }
+
+  &.toast--success {
+    border-left-color: var(--grade-good);
+  }
+
+  &.toast--warn {
+    border-left-color: var(--grade-warning);
+  }
+
+  &.toast--error {
+    border-left-color: var(--grade-insufficient);
+  }
+
+  &.toast--progress {
+    border-left-color: var(--accent-500);
+  }
+
+  .toast-icon {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: var(--text-muted);
+  }
+
+  &.toast--success .toast-icon {
+    color: var(--grade-good);
+  }
+
+  &.toast--warn .toast-icon {
+    color: var(--grade-warning);
+  }
+
+  &.toast--error .toast-icon {
+    color: var(--grade-insufficient);
+  }
+
+  &.toast--progress .toast-icon,
+  &.toast--info .toast-icon {
+    color: var(--accent-500);
+  }
+
+  .toast-message {
+    flex: 1;
+    word-break: break-word;
+  }
+
+  .toast-close {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: var(--text-subtle);
+    cursor: pointer;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: var(--radius-sm);
+    transition: color var(--dur-fast) var(--ease),
+      background var(--dur-fast) var(--ease);
+
+    &:hover {
+      color: var(--text);
+      background: var(--surface-hover);
+    }
+  }
+
+  .toast-spin {
+    animation: toast-spin 1s linear infinite;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
