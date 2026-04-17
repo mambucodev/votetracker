@@ -5,6 +5,7 @@
 //! new / updated / skipped, and writes to the DB.
 
 pub mod axios;
+pub mod axios_decode;
 pub mod classeviva;
 pub mod import;
 
