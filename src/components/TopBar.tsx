@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Undo2, Redo2 } from "lucide-react";
 import { undo, redo, setCurrentTerm as setCurTerm, undoState } from "@/lib/ipc";
 import { useApp } from "@/lib/store";
 import { on } from "@/lib/ipc";
@@ -60,19 +61,19 @@ export function TopBar({ title, right }: Props) {
           variant="ghost"
           size="sm"
           disabled={!undoSt.can_undo}
-          title={undoSt.undo_text ?? "Undo"}
+          title={`${undoSt.undo_text ?? "Undo"} • Ctrl+Z`}
           onClick={() => undo().catch(() => {})}
         >
-          ↶
+          <Undo2 size={14} strokeWidth={1.75} />
         </Button>
         <Button
           variant="ghost"
           size="sm"
           disabled={!undoSt.can_redo}
-          title={undoSt.redo_text ?? "Redo"}
+          title={`${undoSt.redo_text ?? "Redo"} • Ctrl+Shift+Z`}
           onClick={() => redo().catch(() => {})}
         >
-          ↷
+          <Redo2 size={14} strokeWidth={1.75} />
         </Button>
         {right}
       </div>
