@@ -1,0 +1,47 @@
+# Maintainer: VoteTracker <gabriele.giambrone@icloud.com>
+pkgname=votetracker
+pkgver=3.0.0
+pkgrel=1
+pkgdesc="School grade management application (Tauri + Rust + React)"
+arch=('x86_64')
+url="https://github.com/mambucodev/votetracker"
+license=('MIT')
+depends=(
+  'webkit2gtk-4.1'
+  'gtk3'
+  'libsoup3'
+  'libayatana-appindicator'
+  'librsvg'
+)
+makedepends=(
+  'rust'
+  'cargo'
+  'npm'
+  'nodejs'
+  'pkg-config'
+)
+source=("$pkgname-$pkgver.tar.gz::https://github.com/mambucodev/votetracker/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "$srcdir/$pkgname-$pkgver"
+  npm ci --no-audit --no-fund
+}
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+  npm run build
+  cd src-tauri
+  cargo build --release --locked
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+  install -Dm755 "src-tauri/target/release/votetracker" \
+                 "$pkgdir/usr/bin/votetracker"
+  install -Dm644 "src-tauri/icons/icon.png" \
+                 "$pkgdir/usr/share/pixmaps/votetracker.png"
+  install -Dm644 "scripts/votetracker.desktop" \
+                 "$pkgdir/usr/share/applications/votetracker.desktop"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

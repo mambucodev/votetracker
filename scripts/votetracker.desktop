@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=VoteTracker
+GenericName=Grade Manager
+Comment=Track school grades, simulate report cards, sync from ClasseViva / Axios
+Exec=votetracker
+Icon=votetracker
+Terminal=false
+Categories=Education;Office;
+StartupNotify=true
+StartupWMClass=VoteTracker
+Keywords=grades;school;education;classeviva;axios;
