@@ -8,9 +8,12 @@
 use crate::db::{school_years, settings, subjects, votes, Database};
 use crate::domain::simulator;
 use crate::domain::subject_match::{self, AutoSuggestion};
-use crate::domain::types::{SchoolYear, Vote};
+use crate::domain::types::{GradeType, SchoolYear, Vote};
 use crate::events;
+use crate::sync::{self, import::ImportSummary, RawGrade};
 use crate::undo::{UndoKind, UndoManager, UndoState};
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::{Emitter, State};
 
@@ -412,4 +415,236 @@ pub fn redo<R: tauri::Runtime>(
     drop(mgr);
     emit_data_changed(&app);
     Ok(true)
+}
+
+// ---------- Providers / sync / import ----------
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct JsonVote {
+    #[serde(alias = "materia")]
+    pub subject: String,
+    #[serde(alias = "voto")]
+    pub grade: f64,
+    #[serde(default, alias = "tipo")]
+    pub r#type: Option<String>,
+    #[serde(default, alias = "quadrimestre")]
+    pub term: Option<i32>,
+    #[serde(default, alias = "data")]
+    pub date: Option<String>,
+    #[serde(default, alias = "desc")]
+    pub description: Option<String>,
+    #[serde(default, alias = "peso")]
+    pub weight: Option<f64>,
+}
+
+#[tauri::command]
+pub fn import_votes_json<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: State<'_, AppState>,
+    records: Vec<JsonVote>,
+) -> Result<ImportSummary, String> {
+    let year_id = {
+        let conn = state.db.pool().get().map_err(err)?;
+        school_years::active(&conn).map_err(err)?.map(|y| y.id)
+    };
+
+    let raw: Vec<RawGrade> = records
+        .into_iter()
+        .map(|r| {
+            let kind = r
+                .r#type
+                .as_deref()
+                .and_then(GradeType::from_str_loose)
+                .unwrap_or(GradeType::Written);
+            RawGrade {
+                subject: r.subject,
+                grade: r.grade,
+                kind,
+                date: r.date.unwrap_or_default(),
+                description: r.description,
+                weight: r.weight.unwrap_or(1.0),
+                term: r.term.unwrap_or(1),
+            }
+        })
+        .collect();
+
+    let summary = sync::import::import_all(&state.db, "json", &raw, year_id)
+        .map_err(|e| e.to_string())?;
+
+    let _ = app.emit(
+        events::DATA_IMPORTED,
+        serde_json::json!({
+            "new": summary.new_count,
+            "updated": summary.updated_count,
+            "skipped": summary.skipped_count,
+        }),
+    );
+    emit_data_changed(&app);
+    Ok(summary)
+}
+
+#[tauri::command]
+pub async fn trigger_sync_now<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    state: State<'_, AppState>,
+    provider_id: String,
+) -> Result<ImportSummary, String> {
+    let _ = app.emit(
+        events::SYNC_STATUS,
+        crate::events::SyncStatusPayload::Started {
+            provider_id: provider_id.clone(),
+        },
+    );
+
+    let result = do_sync(&state.db, &provider_id).await;
+    match &result {
+        Ok(summary) => {
+            if let Ok(conn) = state.db.pool().get() {
+                let _ = settings::set_last_sync(
+                    &conn,
+                    &provider_id,
+                    &chrono::Local::now().to_rfc3339(),
+                );
+            }
+            let _ = app.emit(
+                events::SYNC_STATUS,
+                crate::events::SyncStatusPayload::Done {
+                    provider_id: provider_id.clone(),
+                    new_count: summary.new_count,
+                    updated_count: summary.updated_count,
+                    skipped_count: summary.skipped_count,
+                },
+            );
+            let _ = app.emit(
+                events::DATA_IMPORTED,
+                serde_json::json!({
+                    "new": summary.new_count,
+                    "updated": summary.updated_count,
+                    "skipped": summary.skipped_count,
+                }),
+            );
+            emit_data_changed(&app);
+        }
+        Err(e) => {
+            let _ = app.emit(
+                events::SYNC_STATUS,
+                crate::events::SyncStatusPayload::Failed {
+                    provider_id: provider_id.clone(),
+                    message: e.clone(),
+                },
+            );
+        }
+    }
+    result
+}
+
+async fn do_sync(db: &Database, provider_id: &str) -> Result<ImportSummary, String> {
+    let mut provider = sync::provider_by_id(provider_id)
+        .ok_or_else(|| format!("unknown provider {provider_id}"))?;
+
+    let creds = {
+        let conn = db.pool().get().map_err(err)?;
+        let mut out: HashMap<String, String> = HashMap::new();
+        for f in provider.credential_fields() {
+            if let Some(v) = settings::get_credential(&conn, provider_id, &f.name).map_err(err)? {
+                out.insert(f.name.clone(), v);
+            }
+        }
+        out
+    };
+
+    provider
+        .login(&creds)
+        .await
+        .map_err(|e| format!("login: {e}"))?;
+
+    let grades = provider
+        .fetch_grades()
+        .await
+        .map_err(|e| format!("fetch: {e}"))?;
+
+    let year_id = {
+        let conn = db.pool().get().map_err(err)?;
+        school_years::active(&conn).map_err(err)?.map(|y| y.id)
+    };
+
+    sync::import::import_all(db, provider_id, &grades, year_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_providers() -> Vec<serde_json::Value> {
+    sync::all_provider_ids()
+        .iter()
+        .filter_map(|id| sync::provider_by_id(id))
+        .map(|p| {
+            serde_json::json!({
+                "id": p.id(),
+                "name": p.display_name(),
+                "mapping_prefix": p.mapping_prefix(),
+                "fields": p.credential_fields(),
+            })
+        })
+        .collect()
+}
+
+// ---------- PDF export ----------
+
+#[tauri::command]
+pub fn export_report_card_pdf(
+    state: State<'_, AppState>,
+    path: String,
+    term: i32,
+    school_year_id: Option<i64>,
+    split: bool,
+) -> Result<(), String> {
+    crate::pdf::report_card::export(
+        &state.db,
+        term,
+        school_year_id,
+        split,
+        std::path::Path::new(&path),
+    )
+    .map_err(|e| e.to_string())
+}
+
+// ---------- Misc ----------
+
+#[tauri::command]
+pub fn open_data_dir<R: tauri::Runtime>(_app: tauri::AppHandle<R>) -> Result<(), String> {
+    let path = data_dir()?;
+    // Use platform-specific opener — Tauri v2 shell.open is deprecated but
+    // we avoid the plugin-opener dependency to keep the bundle small.
+    #[cfg(target_os = "linux")]
+    let program = "xdg-open";
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(target_os = "windows")]
+    let program = "explorer";
+
+    std::process::Command::new(program)
+        .arg(path)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn data_dir() -> Result<std::path::PathBuf, String> {
+    // Same resolver as db::default_db_path, minus the final filename.
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let base = std::env::var_os("XDG_DATA_HOME")
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".local/share"))
+        })
+        .ok_or_else(|| "no data dir".to_string())?;
+    #[cfg(target_os = "macos")]
+    let base = std::env::var_os("HOME")
+        .map(|h| std::path::PathBuf::from(h).join("Library/Application Support"))
+        .ok_or_else(|| "no data dir".to_string())?;
+    #[cfg(target_os = "windows")]
+    let base = std::env::var_os("APPDATA")
+        .map(std::path::PathBuf::from)
+        .ok_or_else(|| "no data dir".to_string())?;
+    Ok(base.join("votetracker"))
 }

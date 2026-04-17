@@ -1,15 +1,4 @@
 //! VoteTracker — Tauri backend library.
-//!
-//! Public modules are thin vertical slices that together make up the app:
-//!   • `db`      — SQLite schema, migrations, seeds, CRUD.
-//!   • `domain`  — pure business logic (averages, rounding, simulator, matching).
-//!   • `undo`    — vote-scoped undo/redo stack (50-entry cap).
-//!   • `sync`    — SyncProvider trait + ClasseViva / Axios implementations + import engine.
-//!   • `pdf`     — report-card PDF export.
-//!   • `commands`— `#[tauri::command]` bindings exposed to the React frontend.
-//!   • `menu`    — native menubar (Ctrl+1-8, Undo/Redo, Sync Now, theme toggle).
-//!   • `events`  — typed event payloads emitted to the frontend.
-//!   • `i18n`    — en/it translation tables.
 
 pub mod commands;
 pub mod db;
@@ -73,9 +62,37 @@ pub fn run() {
             commands::undo_state,
             commands::undo,
             commands::redo,
+            // providers / sync / import
+            commands::list_providers,
+            commands::import_votes_json,
+            commands::trigger_sync_now,
+            // pdf
+            commands::export_report_card_pdf,
+            // misc
+            commands::open_data_dir,
         ])
         .setup(|app| {
             tracing::info!("VoteTracker starting up");
+
+            // Native menu.
+            match menu::build(app.handle()) {
+                Ok(m) => {
+                    if let Err(e) = app.set_menu(m) {
+                        tracing::warn!("failed to set menu: {e}");
+                    }
+                    menu::bind(app.handle());
+                }
+                Err(e) => tracing::warn!("failed to build menu: {e}"),
+            }
+
+            // Startup auto-sync — one Tokio task per enabled provider.
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = startup_auto_sync(&app_handle).await {
+                    tracing::warn!("startup auto-sync failed: {e}");
+                }
+            });
+
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
             }
@@ -83,4 +100,140 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+async fn startup_auto_sync<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> anyhow::Result<()> {
+    use tauri::Manager;
+    let state = app.state::<AppState>();
+
+    // Small delay so the window renders before we start network work.
+    tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+
+    for &provider_id in sync::all_provider_ids() {
+        let auto = {
+            let conn = state.db.pool().get()?;
+            db::settings::auto_sync_enabled(&conn, provider_id)?
+        };
+        if !auto {
+            continue;
+        }
+
+        let app_h = app.clone();
+        let pid = provider_id.to_string();
+        tauri::async_runtime::spawn(async move {
+            tracing::info!(provider = %pid, "startup auto-sync");
+            let state = app_h.state::<AppState>();
+            match run_one_sync(&app_h, &state.db, &pid).await {
+                Ok(()) => tracing::info!(provider = %pid, "auto-sync ok"),
+                Err(e) => tracing::warn!(provider = %pid, "auto-sync failed: {e}"),
+            }
+        });
+
+        // Kick off a periodic sync task for this provider too.
+        let app_h = app.clone();
+        let pid = provider_id.to_string();
+        tauri::async_runtime::spawn(async move {
+            loop {
+                let interval = {
+                    let state = app_h.state::<AppState>();
+                    let conn = match state.db.pool().get() {
+                        Ok(c) => c,
+                        Err(_) => break,
+                    };
+                    db::settings::sync_interval_minutes(&conn, &pid)
+                        .unwrap_or(60)
+                        .max(5)
+                };
+                tokio::time::sleep(std::time::Duration::from_secs(interval as u64 * 60)).await;
+
+                // Bail out if auto-sync was disabled mid-flight.
+                let still_on = {
+                    let state = app_h.state::<AppState>();
+                    let conn = match state.db.pool().get() {
+                        Ok(c) => c,
+                        Err(_) => continue,
+                    };
+                    db::settings::auto_sync_enabled(&conn, &pid).unwrap_or(false)
+                };
+                if !still_on {
+                    break;
+                }
+
+                let state = app_h.state::<AppState>();
+                if let Err(e) = run_one_sync(&app_h, &state.db, &pid).await {
+                    tracing::warn!(provider = %pid, "interval sync failed: {e}");
+                }
+            }
+        });
+    }
+
+    Ok(())
+}
+
+async fn run_one_sync<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    db: &db::Database,
+    provider_id: &str,
+) -> anyhow::Result<()> {
+    use tauri::Emitter;
+
+    let _ = app.emit(
+        events::SYNC_STATUS,
+        events::SyncStatusPayload::Started {
+            provider_id: provider_id.to_string(),
+        },
+    );
+
+    let mut provider = sync::provider_by_id(provider_id)
+        .ok_or_else(|| anyhow::anyhow!("unknown provider {provider_id}"))?;
+
+    let creds = {
+        let conn = db.pool().get()?;
+        let mut map = std::collections::HashMap::new();
+        for f in provider.credential_fields() {
+            if let Some(v) = db::settings::get_credential(&conn, provider_id, &f.name)? {
+                map.insert(f.name, v);
+            }
+        }
+        map
+    };
+
+    provider
+        .login(&creds)
+        .await
+        .map_err(|e| anyhow::anyhow!("login: {e}"))?;
+    let grades = provider
+        .fetch_grades()
+        .await
+        .map_err(|e| anyhow::anyhow!("fetch: {e}"))?;
+    let year_id = {
+        let conn = db.pool().get()?;
+        db::school_years::active(&conn)?.map(|y| y.id)
+    };
+    let summary = sync::import::import_all(db, provider_id, &grades, year_id)?;
+
+    {
+        let conn = db.pool().get()?;
+        db::settings::set_last_sync(&conn, provider_id, &chrono::Local::now().to_rfc3339())?;
+    }
+
+    let _ = app.emit(
+        events::SYNC_STATUS,
+        events::SyncStatusPayload::Done {
+            provider_id: provider_id.to_string(),
+            new_count: summary.new_count,
+            updated_count: summary.updated_count,
+            skipped_count: summary.skipped_count,
+        },
+    );
+    let _ = app.emit(
+        events::DATA_IMPORTED,
+        serde_json::json!({
+            "new": summary.new_count,
+            "updated": summary.updated_count,
+            "skipped": summary.skipped_count,
+        }),
+    );
+    let _ = app.emit(events::DATA_CHANGED, ());
+    Ok(())
 }
