@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { TopBar } from "@/components/TopBar";
@@ -21,8 +21,11 @@ function avg(vs: Vote[]) {
 
 export default function ReportCard() {
   const { year, term } = useApp();
+  const exportPdfIntent = useApp((s) => s.exportPdfIntent);
+  const consumeExportPdf = useApp((s) => s.consumeExportPdf);
   const [votes, setVotes] = useState<Vote[]>([]);
   const [split, setSplit] = useState(false);
+  const exportPdfRef = useRef<() => void>();
 
   useDataRefresh(() => {
     listVotes({ schoolYearId: year?.id, term }).then(setVotes).catch(console.error);
@@ -66,6 +69,15 @@ export default function ReportCard() {
       console.error(e);
     }
   }
+
+  exportPdfRef.current = exportPdf;
+
+  useEffect(() => {
+    if (exportPdfIntent) {
+      exportPdfRef.current?.();
+      consumeExportPdf();
+    }
+  }, [exportPdfIntent, consumeExportPdf]);
 
   return (
     <>

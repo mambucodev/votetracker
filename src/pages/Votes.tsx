@@ -14,6 +14,8 @@ import "./Votes.scss";
 
 export default function Votes() {
   const { year, term } = useApp();
+  const newVoteIntent = useApp((s) => s.newVoteIntent);
+  const consumeNewVote = useApp((s) => s.consumeNewVote);
   const [votes, setVotes] = useState<Vote[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [filterSubject, setFilterSubject] = useState("");
@@ -43,14 +45,20 @@ export default function Votes() {
     }).then(setVotes);
   }, [filterSubject, year?.id, term]);
 
+  // Ctrl+N is routed through the global shortcut handler → useGlobalActions
+  // → newVoteIntent. Open the dialog and clear the flag so a later
+  // re-mount doesn't re-open it.
+  useEffect(() => {
+    if (newVoteIntent) {
+      setDialog({ open: true, editing: null });
+      consumeNewVote();
+    }
+  }, [newVoteIntent, consumeNewVote]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "n") {
-        setDialog({ open: true, editing: null });
-        e.preventDefault();
-      }
       if (selected != null && e.key === "Delete") {
         deleteVote(selected).catch(console.error);
         setSelected(null);

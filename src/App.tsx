@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";
 import { useShortcuts } from "./lib/hooks/useShortcuts";
 import { useMenuEvents } from "./lib/hooks/useMenuEvents";
+import { useGlobalActions } from "./lib/hooks/useGlobalActions";
 import { ShortcutsHelpDialog } from "./components/dialogs/ShortcutsHelpDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { getSetting, setSetting } from "./lib/ipc";
@@ -21,6 +22,7 @@ import "./styles/app.scss";
 export default function App() {
   useShortcuts();
   useMenuEvents();
+  useGlobalActions();
   const [onboardNeeded, setOnboardNeeded] = useState<boolean | null>(null);
 
   useEffect(() => {
