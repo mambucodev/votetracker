@@ -43,9 +43,15 @@ code {
   color: var(--text-muted);
 }
 
-button {
+button,
+input,
+select,
+textarea {
   font: inherit;
   color: inherit;
+}
+
+button {
   background: none;
   border: none;
   cursor: pointer;
