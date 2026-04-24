@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { redo, undo } from "../ipc";
+import { redo, setCurrentTerm, undo } from "../ipc";
+import { useApp } from "../store";
 import { useTheme } from "@/theme/ThemeProvider";
 
 const ROUTES = [
@@ -37,6 +38,15 @@ export function useShortcuts() {
 
       if (mod && e.key >= "1" && e.key <= "8") {
         navigate(ROUTES[parseInt(e.key, 10) - 1]);
+        e.preventDefault();
+        return;
+      }
+
+      // Bare "1" / "2" — switch term (ignored while typing or with modifiers).
+      if (!typing && !mod && (e.key === "1" || e.key === "2")) {
+        const t = e.key === "1" ? 1 : 2;
+        useApp.getState().setTerm(t);
+        setCurrentTerm(t).catch(() => {});
         e.preventDefault();
         return;
       }
