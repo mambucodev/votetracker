@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "crates/votetracker-core",
+    "crates/votetracker-gtk",
+]
+resolver = "2"

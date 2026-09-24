@@ -10,6 +10,7 @@ __pycache__/
 # Build
 dist/
 build/
+target/
 *.spec
 result
 
