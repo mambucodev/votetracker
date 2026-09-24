@@ -285,5 +285,50 @@ class TestDatabase(unittest.TestCase):
         assert needed is not None
         self.assertAlmostEqual(needed, 9.0, places=1)
 
+    def test_custom_db_path_init(self):
+        """Test initializing Database with an explicit db_path."""
+        temp = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        temp.close()
+        try:
+            custom_db = Database(db_path=temp.name)
+            self.assertEqual(custom_db.db_path, temp.name)
+            custom_db.add_subject("History")
+            self.assertIn("History", custom_db.get_subjects())
+            custom_db.close()
+        finally:
+            os.unlink(temp.name)
+
+    def test_grade_statistics_excludes_zero_marks(self):
+        """Test that get_grade_statistics excludes 0.0 marks (+/-) from average."""
+        active_year = self.db.get_active_school_year()
+        assert active_year is not None
+
+        # Add regular grade and a 0.0 mark (Italian +/-)
+        self.db.add_vote("Math", 8.0, "Written", "2024-01-15", "", 1, 1.0, active_year['id'])
+        self.db.add_vote("Math", 0.0, "Oral", "2024-01-16", "+ mark", 1, 1.0, active_year['id'])
+
+        stats = self.db.get_grade_statistics()
+        # Average must be 8.0, NOT 4.0
+        self.assertAlmostEqual(stats['overall_avg'], 8.0, places=2)
+        # Failing count must be 0, not 1
+        self.assertEqual(stats['failing_count'], 0)
+        # Total votes should reflect both recorded votes
+        self.assertEqual(stats['total_votes'], 2)
+
+    def test_calculate_needed_grade_excludes_zero_marks(self):
+        """Test that calculate_needed_grade ignores 0.0 marks in weight & sum."""
+        active_year = self.db.get_active_school_year()
+        assert active_year is not None
+
+        # Add regular grade and 0.0 mark
+        self.db.add_vote("Math", 7.0, "Written", "2024-01-15", "", 1, 1.0, active_year['id'])
+        self.db.add_vote("Math", 0.0, "Oral", "2024-01-16", "", 1, 1.0, active_year['id'])
+
+        # With 0.0 excluded, current sum is 7.0 with weight 1.0
+        # To get 8.0 target with next weight 1.0: (7 + x) / 2 = 8 -> x = 9.0
+        needed = self.db.calculate_needed_grade("Math", 8.0, active_year['id'], 1, 1.0)
+        assert needed is not None
+        self.assertAlmostEqual(needed, 9.0, places=1)
+
 if __name__ == '__main__':
     unittest.main()

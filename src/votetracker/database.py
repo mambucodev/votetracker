@@ -35,8 +35,8 @@ def get_db_path() -> str:
 class Database:
     """SQLite database manager for votes, subjects, school years, and settings."""
     
-    def __init__(self):
-        self.db_path = get_db_path()
+    def __init__(self, db_path: str | None = None):
+        self.db_path = db_path if db_path is not None else get_db_path()
         # Caches for frequently accessed data
         self._subject_cache = None
         self._year_cache = None
@@ -925,7 +925,16 @@ class Database:
 
             current_term = self.get_current_term()
 
+            # Count total votes for current term
+            cursor.execute("""
+                SELECT COUNT(*) FROM votes
+                WHERE school_year_id = ? AND term = ?
+            """, (active_year['id'], current_term))
+            total_votes_row = cursor.fetchone()
+            total_votes = total_votes_row[0] if total_votes_row else 0
+
             # Single query with aggregation - calculates weighted average per subject
+            # Excludes grades <= 0 (e.g. Italian +/- marks)
             cursor.execute("""
                 SELECT
                     s.name,
@@ -933,7 +942,7 @@ class Database:
                     COUNT(*) as vote_count
                 FROM votes v
                 JOIN subjects s ON v.subject_id = s.id
-                WHERE v.school_year_id = ? AND v.term = ?
+                WHERE v.school_year_id = ? AND v.term = ? AND v.grade > 0
                 GROUP BY s.id, s.name
                 HAVING COUNT(*) > 0
             """, (active_year['id'], current_term))
@@ -944,7 +953,7 @@ class Database:
                 return {
                     'overall_avg': 0.0,
                     'failing_count': 0,
-                    'total_votes': 0,
+                    'total_votes': total_votes,
                     'subject_avgs': {}
                 }
 
@@ -954,9 +963,6 @@ class Database:
 
             # Count failing subjects
             failing_count = sum(1 for avg in subject_avgs_dict.values() if avg < 6.0)
-
-            # Total votes
-            total_votes = sum(row['vote_count'] for row in subject_stats)
 
             return {
                 'overall_avg': overall_avg,
@@ -1229,9 +1235,13 @@ class Database:
             if not votes:
                 return target_avg  # First vote should be target
 
+            valid_votes = [v for v in votes if v.get("grade", 0) > 0]
+            if not valid_votes:
+                return target_avg
+
             # Calculate current weighted sum
-            total_weighted = sum(v['grade'] * v['weight'] for v in votes)
-            total_weight = sum(v['weight'] for v in votes)
+            total_weighted = sum(v["grade"] * v.get("weight", 1.0) for v in valid_votes)
+            total_weight = sum(v.get("weight", 1.0) for v in valid_votes)
 
             current_avg = total_weighted / total_weight if total_weight > 0 else 0
 

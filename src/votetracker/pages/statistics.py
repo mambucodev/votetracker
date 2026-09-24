@@ -256,7 +256,7 @@ class TrendChart(QFrame):
 
         # Calculate points
         points = []
-        for i, (date, grade) in enumerate(self._data_points):
+        for i, (_date, grade) in enumerate(self._data_points):
             x = margin + (width * i / max(len(self._data_points) - 1, 1))
             y = margin + height * (1 - (grade - min_grade) / grade_range)
             points.append((x, y, grade))
@@ -452,7 +452,7 @@ class StatisticsPage(QWidget):
         self._subjects_group.setTitle(tr("Subject Averages"))
         self._best_group.setTitle(tr("Best Subjects"))
         self._worst_group.setTitle(tr("Subjects to Improve"))
-        for key, (label_key, label_widget) in self._stat_label_widgets.items():
+        for _key, (label_key, label_widget) in self._stat_label_widgets.items():
             label_widget.setText(tr(label_key))
 
         self._term_toggle.set_term(self._db.get_current_term())
@@ -460,22 +460,23 @@ class StatisticsPage(QWidget):
 
         votes = self._db.get_votes(term=self._current_term)
         grades = [v.get("grade", 0) for v in votes]
+        valid_grades = [g for g in grades if g > 0]
 
         # Summary stats
         self._stat_labels["total_grades"].setText(str(len(grades)))
 
-        if grades:
+        if valid_grades:
             avg = calc_average(votes)
             self._stat_labels["overall_avg"].setText(f"{avg:.2f}")
             self._stat_labels["overall_avg"].setStyleSheet(
                 f"font-size: 18px; font-weight: bold; color: {get_status_color(avg).name()};"
             )
 
-            self._stat_labels["highest_grade"].setText(f"{max(grades):.2f}")
-            self._stat_labels["lowest_grade"].setText(f"{min(grades):.2f}")
+            self._stat_labels["highest_grade"].setText(f"{max(valid_grades):.2f}")
+            self._stat_labels["lowest_grade"].setText(f"{min(valid_grades):.2f}")
 
-            passing = sum(1 for g in grades if g >= 6)
-            failing = sum(1 for g in grades if g < 6)
+            passing = sum(1 for g in valid_grades if g >= 6)
+            failing = sum(1 for g in valid_grades if g < 6)
             self._stat_labels["passing_count"].setText(str(passing))
             self._stat_labels["passing_count"].setStyleSheet(
                 "font-size: 18px; font-weight: bold; color: #27ae60;"

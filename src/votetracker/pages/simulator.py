@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from ..database import Database
-from ..utils import calc_average, get_grade_style
+from ..utils import get_grade_style
 from ..i18n import tr
 
 class SimulatorPage(QWidget):
@@ -174,7 +174,18 @@ class SimulatorPage(QWidget):
             self._clear_scenarios()
             return
 
-        avg = calc_average(votes)
+        valid_votes = [v for v in votes if v.get("grade", 0) > 0]
+        if not valid_votes:
+            self._current_avg_label.setText(tr("Average") + ": -")
+            self._votes_count_label.setText(f"{tr('Total Votes')}: {len(votes)}")
+            self._result_label.setText(tr("No votes yet"))
+            self._result_label.setStyleSheet("font-size: 14px; color: #7f8c8d;")
+            self._clear_scenarios()
+            return
+
+        total_weighted = sum(v.get("grade", 0) * v.get("weight", 1.0) for v in valid_votes)
+        total_weight = sum(v.get("weight", 1.0) for v in valid_votes)
+        avg = total_weighted / total_weight if total_weight > 0 else 0.0
         num_votes = len(votes)
         target = self._target_spin.value()
 
@@ -182,8 +193,8 @@ class SimulatorPage(QWidget):
         self._current_avg_label.setStyleSheet(get_grade_style(avg))
         self._votes_count_label.setText(f"{tr('Total Votes')}: {num_votes}")
 
-        # Calculate required grade
-        required = (target * (num_votes + 1)) - (avg * num_votes)
+        # Calculate required grade assuming standard weight 1.0 for next vote
+        required = (target * (total_weight + 1.0)) - total_weighted
 
         if required <= 0:
             self._result_label.setText(f"✓ {tr('Target already reached')}")
@@ -198,23 +209,23 @@ class SimulatorPage(QWidget):
         else:
             self._result_label.setText(f"{tr('You need at least:')} <b style='font-size: 18px;'>{required:.1f}</b>")
             self._result_label.setStyleSheet("font-size: 14px;")
-        
+
         # Update scenarios
         self._clear_scenarios()
-        
+
         for grade in range(2, 11):  # 2 to 10
-            new_avg = (avg * num_votes + grade) / (num_votes + 1)
-            
+            new_avg = (total_weighted + grade) / (total_weight + 1.0)
+
             box = QGroupBox(f"If {grade}")
             box.setFixedWidth(65)
             box_layout = QVBoxLayout(box)
             box_layout.setContentsMargins(6, 6, 6, 6)
-            
+
             value = QLabel(f"<b>{new_avg:.2f}</b>")
             value.setStyleSheet(get_grade_style(new_avg))
             value.setAlignment(Qt.AlignmentFlag.AlignCenter)
             box_layout.addWidget(value)
-            
+
             self._scenarios_layout.addWidget(box)
     
     def _clear_scenarios(self):

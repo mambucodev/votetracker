@@ -237,10 +237,16 @@ class DashboardPage(QWidget):
         votes = self._db.get_votes(term=self._current_term)
         subjects_with_votes = self._db.get_subjects_with_votes(term=self._current_term)
 
+        votes_by_subject: dict[str, list[dict]] = {}
+        for v in votes:
+            s_name = v.get("subject")
+            if s_name:
+                votes_by_subject.setdefault(s_name, []).append(v)
+
         avg = calc_average(votes)
         failing = sum(
             1 for s in subjects_with_votes
-            if calc_average(self._db.get_votes(s, term=self._current_term)) < 6
+            if calc_average(votes_by_subject.get(s, [])) < 6
         )
 
         # Update stats values
@@ -281,7 +287,7 @@ class DashboardPage(QWidget):
         col = 0
         row = 0
         for subject in sorted(subjects_with_votes):
-            subject_votes = self._db.get_votes(subject, term=self._current_term)
+            subject_votes = votes_by_subject.get(subject, [])
             avg_s = calc_average(subject_votes)
             written_votes = [v for v in subject_votes if v.get("type") == "Written"]
             oral_votes = [v for v in subject_votes if v.get("type") == "Oral"]

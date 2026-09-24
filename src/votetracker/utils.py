@@ -4,12 +4,23 @@ Contains calculation helpers, color utilities, and icon helpers.
 """
 from __future__ import annotations
 
-from PySide6.QtGui import QColor, QIcon
+try:
+    from PySide6.QtGui import QColor, QIcon
+except ImportError:
+    class QColor:  # type: ignore[no-redef]
+        def __init__(self, color_name: str = "#000000"):
+            self._name = color_name
+
+        def name(self) -> str:
+            return self._name
+
+    class QIcon:  # type: ignore[no-redef]
+        pass
+
 from .constants import (
     PASSING_GRADE, GRADE_INSUFFICIENT,
     COLOR_FAIL, COLOR_SUFFICIENT, COLOR_GOOD
 )
-from .icon_provider import get_icon as _get_icon, has_icon as _has_icon, get_icon_fallback as _get_icon_fallback
 
 # ============================================================================
 # GRADE CALCULATIONS
@@ -101,15 +112,27 @@ def get_symbolic_icon(name: str) -> QIcon:
 
     Returns a QIcon that's never null.
     """
-    return _get_icon(name)
+    try:
+        from .icon_provider import get_icon as _get_icon
+        return _get_icon(name)
+    except ImportError:
+        return QIcon()
 
 def has_icon(name: str) -> bool:
     """Check if an icon is available (always True with new system)."""
-    return _has_icon(name)
+    try:
+        from .icon_provider import has_icon as _has_icon
+        return _has_icon(name)
+    except ImportError:
+        return False
 
 def get_icon_fallback(name: str) -> str:
     """Get text fallback for an icon (no emojis, just simple text)."""
-    return _get_icon_fallback(name)
+    try:
+        from .icon_provider import get_icon_fallback as _get_icon_fallback
+        return _get_icon_fallback(name)
+    except ImportError:
+        return name
 
 # ============================================================================
 # DATE HELPERS

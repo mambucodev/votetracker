@@ -114,21 +114,15 @@ class UndoManager(QObject):
         elif action.action_type == ActionType.DELETE:
             # Undo delete = re-add
             data = action.vote_data
-            self._db.add_vote(
+            new_id = self._db.add_vote(
                 data["subject"], data["grade"], data["type"],
                 data["date"], data["description"],
-                term=data["term"], weight=data.get("weight", 1.0)
+                term=data.get("term", 1),
+                weight=data.get("weight", 1.0),
+                school_year_id=data.get("school_year_id")
             )
-            # Note: vote gets a new ID, update action for redo
-            votes = self._db.get_votes(subject=data["subject"])
-            if votes:
-                # Find the vote we just added (most recent with matching data)
-                for v in votes:
-                    if (v["grade"] == data["grade"] and
-                        v["date"] == data["date"] and
-                        v["type"] == data["type"]):
-                        action.vote_id = v["id"]
-                        break
+            if new_id is not None:
+                action.vote_id = new_id
 
         self._redo_stack.append(action)
         self.state_changed.emit()
@@ -144,20 +138,15 @@ class UndoManager(QObject):
         if action.action_type == ActionType.ADD:
             # Redo add = add again
             data = action.vote_data
-            self._db.add_vote(
+            new_id = self._db.add_vote(
                 data["subject"], data["grade"], data["type"],
                 data["date"], data["description"],
-                term=data["term"], weight=data.get("weight", 1.0)
+                term=data.get("term", 1),
+                weight=data.get("weight", 1.0),
+                school_year_id=data.get("school_year_id")
             )
-            # Update action with new ID
-            votes = self._db.get_votes(subject=data["subject"])
-            if votes:
-                for v in votes:
-                    if (v["grade"] == data["grade"] and
-                        v["date"] == data["date"] and
-                        v["type"] == data["type"]):
-                        action.vote_id = v["id"]
-                        break
+            if new_id is not None:
+                action.vote_id = new_id
 
         elif action.action_type == ActionType.EDIT:
             # Redo edit = apply new data

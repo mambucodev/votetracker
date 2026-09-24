@@ -169,6 +169,10 @@ TRANSLATIONS = {
         "Final Grade": "Final Grade",
         "Proposed": "Proposed",
         "No subjects with grades": "No subjects with grades",
+        "Split Written/Oral": "Split Written/Oral",
+        "Rounding Rules": "Rounding Rules",
+        "Average ≥ 0.5 decimal rounds up (e.g., 5.5 → 6)": "Average ≥ 0.5 decimal rounds up (e.g., 5.5 → 6)",
+        "Average < 0.5 decimal rounds down (e.g., 5.4 → 5)": "Average < 0.5 decimal rounds down (e.g., 5.4 → 5)",
 
         # Statistics
         "Summary": "Summary",
@@ -432,6 +436,10 @@ TRANSLATIONS = {
         "Final Grade": "Voto Finale",
         "Proposed": "Proposto",
         "No subjects with grades": "Nessuna materia con voti",
+        "Split Written/Oral": "Separa Scritto/Orale",
+        "Rounding Rules": "Regole di Arrotondamento",
+        "Average ≥ 0.5 decimal rounds up (e.g., 5.5 → 6)": "Media con decimale ≥ 0.5 arrotonda per eccesso (es. 5.5 → 6)",
+        "Average < 0.5 decimal rounds down (e.g., 5.4 → 5)": "Media con decimale < 0.5 arrotonda per difetto (es. 5.4 → 5)",
 
         # Statistics
         "Summary": "Riepilogo",

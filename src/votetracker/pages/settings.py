@@ -310,7 +310,7 @@ class SettingsPage(QWidget):
         self._provider_pages["none"] = 0
 
         # Create a page for each registered provider
-        for idx, (provider_id, provider_name) in enumerate(available_providers, start=1):
+        for idx, (provider_id, _provider_name) in enumerate(available_providers, start=1):
             provider = SyncProviderRegistry.get_provider(provider_id, self._db)
             if provider is None:
                 continue
@@ -1611,7 +1611,7 @@ class SettingsPage(QWidget):
         error_count = 0
         skip_duplicates = widgets['skip_duplicates'].isChecked()
 
-        for idx, grade in enumerate(grades):
+        for grade in grades:
             try:
                 # Map subject
                 provider_subject: str = grade['subject']

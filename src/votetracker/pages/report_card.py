@@ -57,7 +57,7 @@ class ReportCardPage(QWidget):
         header.addSpacing(8)
 
         # Split toggle
-        self._split_toggle = QCheckBox("Split Written/Oral")
+        self._split_toggle = QCheckBox(tr("Split Written/Oral"))
         self._split_toggle.setChecked(False)
         self._split_toggle.toggled.connect(self._on_split_changed)
         header.addWidget(self._split_toggle)
@@ -67,7 +67,7 @@ class ReportCardPage(QWidget):
         # Report card
         active_year = self._db.get_active_school_year()
         year_name = active_year["name"] if active_year else "-"
-        self._report_group = QGroupBox(f"Report Card - {year_name}")
+        self._report_group = QGroupBox(f"{tr('Report Card')} - {year_name}")
         report_layout = QVBoxLayout(self._report_group)
         report_layout.setContentsMargins(16, 16, 16, 16)
         
@@ -85,12 +85,14 @@ class ReportCardPage(QWidget):
         layout.addWidget(self._report_group, 1)
         
         # Legend
-        legend_group = QGroupBox("Rounding Rules")
-        legend_layout = QVBoxLayout(legend_group)
+        self._legend_group = QGroupBox(tr("Rounding Rules"))
+        legend_layout = QVBoxLayout(self._legend_group)
         legend_layout.setContentsMargins(12, 12, 12, 12)
-        legend_layout.addWidget(QLabel("• Average ≥ 0.5 decimal rounds up (e.g., 5.5 → 6)"))
-        legend_layout.addWidget(QLabel("• Average < 0.5 decimal rounds down (e.g., 5.4 → 5)"))
-        layout.addWidget(legend_group)
+        self._rule_up_label = QLabel("• " + tr("Average ≥ 0.5 decimal rounds up (e.g., 5.5 → 6)"))
+        self._rule_down_label = QLabel("• " + tr("Average < 0.5 decimal rounds down (e.g., 5.4 → 5)"))
+        legend_layout.addWidget(self._rule_up_label)
+        legend_layout.addWidget(self._rule_down_label)
+        layout.addWidget(self._legend_group)
     
     def _on_term_changed(self, term: int):
         """Handle term change."""
@@ -108,6 +110,10 @@ class ReportCardPage(QWidget):
         # Update labels for language changes
         self._title.setText(tr("Report Card"))
         self._export_btn.setText(tr("Export PDF"))
+        self._split_toggle.setText(tr("Split Written/Oral"))
+        self._legend_group.setTitle(tr("Rounding Rules"))
+        self._rule_up_label.setText("• " + tr("Average ≥ 0.5 decimal rounds up (e.g., 5.5 → 6)"))
+        self._rule_down_label.setText("• " + tr("Average < 0.5 decimal rounds down (e.g., 5.4 → 5)"))
 
         # Update year in title
         active_year = self._db.get_active_school_year()
@@ -130,7 +136,7 @@ class ReportCardPage(QWidget):
         subjects = self._db.get_subjects_with_votes(term=self._current_term)
         
         if not subjects:
-            empty = QLabel("No votes recorded yet")
+            empty = QLabel(tr("No votes recorded yet"))
             empty.setStyleSheet("color: gray; font-weight: bold; padding: 40px;")
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._grades_layout.addWidget(empty)

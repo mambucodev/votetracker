@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QIcon
 
+from . import __version__
 from .mainwindow import MainWindow
 from .windows_style import apply_windows_style
 
@@ -31,7 +32,7 @@ def main():
 
     # Set application info
     app.setApplicationName("VoteTracker")
-    app.setApplicationVersion("2.0.0")
+    app.setApplicationVersion(__version__)
     app.setOrganizationName("VoteTracker")
     app.setDesktopFileName("votetracker")
 
