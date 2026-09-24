@@ -6,8 +6,8 @@ hiddenimports += collect_submodules('votetracker')
 
 
 a = Analysis(
-    ['/home/mambuco/Projects/votetracker/run.py'],
-    pathex=['/home/mambuco/Projects/votetracker/src'],
+    ['run.py'],
+    pathex=['src'],
     binaries=[],
     datas=[],
     hiddenimports=hiddenimports,

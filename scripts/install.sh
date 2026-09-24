@@ -35,13 +35,23 @@ echo "✓ PySide6 found"
 
 # Create directories
 mkdir -p "$LIB_DIR/votetracker/pages"
+mkdir -p "$LIB_DIR/votetracker/providers"
 mkdir -p "$BIN_DIR"
 mkdir -p "$DESKTOP_DIR"
 
 # Copy files
 echo "Installing files..."
 cp "$PROJECT_ROOT/src/votetracker/"*.py "$LIB_DIR/votetracker/"
+cp "$PROJECT_ROOT/src/votetracker/icon.png" "$LIB_DIR/votetracker/" 2>/dev/null || true
 cp "$PROJECT_ROOT/src/votetracker/pages/"*.py "$LIB_DIR/votetracker/pages/"
+cp "$PROJECT_ROOT/src/votetracker/providers/"*.py "$LIB_DIR/votetracker/providers/"
+
+# Install icon
+ICON_DIR="$HOME/.local/share/icons/hicolor/128x128/apps"
+mkdir -p "$ICON_DIR"
+if [ -f "$PROJECT_ROOT/icons/icon-128.png" ]; then
+    cp "$PROJECT_ROOT/icons/icon-128.png" "$ICON_DIR/votetracker.png"
+fi
 
 # Create launcher
 cat > "$BIN_DIR/votetracker" << EOF

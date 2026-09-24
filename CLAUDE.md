@@ -26,12 +26,12 @@ cd scripts && makepkg -si
 python scripts/build.py --onefile
 ```
 
-No ruff/basedpyright/pytest is configured in `pyproject.toml` — rely on manual inspection and the unittest suite.
+Ruff is used for linting (`ruff check src tests`). Tests are run via unittest (`python -m unittest discover -s tests -p "test_*.py"`).
 
 ## Architecture
 
 ### Data flow
-User interaction → `PageClass` method → `Database` CRUD → page emits `data_changed` / `data_imported` / `school_year_changed` signal → `MainWindow` calls `_refresh_all_pages()` → each page's `refresh()` reloads from DB.
+User interaction → `PageClass` method → `Database` CRUD → page emits `vote_changed` / `subject_changed` / `data_imported` / `school_year_changed` signal → `MainWindow` calls `_refresh_all()` → current page's `refresh()` reloads from DB.
 
 `MainWindow` owns the singleton `Database` instance (`self._db`) and `UndoManager`. It wires every page via a `QStackedWidget` and delegates unhandled keyboard events to the active page's `handle_key()`.
 
