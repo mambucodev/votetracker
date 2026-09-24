@@ -2,7 +2,7 @@ mod dialogs;
 mod pages;
 
 use relm4::adw::prelude::*;
-use relm4::{adw, gtk, ComponentParts, ComponentSender, RelmApp, RelmWidgetExt, SimpleComponent};
+use relm4::{adw, gtk, ComponentParts, ComponentSender, RelmApp, SimpleComponent};
 use votetracker_core::{Database, NewVote};
 
 use crate::dialogs::add_vote::AddVoteDialog;
@@ -37,6 +37,39 @@ enum AppMsg {
 #[allow(dead_code)]
 struct AppWidgets {
     window: adw::ApplicationWindow,
+}
+
+fn create_nav_row(title: &str, icon_name: &str) -> gtk::ListBoxRow {
+    let row = gtk::ListBoxRow::new();
+    let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    row_box.set_margin_top(8);
+    row_box.set_margin_bottom(8);
+    row_box.set_margin_start(12);
+    row_box.set_margin_end(12);
+
+    let img = gtk::Image::from_icon_name(icon_name);
+    let lbl = gtk::Label::builder()
+        .label(title)
+        .halign(gtk::Align::Start)
+        .hexpand(true)
+        .build();
+
+    row_box.append(&img);
+    row_box.append(&lbl);
+    row.set_child(Some(&row_box));
+    row
+}
+
+fn create_nav_spacer() -> gtk::ListBoxRow {
+    let row = gtk::ListBoxRow::new();
+    row.set_selectable(false);
+    row.set_activatable(false);
+    let sep = gtk::Separator::new(gtk::Orientation::Horizontal);
+    sep.set_opacity(0.0);
+    sep.set_margin_top(6);
+    sep.set_margin_bottom(6);
+    row.set_child(Some(&sep));
+    row
 }
 
 impl SimpleComponent for AppModel {
@@ -83,58 +116,45 @@ impl SimpleComponent for AppModel {
         settings_page.refresh(&mut db);
 
         // =====================================================================
-        // NavigationSplitView (Sidebar + Content according to GNOME HIG)
+        // NavigationSplitView (Native GNOME sidebar + content)
         // =====================================================================
         let split_view = adw::NavigationSplitView::new();
         split_view.set_min_sidebar_width(220.0);
         split_view.set_max_sidebar_width(280.0);
 
         // ---------------------------------------------------------------------
-        // 1. Sidebar
+        // 1. Sidebar (Clean like Nautilus)
         // ---------------------------------------------------------------------
         let sidebar_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
         let sidebar_header = adw::HeaderBar::new();
-        let sidebar_title = adw::WindowTitle::new("VoteTracker", &active_year_name);
+        let sidebar_title = adw::WindowTitle::new("VoteTracker", "");
         sidebar_header.set_title_widget(Some(&sidebar_title));
         sidebar_box.append(&sidebar_header);
 
-        // Sidebar navigation list
         let sidebar_list = gtk::ListBox::new();
         sidebar_list.add_css_class("navigation-sidebar");
         sidebar_list.set_selection_mode(gtk::SelectionMode::Single);
 
-        let nav_items = [
-            ("Dashboard", "utilities-system-monitor-symbolic", "dashboard"),
-            ("Voti", "view-list-bullet-symbolic", "votes"),
-            ("Materie", "folder-documents-symbolic", "subjects"),
-            ("Simulatore", "accessories-calculator-symbolic", "simulator"),
-            ("Pagella", "x-office-spreadsheet-symbolic", "report_card"),
-            ("Impostazioni", "emblem-system-symbolic", "settings"),
-        ];
+        // Group 1: Panoramica
+        sidebar_list.append(&create_nav_row("Dashboard", "utilities-system-monitor-symbolic"));
+        sidebar_list.append(&create_nav_row("Voti", "view-list-bullet-symbolic"));
+        sidebar_list.append(&create_nav_row("Materie", "folder-documents-symbolic"));
 
-        for (title, icon, _id) in &nav_items {
-            let row = gtk::ListBoxRow::new();
-            let row_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-            row_box.set_margin_top(8);
-            row_box.set_margin_bottom(8);
-            row_box.set_margin_start(12);
-            row_box.set_margin_end(12);
+        // Spacer
+        sidebar_list.append(&create_nav_spacer());
 
-            let img = gtk::Image::from_icon_name(icon);
-            let lbl = gtk::Label::builder()
-                .label(*title)
-                .halign(gtk::Align::Start)
-                .hexpand(true)
-                .build();
+        // Group 2: Strumenti
+        sidebar_list.append(&create_nav_row("Simulatore", "accessories-calculator-symbolic"));
+        sidebar_list.append(&create_nav_row("Pagella", "x-office-spreadsheet-symbolic"));
 
-            row_box.append(&img);
-            row_box.append(&lbl);
-            row.set_child(Some(&row_box));
-            sidebar_list.append(&row);
-        }
+        // Spacer
+        sidebar_list.append(&create_nav_spacer());
 
-        // Select first item by default
+        // Group 3: Preferenze
+        sidebar_list.append(&create_nav_row("Impostazioni", "emblem-system-symbolic"));
+
+        // Select first row
         if let Some(first_row) = sidebar_list.row_at_index(0) {
             sidebar_list.select_row(Some(&first_row));
         }
@@ -147,22 +167,6 @@ impl SimpleComponent for AppModel {
             .build();
         sidebar_box.append(&scrolled_sidebar);
 
-        // Bottom CTA in Sidebar: Soft Pill Add Button
-        let bottom_sidebar_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        bottom_sidebar_box.set_margin_all(12);
-
-        let add_btn_sidebar = gtk::Button::builder()
-            .label("Aggiungi Voto")
-            .icon_name("list-add-symbolic")
-            .css_classes(vec!["suggested-action", "pill"])
-            .build();
-        let sender_clone = sender.clone();
-        add_btn_sidebar.connect_clicked(move |_| {
-            sender_clone.input(AppMsg::ShowAddVoteDialog);
-        });
-        bottom_sidebar_box.append(&add_btn_sidebar);
-        sidebar_box.append(&bottom_sidebar_box);
-
         let sidebar_page = adw::NavigationPage::builder()
             .title("VoteTracker")
             .tag("sidebar")
@@ -171,7 +175,7 @@ impl SimpleComponent for AppModel {
         split_view.set_sidebar(Some(&sidebar_page));
 
         // ---------------------------------------------------------------------
-        // 2. Content Area
+        // 2. Content Area (Clean flat layout like Nautilus)
         // ---------------------------------------------------------------------
         let content_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
 
@@ -179,18 +183,30 @@ impl SimpleComponent for AppModel {
         let content_title = adw::WindowTitle::new("Dashboard", "");
         content_header.set_title_widget(Some(&content_title));
 
-        let quick_add_btn = gtk::Button::builder()
-            .icon_name("list-add-symbolic")
-            .tooltip_text("Aggiungi nuovo voto")
+        // Year indicator pill
+        let year_pill = gtk::Button::builder()
+            .label(&active_year_name)
+            .css_classes(vec!["flat"])
+            .tooltip_text("Anno scolastico attivo")
             .build();
-        let sender_clone2 = sender.clone();
-        quick_add_btn.connect_clicked(move |_| {
-            sender_clone2.input(AppMsg::ShowAddVoteDialog);
+        content_header.pack_end(&year_pill);
+
+        // Native Suggested Action Button in HeaderBar (like Nautilus new folder / action)
+        let add_btn = gtk::Button::builder()
+            .label("Nuovo Voto")
+            .icon_name("list-add-symbolic")
+            .css_classes(vec!["suggested-action"])
+            .tooltip_text("Registra un nuovo voto")
+            .build();
+        let sender_clone = sender.clone();
+        add_btn.connect_clicked(move |_| {
+            sender_clone.input(AppMsg::ShowAddVoteDialog);
         });
-        content_header.pack_end(&quick_add_btn);
+        content_header.pack_end(&add_btn);
+
         content_box.append(&content_header);
 
-        // ViewStack with pages
+        // ViewStack directly inside content box
         let view_stack = adw::ViewStack::new();
         view_stack.set_vexpand(true);
 
@@ -201,13 +217,7 @@ impl SimpleComponent for AppModel {
         view_stack.add_named(&report_card.container, Some("report_card"));
         view_stack.add_named(&settings_page.container, Some("settings"));
 
-        // Wrap inside Clamp for optimal reading width on wide screens
-        let clamp = adw::Clamp::builder()
-            .maximum_size(900)
-            .tightening_threshold(650)
-            .child(&view_stack)
-            .build();
-        content_box.append(&clamp);
+        content_box.append(&view_stack);
 
         let content_page = adw::NavigationPage::builder()
             .title("Dashboard")
@@ -224,16 +234,23 @@ impl SimpleComponent for AppModel {
 
         sidebar_list.connect_row_activated(move |_, row| {
             let idx = row.index();
-            let page_ids = ["dashboard", "votes", "subjects", "simulator", "report_card", "settings"];
-            let page_titles = ["Dashboard", "Registro Voti", "Materie Scolastiche", "Simulatore Media", "Pagella", "Impostazioni"];
+            // Mapping accounting for spacers at row 3 and row 6
+            let page_mapping = match idx {
+                0 => Some(("dashboard", "Dashboard")),
+                1 => Some(("votes", "Registro Voti")),
+                2 => Some(("subjects", "Materie Scolastiche")),
+                4 => Some(("simulator", "Simulatore Media")),
+                5 => Some(("report_card", "Pagella")),
+                7 => Some(("settings", "Impostazioni")),
+                _ => None,
+            };
 
-            if let Some(&tag) = page_ids.get(idx as usize) {
+            if let Some((tag, title)) = page_mapping {
                 view_stack_clone.set_visible_child_name(tag);
-                let title = page_titles.get(idx as usize).unwrap_or(&"VoteTracker");
                 content_title_clone.set_title(title);
                 content_page_clone.set_title(title);
 
-                // On collapsed (mobile), auto-slide to content
+                // Auto slide on mobile
                 split_view_clone.set_show_content(true);
             }
         });
@@ -306,9 +323,7 @@ impl SimpleComponent for AppModel {
                     sender.input(AppMsg::Refresh);
                 }
             }
-            AppMsg::SelectPage(_tag) => {
-                // handle direct page navigation
-            }
+            AppMsg::SelectPage(_tag) => {}
         }
     }
 }

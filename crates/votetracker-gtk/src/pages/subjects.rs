@@ -3,39 +3,60 @@ use relm4::{adw, gtk};
 use votetracker_core::{calculate_weighted_average, Database};
 
 pub struct SubjectsPage {
-    pub container: adw::PreferencesPage,
+    pub container: gtk::ScrolledWindow,
+    content_box: gtk::Box,
 }
 
 impl SubjectsPage {
     pub fn new() -> Self {
-        let container = adw::PreferencesPage::new();
-        Self { container }
+        let content_box = gtk::Box::new(gtk::Orientation::Vertical, 16);
+        content_box.set_margin_top(24);
+        content_box.set_margin_bottom(24);
+        content_box.set_margin_start(24);
+        content_box.set_margin_end(24);
+
+        let container = gtk::ScrolledWindow::builder()
+            .hscrollbar_policy(gtk::PolicyType::Never)
+            .vscrollbar_policy(gtk::PolicyType::Automatic)
+            .child(&content_box)
+            .build();
+
+        Self {
+            container,
+            content_box,
+        }
     }
 
     pub fn refresh(&self, db: &mut Database, school_year_id: Option<i64>) {
-        while let Some(child) = self.container.first_child() {
-            if let Ok(group) = child.downcast::<adw::PreferencesGroup>() {
-                self.container.remove(&group);
-            } else {
-                break;
-            }
+        while let Some(child) = self.content_box.first_child() {
+            self.content_box.remove(&child);
         }
 
         let subjects = db.get_subjects().unwrap_or_default();
         let all_votes = db.get_votes(None, None, school_year_id).unwrap_or_default();
 
-        let group = adw::PreferencesGroup::builder()
-            .title("Materie Scolastiche")
-            .description("Configura le materie, gli obiettivi minimi e visualizza il rendimento")
+        let header_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        let header_label = gtk::Label::builder()
+            .label(format!("Discipline Scolastiche ({})", subjects.len()))
+            .css_classes(vec!["heading", "dim-label"])
+            .halign(gtk::Align::Start)
+            .hexpand(true)
             .build();
+        header_box.append(&header_label);
+        self.content_box.append(&header_box);
 
         if subjects.is_empty() {
-            let empty_row = adw::ActionRow::builder()
-                .title("Nessuna materia registrata")
-                .subtitle("Aggiungi la tua prima materia")
+            let status = adw::StatusPage::builder()
+                .icon_name("folder-documents-symbolic")
+                .title("Nessuna Materia Presente")
+                .description("Configura le tue materie scolastiche")
                 .build();
-            group.add(&empty_row);
+            self.content_box.append(&status);
         } else {
+            let list_box = gtk::ListBox::new();
+            list_box.add_css_class("boxed-list");
+            list_box.set_selection_mode(gtk::SelectionMode::None);
+
             for sub in &subjects {
                 let votes: Vec<_> = all_votes
                     .iter()
@@ -45,16 +66,16 @@ impl SubjectsPage {
 
                 let avg = calculate_weighted_average(&votes);
                 let avg_str = match avg {
-                    Some(a) => format!("Media: {:.2}", a),
-                    None => "Nessun voto".to_string(),
+                    Some(a) => format!("{:.2}", a),
+                    None => "—".to_string(),
                 };
 
                 let row = adw::ActionRow::builder()
                     .title(&sub.name)
-                    .subtitle(format!("{} • Obiettivo: {:.1} • Voti: {}", avg_str, sub.target_grade, votes.len()))
+                    .subtitle(format!("Obiettivo: {:.1} • {} verifiche registrate", sub.target_grade, votes.len()))
                     .build();
 
-                let color_dot = gtk::Label::builder()
+                let dot = gtk::Label::builder()
                     .label("●")
                     .css_classes(vec![
                         match avg {
@@ -65,29 +86,24 @@ impl SubjectsPage {
                         "title-3",
                     ])
                     .build();
-
-                row.add_prefix(&color_dot);
+                row.add_prefix(&dot);
 
                 let badge = gtk::Label::builder()
-                    .label(match avg {
-                        Some(a) => format!("{:.1}", a),
-                        None => "-".to_string(),
-                    })
+                    .label(&avg_str)
                     .css_classes(vec![
-                        "title-3",
+                        "pill",
                         match avg {
-                            Some(a) if a >= sub.target_grade => "accent",
+                            Some(a) if a >= sub.target_grade => "success",
                             Some(_) => "error",
                             None => "dim-label",
                         },
                     ])
                     .build();
-
                 row.add_suffix(&badge);
-                group.add(&row);
+                list_box.append(&row);
             }
-        }
 
-        self.container.add(&group);
+            self.content_box.append(&list_box);
+        }
     }
 }

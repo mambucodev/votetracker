@@ -3,63 +3,62 @@ use relm4::{adw, gtk};
 use votetracker_core::{calculate_statistics, calculate_weighted_average, Database};
 
 pub struct DashboardPage {
-    pub container: adw::PreferencesPage,
+    pub container: gtk::ScrolledWindow,
+    content_box: gtk::Box,
 }
 
 impl DashboardPage {
     pub fn new() -> Self {
-        let container = adw::PreferencesPage::new();
-        Self { container }
+        let content_box = gtk::Box::new(gtk::Orientation::Vertical, 20);
+        content_box.set_margin_top(24);
+        content_box.set_margin_bottom(24);
+        content_box.set_margin_start(24);
+        content_box.set_margin_end(24);
+
+        let container = gtk::ScrolledWindow::builder()
+            .hscrollbar_policy(gtk::PolicyType::Never)
+            .vscrollbar_policy(gtk::PolicyType::Automatic)
+            .child(&content_box)
+            .build();
+
+        Self {
+            container,
+            content_box,
+        }
     }
 
     pub fn refresh(&self, db: &mut Database, school_year_id: Option<i64>) {
-        while let Some(child) = self.container.first_child() {
-            if let Ok(group) = child.downcast::<adw::PreferencesGroup>() {
-                self.container.remove(&group);
-            } else {
-                break;
-            }
+        while let Some(child) = self.content_box.first_child() {
+            self.content_box.remove(&child);
         }
 
         let subjects = db.get_subjects().unwrap_or_default();
         let all_votes = db.get_votes(None, None, school_year_id).unwrap_or_default();
         let stats = calculate_statistics(&all_votes);
 
-        // 1. Soft Hero Card (Overview)
-        let hero_group = adw::PreferencesGroup::new();
-        let hero_box = gtk::Box::new(gtk::Orientation::Vertical, 12);
-        hero_box.set_margin_top(12);
-        hero_box.set_margin_bottom(12);
-        hero_box.set_margin_start(16);
-        hero_box.set_margin_end(16);
-        hero_box.add_css_class("card");
+        // 1. Clean Hero Card
+        let hero_card = gtk::Box::new(gtk::Orientation::Vertical, 14);
+        hero_card.add_css_class("card");
+        hero_card.set_margin_bottom(8);
 
-        let header_label = gtk::Label::builder()
+        let card_content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        card_content.set_margin_top(18);
+        card_content.set_margin_bottom(18);
+        card_content.set_margin_start(20);
+        card_content.set_margin_end(20);
+
+        // Card Header
+        let card_header = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+        let header_lbl = gtk::Label::builder()
             .label("Rendimento Scolastico")
-            .css_classes(vec!["heading", "dim-label"])
+            .css_classes(vec!["heading"])
             .halign(gtk::Align::Start)
-            .margin_top(16)
-            .margin_start(20)
+            .hexpand(true)
             .build();
-        hero_box.append(&header_label);
+        card_header.append(&header_lbl);
 
-        let gpa_str = stats.average.map(|a| format!("{:.2}", a)).unwrap_or_else(|| "—".to_string());
         let is_passing = stats.average.map(|a| a >= 6.0).unwrap_or(true);
-
-        let middle_box = gtk::Box::new(gtk::Orientation::Horizontal, 16);
-        middle_box.set_margin_start(20);
-        middle_box.set_margin_end(20);
-
-        let gpa_label = gtk::Label::builder()
-            .label(&gpa_str)
-            .css_classes(vec![
-                "title-1",
-                if is_passing { "success" } else { "error" },
-            ])
-            .build();
-        middle_box.append(&gpa_label);
-
-        let status_pill = gtk::Label::builder()
+        let status_badge = gtk::Label::builder()
             .label(if stats.average.is_none() {
                 "In attesa di voti"
             } else if is_passing {
@@ -77,26 +76,62 @@ impl DashboardPage {
                     "error"
                 },
             ])
-            .valign(gtk::Align::Center)
             .build();
-        middle_box.append(&status_pill);
-        hero_box.append(&middle_box);
+        card_header.append(&status_badge);
+        card_content.append(&card_header);
 
-        // Pills row for sub-metrics
-        let metrics_box = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-        metrics_box.set_margin_start(20);
-        metrics_box.set_margin_end(20);
-        metrics_box.set_margin_bottom(20);
+        // Score display
+        let score_box = gtk::Box::new(gtk::Orientation::Horizontal, 16);
+        let gpa_str = stats.average.map(|a| format!("{:.2}", a)).unwrap_or_else(|| "—".to_string());
+        let gpa_lbl = gtk::Label::builder()
+            .label(&gpa_str)
+            .css_classes(vec![
+                "title-1",
+                if stats.average.is_none() {
+                    "dim-label"
+                } else if is_passing {
+                    "success"
+                } else {
+                    "error"
+                },
+            ])
+            .build();
+        score_box.append(&gpa_lbl);
 
-        let total_pill = gtk::Label::builder()
+        let gpa_sub_box = gtk::Box::new(gtk::Orientation::Vertical, 2);
+        gpa_sub_box.set_valign(gtk::Align::Center);
+        let sub_title = gtk::Label::builder()
+            .label("Media Generale Ponderata")
+            .css_classes(vec!["body", "dim-label"])
+            .halign(gtk::Align::Start)
+            .build();
+        let sub_notes = gtk::Label::builder()
+            .label(if stats.average.is_none() {
+                "Nessun voto calcolato per questo anno"
+            } else {
+                "Calcolata su tutte le prove valide"
+            })
+            .css_classes(vec!["caption", "dim-label"])
+            .halign(gtk::Align::Start)
+            .build();
+        gpa_sub_box.append(&sub_title);
+        gpa_sub_box.append(&sub_notes);
+        score_box.append(&gpa_sub_box);
+        card_content.append(&score_box);
+
+        // Stats Footer Row
+        let footer_box = gtk::Box::new(gtk::Orientation::Horizontal, 16);
+        footer_box.set_margin_top(4);
+
+        let chip1 = gtk::Label::builder()
             .label(format!("Voti Totali: {}", stats.total_votes))
             .css_classes(vec!["caption", "dim-label"])
             .build();
-        let pass_rate_pill = gtk::Label::builder()
+        let chip2 = gtk::Label::builder()
             .label(format!("Sufficienze: {:.0}%", stats.passing_rate))
             .css_classes(vec!["caption", "dim-label"])
             .build();
-        let fails_pill = gtk::Label::builder()
+        let chip3 = gtk::Label::builder()
             .label(format!("Insufficienze: {}", stats.failing_count))
             .css_classes(vec![
                 "caption",
@@ -104,28 +139,47 @@ impl DashboardPage {
             ])
             .build();
 
-        metrics_box.append(&total_pill);
-        metrics_box.append(&gtk::Label::new(Some("•")));
-        metrics_box.append(&pass_rate_pill);
-        metrics_box.append(&gtk::Label::new(Some("•")));
-        metrics_box.append(&fails_pill);
+        footer_box.append(&chip1);
+        footer_box.append(&gtk::Label::new(Some("•")));
+        footer_box.append(&chip2);
+        footer_box.append(&gtk::Label::new(Some("•")));
+        footer_box.append(&chip3);
+        card_content.append(&footer_box);
 
-        hero_box.append(&metrics_box);
-        hero_group.add(&hero_box);
-        self.container.add(&hero_group);
+        hero_card.append(&card_content);
+        self.content_box.append(&hero_card);
 
-        // 2. Subject Averages Group
-        let subjects_group = adw::PreferencesGroup::builder()
-            .title("Medie per Disciplina")
-            .description("Panoramica del rendimento scolastico per ogni materia")
+        // 2. Section Header
+        let section_header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        section_header.set_margin_top(8);
+        section_header.set_margin_bottom(4);
+
+        let section_title = gtk::Label::builder()
+            .label("Materie")
+            .css_classes(vec!["title-3"])
+            .halign(gtk::Align::Start)
+            .hexpand(true)
             .build();
+        section_header.append(&section_title);
+
+        let count_pill = gtk::Label::builder()
+            .label(format!("{} materie", subjects.len()))
+            .css_classes(vec!["caption", "dim-label"])
+            .build();
+        section_header.append(&count_pill);
+        self.content_box.append(&section_header);
+
+        // 3. Subjects Boxed List (Clean GNOME boxed-list)
+        let list_box = gtk::ListBox::new();
+        list_box.add_css_class("boxed-list");
+        list_box.set_selection_mode(gtk::SelectionMode::None);
 
         if subjects.is_empty() {
             let empty_row = adw::ActionRow::builder()
                 .title("Nessuna materia presente")
                 .subtitle("Aggiungi le tue materie nella sezione Materie")
                 .build();
-            subjects_group.add(&empty_row);
+            list_box.append(&empty_row);
         } else {
             for sub in &subjects {
                 let sub_votes: Vec<_> = all_votes
@@ -137,22 +191,35 @@ impl DashboardPage {
                 let sub_avg = calculate_weighted_average(&sub_votes);
                 let sub_avg_str = match sub_avg {
                     Some(avg) => format!("{:.2}", avg),
-                    None => "-".to_string(),
+                    None => "—".to_string(),
                 };
 
                 let row = adw::ActionRow::builder()
                     .title(&sub.name)
                     .subtitle(format!(
-                        "{} voti registrati • Obiettivo: {:.1}",
+                        "{} verifiche • Obiettivo: {:.1}",
                         sub_votes.len(),
                         sub.target_grade
                     ))
                     .build();
 
+                let dot = gtk::Label::builder()
+                    .label("●")
+                    .css_classes(vec![
+                        match sub_avg {
+                            Some(a) if a >= 6.0 => "success",
+                            Some(_) => "error",
+                            None => "dim-label",
+                        },
+                        "title-3",
+                    ])
+                    .build();
+                row.add_prefix(&dot);
+
                 let badge = gtk::Label::builder()
                     .label(&sub_avg_str)
                     .css_classes(vec![
-                        "title-3",
+                        "pill",
                         match sub_avg {
                             Some(a) if a >= 6.0 => "success",
                             Some(_) => "error",
@@ -160,12 +227,11 @@ impl DashboardPage {
                         },
                     ])
                     .build();
-
                 row.add_suffix(&badge);
-                subjects_group.add(&row);
+                list_box.append(&row);
             }
         }
 
-        self.container.add(&subjects_group);
+        self.content_box.append(&list_box);
     }
 }
