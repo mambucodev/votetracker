@@ -4,7 +4,7 @@ Unit tests for utility functions.
 from __future__ import annotations
 
 import unittest
-from src.votetracker.utils import calc_average, round_report_card, get_status_color
+from src.votetracker.utils import calc_average, round_report_card, get_status_color, get_school_year_name, get_short_year_name
 from src.votetracker.constants import PASSING_GRADE, GRADE_INSUFFICIENT
 
 class TestUtils(unittest.TestCase):
@@ -119,6 +119,23 @@ class TestUtils(unittest.TestCase):
         # Exactly 6.0 should be green
         color = get_status_color(PASSING_GRADE)
         self.assertEqual(color.name(), "#27ae60")
+
+    # ========================================================================
+    # DATE TESTS
+    # ========================================================================
+
+    def test_get_school_year_name(self):
+        """Test school year name generation."""
+        self.assertEqual(get_school_year_name(2025), "2025/2026")
+        self.assertEqual(get_school_year_name(2000), "2000/2001")
+        self.assertEqual(get_school_year_name(1999), "1999/2000")
+        self.assertEqual(get_school_year_name(999), "999/1000")
+
+    def test_get_short_year_name(self):
+        """Test short school year name generation."""
+        self.assertEqual(get_short_year_name(2025), "25/26")
+        self.assertEqual(get_short_year_name(2009), "9/10")
+        self.assertEqual(get_short_year_name(1999), "99/0")
 
 if __name__ == '__main__':
     unittest.main()
