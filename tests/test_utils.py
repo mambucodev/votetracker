@@ -4,7 +4,7 @@ Unit tests for utility functions.
 from __future__ import annotations
 
 import unittest
-from src.votetracker.utils import calc_average, round_report_card, get_status_color
+from src.votetracker.utils import calc_average, round_report_card, get_status_color, get_type_color, get_grade_style, StatusColors
 from src.votetracker.constants import PASSING_GRADE, GRADE_INSUFFICIENT
 
 class TestUtils(unittest.TestCase):
@@ -120,5 +120,37 @@ class TestUtils(unittest.TestCase):
         color = get_status_color(PASSING_GRADE)
         self.assertEqual(color.name(), "#27ae60")
 
+
+    def test_get_type_color_known(self):
+        """Test get_type_color with known types."""
+        self.assertEqual(get_type_color("Written"), StatusColors.WRITTEN)
+        self.assertEqual(get_type_color("Oral"), StatusColors.ORAL)
+        self.assertEqual(get_type_color("Practical"), StatusColors.PRACTICAL)
+
+    def test_get_type_color_unknown(self):
+        """Test get_type_color with unknown types (fallback to WRITTEN)."""
+        self.assertEqual(get_type_color("Unknown"), StatusColors.WRITTEN)
+        self.assertEqual(get_type_color(""), StatusColors.WRITTEN)
+        self.assertEqual(get_type_color(None), StatusColors.WRITTEN)
+
+    def test_get_grade_style_failing(self):
+        """Test get_grade_style with failing grades."""
+        style = get_grade_style(4.0)
+        self.assertIn("font-weight: bold", style)
+        self.assertIn(StatusColors.FAILING.name(), style)
+
+    def test_get_grade_style_warning(self):
+        """Test get_grade_style with warning grades."""
+        style = get_grade_style(5.5)
+        self.assertIn("font-weight: bold", style)
+        self.assertIn(StatusColors.WARNING.name(), style)
+
+    def test_get_grade_style_passing(self):
+        """Test get_grade_style with passing grades."""
+        style = get_grade_style(8.0)
+        self.assertIn("font-weight: bold", style)
+        self.assertIn(StatusColors.PASSING.name(), style)
+
 if __name__ == '__main__':
+
     unittest.main()
