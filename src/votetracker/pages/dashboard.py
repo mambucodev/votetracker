@@ -4,6 +4,8 @@ Shows overview statistics and subject cards.
 """
 from __future__ import annotations
 
+from collections import defaultdict
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
     QScrollArea, QGridLayout, QFrame
@@ -237,11 +239,11 @@ class DashboardPage(QWidget):
         votes = self._db.get_votes(term=self._current_term)
         subjects_with_votes = self._db.get_subjects_with_votes(term=self._current_term)
 
-        votes_by_subject: dict[str, list[dict]] = {}
+        votes_by_subject: dict[str, list[dict]] = defaultdict(list)
         for v in votes:
             s_name = v.get("subject")
             if s_name:
-                votes_by_subject.setdefault(s_name, []).append(v)
+                votes_by_subject[s_name].append(v)
 
         avg = calc_average(votes)
         failing = sum(
