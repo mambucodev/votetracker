@@ -34,7 +34,6 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._db = Database()
         self._undo_manager = UndoManager(self._db)
-        self._undo_manager.state_changed.connect(self._on_undo_state_changed)
 
         # Register sync providers
         register_all_providers()
@@ -369,11 +368,6 @@ class MainWindow(QMainWindow):
         current = self._stack.currentIndex()
         prev_idx = (current - 1) % self._stack.count()
         self._switch_page(prev_idx)
-
-    def _on_undo_state_changed(self):
-        """Handle undo/redo state changes."""
-        # Could update UI elements here if needed
-        pass
 
     def _undo(self):
         """Perform undo operation."""
