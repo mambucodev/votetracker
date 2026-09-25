@@ -290,9 +290,7 @@ class MainWindow(QMainWindow):
 
         # Trigger import from settings page for the active provider
         # The settings page's _import_from_provider method handles everything
-        # TODO: Add a trigger method in settings page for auto-sync
-        # self._settings_page.trigger_provider_sync(provider_id)
-        pass
+        self._settings_page.trigger_provider_sync(provider_id)
     
     def _switch_page(self, index: int):
         """Switch to a page by index."""
