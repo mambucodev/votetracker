@@ -8,6 +8,7 @@ import os
 import sys
 import sqlite3
 import base64
+import keyring
 import logging
 from typing import Any
 from datetime import datetime
@@ -235,16 +236,31 @@ class Database:
     # ========================================================================
 
     def save_classeviva_credentials(self, username: str, password: str):
-        """Store ClasseViva credentials with base64 encoding (NOT secure encryption)."""
-        # Encode credentials to base64 for basic obfuscation
-        encoded_user = base64.b64encode(username.encode()).decode()
-        encoded_pass = base64.b64encode(password.encode()).decode()
+        """Store ClasseViva credentials securely using keyring."""
+        try:
+            keyring.set_password("votetracker", "classeviva_username", username)
+            keyring.set_password("votetracker", "classeviva_password", password)
+        except Exception as e:
+            logger.error(f"Failed to save credentials to keyring: {e}")
+            # Do not fallback to insecure storage
+            raise
 
-        self.set_setting("classeviva_username", encoded_user)
-        self.set_setting("classeviva_password", encoded_pass)
+        # Clear legacy insecure credentials if they exist
+        self.set_setting("classeviva_username", "")
+        self.set_setting("classeviva_password", "")
 
     def get_classeviva_credentials(self) -> tuple[str | None, str | None]:
-        """Retrieve stored ClasseViva credentials."""
+        """Retrieve stored ClasseViva credentials securely from keyring."""
+        try:
+            username = keyring.get_password("votetracker", "classeviva_username")
+            password = keyring.get_password("votetracker", "classeviva_password")
+
+            if username and password:
+                return username, password
+        except Exception as e:
+            logger.error(f"Failed to retrieve credentials from keyring: {e}")
+
+        # Fallback to legacy base64 credentials for migration
         encoded_user = self.get_setting("classeviva_username")
         encoded_pass = self.get_setting("classeviva_password")
 
@@ -260,6 +276,18 @@ class Database:
 
     def clear_classeviva_credentials(self):
         """Remove stored ClasseViva credentials."""
+        try:
+            try:
+                keyring.delete_password("votetracker", "classeviva_username")
+            except keyring.errors.PasswordDeleteError:
+                pass
+            try:
+                keyring.delete_password("votetracker", "classeviva_password")
+            except keyring.errors.PasswordDeleteError:
+                pass
+        except Exception as e:
+            logger.error(f"Failed to clear credentials from keyring: {e}")
+
         self.set_setting("classeviva_username", "")
         self.set_setting("classeviva_password", "")
 
@@ -366,9 +394,13 @@ class Database:
             credentials: Dict of field_name -> value pairs
         """
         for field_name, value in credentials.items():
-            # Encode for basic obfuscation
-            encoded_value = base64.b64encode(value.encode()).decode()
-            self.set_setting(f"{provider_id}_{field_name}", encoded_value)
+            try:
+                keyring.set_password("votetracker", f"{provider_id}_{field_name}", value)
+                # Clear legacy credentials if they exist
+                self.set_setting(f"{provider_id}_{field_name}", "")
+            except Exception as e:
+                logger.error(f"Failed to save {provider_id}_{field_name} to keyring: {e}")
+                raise
 
     def get_provider_credentials(self, provider_id: str, field_names: list[str]) -> dict[str, str | None]:
         """
@@ -402,6 +434,14 @@ class Database:
             field_names: List of credential field names to clear
         """
         for field_name in field_names:
+            try:
+                try:
+                    keyring.delete_password("votetracker", f"{provider_id}_{field_name}")
+                except keyring.errors.PasswordDeleteError:
+                    pass
+            except Exception as e:
+                logger.error(f"Failed to clear {provider_id}_{field_name} from keyring: {e}")
+
             self.set_setting(f"{provider_id}_{field_name}", "")
 
     def has_provider_credentials(self, provider_id: str, field_names: list[str]) -> bool:
