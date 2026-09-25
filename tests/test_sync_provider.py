@@ -1,3 +1,4 @@
+from __future__ import annotations
 import unittest
 from src.votetracker.sync_provider import SyncProvider, SyncProviderRegistry
 
@@ -5,13 +6,13 @@ class DummySyncProvider(SyncProvider):
     def get_provider_name(self) -> str:
         return "Dummy Provider"
 
-    def get_credential_fields(self) -> list[dict[str, str]]:
+    def get_credential_fields(self) -> list:
         return []
 
-    def login(self, credentials: dict[str, str]) -> tuple[bool, str]:
+    def login(self, credentials: dict) -> tuple:
         return True, "Success"
 
-    def get_grades(self) -> tuple[bool, list[dict], str]:
+    def get_grades(self) -> tuple:
         return True, [], "Success"
 
 class TestSyncProvider(unittest.TestCase):
