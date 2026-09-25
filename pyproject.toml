@@ -7,7 +7,7 @@ name = "votetracker"
 version = "2.9.0"
 description = "School grade management application"
 readme = "README.md"
-license = "MIT"
+license = {text = "MIT"}
 requires-python = ">=3.8"
 authors = [
     {name = "VoteTracker"}
