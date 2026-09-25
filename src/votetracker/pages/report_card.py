@@ -164,8 +164,10 @@ class ReportCardPage(QWidget):
         line.setFrameShadow(QFrame.Shadow.Sunken)
         self._grades_layout.addWidget(line)
         
+        votes_by_subject = self._db.get_votes_by_subject(term=self._current_term)
+
         for subject in sorted(subjects):
-            votes = self._db.get_votes(subject, term=self._current_term)
+            votes = votes_by_subject.get(subject, [])
             
             if self._split_by_type:
                 # Split mode
@@ -401,8 +403,10 @@ class ReportCardPage(QWidget):
         total_avg = 0
         count = 0
 
+        votes_by_subject = self._db.get_votes_by_subject(term=self._current_term)
+
         for subject in sorted(subjects):
-            votes = self._db.get_votes(subject, term=self._current_term)
+            votes = votes_by_subject.get(subject, [])
 
             if self._split_by_type:
                 written_votes = [v for v in votes if v.get("type") == "Written"]
