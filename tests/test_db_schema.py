@@ -73,6 +73,20 @@ class TestDbSchema(unittest.TestCase):
         self.assertIn("school_year_id", columns)
         self.assertIn("term", columns)
 
+    def test_create_indices(self):
+        """Test creating performance indices."""
+        create_schema(self.cursor)
+        migrate_votes_table(self.cursor)
+        create_indices(self.cursor)
+        self.conn.commit()
+
+        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='index'")
+        indices = {row[0] for row in self.cursor.fetchall()}
+
+        self.assertIn("idx_votes_subject", indices)
+        self.assertIn("idx_votes_year", indices)
+        self.assertIn("idx_votes_term", indices)
+
 
 if __name__ == '__main__':
     unittest.main()
