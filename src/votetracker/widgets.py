@@ -355,6 +355,8 @@ class YearSelector(QFrame):
             self._prev_btn.setIconSize(QSize(16, 16))
         else:
             self._prev_btn.setText(get_icon_fallback("go-previous"))
+        self._prev_btn.setToolTip(tr("Previous Year"))
+        self._prev_btn.setAccessibleName(tr("Previous Year"))
         self._prev_btn.clicked.connect(self._go_prev)
         self._prev_btn.setFixedSize(28, 24)
         
@@ -364,6 +366,8 @@ class YearSelector(QFrame):
             self._next_btn.setIconSize(QSize(16, 16))
         else:
             self._next_btn.setText(get_icon_fallback("go-next"))
+        self._next_btn.setToolTip(tr("Next Year"))
+        self._next_btn.setAccessibleName(tr("Next Year"))
         self._next_btn.clicked.connect(self._go_next)
         self._next_btn.setFixedSize(28, 24)
         
