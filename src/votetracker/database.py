@@ -8,6 +8,8 @@ import os
 import sys
 import sqlite3
 import base64
+import keyring
+import keyring.errors
 import logging
 from typing import Any
 from datetime import datetime
@@ -366,9 +368,14 @@ class Database:
             credentials: Dict of field_name -> value pairs
         """
         for field_name, value in credentials.items():
-            # Encode for basic obfuscation
-            encoded_value = base64.b64encode(value.encode()).decode()
-            self.set_setting(f"{provider_id}_{field_name}", encoded_value)
+            key = f"{provider_id}_{field_name}"
+            try:
+                keyring.set_password("votetracker", key, value)
+            except keyring.errors.KeyringError as e:
+                logger.error(f"Failed to save credential securely: {e}")
+                # Fallback to basic obfuscation if keyring fails
+                encoded_value = base64.b64encode(value.encode()).decode()
+                self.set_setting(key, encoded_value)
 
     def get_provider_credentials(self, provider_id: str, field_names: list[str]) -> dict[str, str | None]:
         """
@@ -383,10 +390,29 @@ class Database:
         """
         credentials = {}
         for field_name in field_names:
-            encoded_value = self.get_setting(f"{provider_id}_{field_name}")
+            key = f"{provider_id}_{field_name}"
+            try:
+                # Try secure storage first
+                value = keyring.get_password("votetracker", key)
+                if value is not None:
+                    credentials[field_name] = value
+                    continue
+            except keyring.errors.KeyringError as e:
+                logger.error(f"Failed to read secure credential: {e}")
+
+            # Fallback/Migration: Check old settings-based storage
+            encoded_value = self.get_setting(key)
             if encoded_value:
                 try:
-                    credentials[field_name] = base64.b64decode(encoded_value.encode()).decode()
+                    value = base64.b64decode(encoded_value.encode()).decode()
+                    credentials[field_name] = value
+
+                    # Attempt to migrate to secure storage and delete the old one
+                    try:
+                        keyring.set_password("votetracker", key, value)
+                        self.set_setting(key, "")
+                    except keyring.errors.KeyringError:
+                        pass
                 except Exception:
                     credentials[field_name] = None
             else:
@@ -402,7 +428,17 @@ class Database:
             field_names: List of credential field names to clear
         """
         for field_name in field_names:
-            self.set_setting(f"{provider_id}_{field_name}", "")
+            key = f"{provider_id}_{field_name}"
+            # Clear secure storage
+            try:
+                keyring.delete_password("votetracker", key)
+            except keyring.errors.PasswordDeleteError:
+                pass # Usually means it wasn't there
+            except keyring.errors.KeyringError as e:
+                logger.error(f"Failed to delete secure credential: {e}")
+
+            # Clear legacy storage
+            self.set_setting(key, "")
 
     def has_provider_credentials(self, provider_id: str, field_names: list[str]) -> bool:
         """
