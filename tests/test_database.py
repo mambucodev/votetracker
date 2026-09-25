@@ -3,7 +3,9 @@ Unit tests for database module.
 """
 from __future__ import annotations
 
+import base64
 import unittest
+from unittest.mock import patch
 import tempfile
 import os
 from src.votetracker.database import Database
@@ -329,6 +331,36 @@ class TestDatabase(unittest.TestCase):
         needed = self.db.calculate_needed_grade("Math", 8.0, active_year['id'], 1, 1.0)
         assert needed is not None
         self.assertAlmostEqual(needed, 9.0, places=1)
+
+
+    @patch('keyring.set_password')
+    def test_save_classeviva_credentials_keyring(self, mock_set_password):
+        self.db.save_classeviva_credentials("user1", "pass1")
+        mock_set_password.assert_any_call("votetracker", "classeviva_username", "user1")
+        mock_set_password.assert_any_call("votetracker", "classeviva_password", "pass1")
+
+    @patch('keyring.get_password')
+    def test_get_classeviva_credentials_migration(self, mock_get_password):
+        # Mock keyring to return None (simulating not found in keyring)
+        mock_get_password.return_value = None
+
+        # Set legacy base64 credentials
+        enc_user = base64.b64encode(b"olduser").decode()
+        enc_pass = base64.b64encode(b"oldpass").decode()
+        self.db.set_setting("classeviva_username", enc_user)
+        self.db.set_setting("classeviva_password", enc_pass)
+
+        # Should fallback to base64
+        user, pwd = self.db.get_classeviva_credentials()
+        self.assertEqual(user, "olduser")
+        self.assertEqual(pwd, "oldpass")
+
+    @patch('keyring.set_password')
+    def test_save_provider_credentials_keyring(self, mock_set_password):
+        creds = {"username": "provuser", "token": "provtoken"}
+        self.db.save_provider_credentials("testprov", creds)
+        mock_set_password.assert_any_call("votetracker", "testprov_username", "provuser")
+        mock_set_password.assert_any_call("votetracker", "testprov_token", "provtoken")
 
 if __name__ == '__main__':
     unittest.main()
