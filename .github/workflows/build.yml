@@ -24,7 +24,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install PySide6 pyinstaller reportlab requests
+          pip install PySide6 pyinstaller reportlab requests keyring
 
       - name: Build executable
         run: |
