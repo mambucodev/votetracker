@@ -164,10 +164,7 @@ class ReportCardPage(QWidget):
         line.setFrameShadow(QFrame.Shadow.Sunken)
         self._grades_layout.addWidget(line)
         
-        all_votes = self._db.get_votes(term=self._current_term)
-        votes_by_subject = {}
-        for v in all_votes:
-            votes_by_subject.setdefault(v["subject"], []).append(v)
+        votes_by_subject = self._db.get_votes_by_subject(term=self._current_term)
 
         for subject in sorted(subjects):
             votes = votes_by_subject.get(subject, [])
@@ -406,10 +403,7 @@ class ReportCardPage(QWidget):
         total_avg = 0
         count = 0
 
-        all_votes = self._db.get_votes(term=self._current_term)
-        votes_by_subject = {}
-        for v in all_votes:
-            votes_by_subject.setdefault(v["subject"], []).append(v)
+        votes_by_subject = self._db.get_votes_by_subject(term=self._current_term)
 
         for subject in sorted(subjects):
             votes = votes_by_subject.get(subject, [])

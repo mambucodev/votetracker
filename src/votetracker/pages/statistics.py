@@ -506,8 +506,9 @@ class StatisticsPage(QWidget):
         # Subject averages chart
         subjects = self._db.get_subjects_with_votes(term=self._current_term)
         subject_data = []
+        votes_by_subject = self._db.get_votes_by_subject(term=self._current_term)
         for subj in subjects:
-            subj_votes = self._db.get_votes(subject=subj, term=self._current_term)
+            subj_votes = votes_by_subject.get(subj, [])
             avg = calc_average(subj_votes)
             color = get_status_color(avg).name()
             subject_data.append((subj, avg, color))
