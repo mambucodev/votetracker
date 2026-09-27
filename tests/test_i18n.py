@@ -4,10 +4,12 @@ Unit tests for internationalization module.
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 from src.votetracker.i18n import (
     tr,
     set_language,
     get_language,
+    get_system_language,
     TRANSLATIONS,
 )
 
@@ -42,6 +44,26 @@ class TestI18n(unittest.TestCase):
         for key in nav_keys:
             self.assertIn(key, TRANSLATIONS["en"])
             self.assertIn(key, TRANSLATIONS["it"])
+
+    @patch("src.votetracker.i18n.locale.getdefaultlocale")
+    def test_get_system_language_exception(self, mock_getdefaultlocale):
+        mock_getdefaultlocale.side_effect = Exception("Locale error")
+        self.assertEqual(get_system_language(), "en")
+
+    @patch("src.votetracker.i18n.locale.getdefaultlocale")
+    def test_get_system_language_none(self, mock_getdefaultlocale):
+        mock_getdefaultlocale.return_value = (None, None)
+        self.assertEqual(get_system_language(), "en")
+
+    @patch("src.votetracker.i18n.locale.getdefaultlocale")
+    def test_get_system_language_it(self, mock_getdefaultlocale):
+        mock_getdefaultlocale.return_value = ("it_IT", "UTF-8")
+        self.assertEqual(get_system_language(), "it")
+
+    @patch("src.votetracker.i18n.locale.getdefaultlocale")
+    def test_get_system_language_other(self, mock_getdefaultlocale):
+        mock_getdefaultlocale.return_value = ("fr_FR", "UTF-8")
+        self.assertEqual(get_system_language(), "en")
 
 
 if __name__ == '__main__':
