@@ -16,6 +16,12 @@ GRADE_GOOD = 8.0
 GRADE_SUFFICIENT = 6.0
 GRADE_INSUFFICIENT = 5.5
 
+# Supported languages
+AVAILABLE_LANGUAGES = {
+    "en": "English",
+    "it": "Italian"
+}
+
 # ============================================================================
 # UI CONSTANTS
 # ============================================================================
