@@ -698,7 +698,7 @@ class Database:
             """
             params: list[Any] = [school_year_id]
             
-            if subject:
+            if subject is not None:
                 query += " AND s.name = ?"
                 params.append(subject)
             
