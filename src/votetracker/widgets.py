@@ -217,7 +217,8 @@ class SubjectCard(QGroupBox):
         edit_btn = QToolButton()
         edit_btn.setIcon(get_symbolic_icon("document-edit"))
         edit_btn.setIconSize(QSize(16, 16))
-        edit_btn.setToolTip("Edit or delete")
+        edit_btn.setToolTip(tr("Edit or delete"))
+        edit_btn.setAccessibleName(tr("Edit or delete"))
         edit_btn.clicked.connect(lambda: self.edit_requested.emit(self._subject_name))
         header.addWidget(edit_btn)
         
