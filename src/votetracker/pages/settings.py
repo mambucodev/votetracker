@@ -1299,6 +1299,8 @@ class SettingsPage(QWidget):
 
     def trigger_provider_sync(self, provider_id: str):
         """
+        Trigger a provider import operation.
+        This is the public interface for provider auto-sync functionality.
         Trigger a sync for the given provider.
         This is the public interface for auto-sync functionality.
         """
