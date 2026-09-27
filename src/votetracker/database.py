@@ -670,6 +670,20 @@ class Database:
             
             cursor.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
+
+    def get_votes_by_subject(
+        self,
+        school_year_id: int | None = None,
+        term: int | None = None
+    ) -> dict[str, list[dict[str, Any]]]:
+        """
+        Get all votes for a school year/term, grouped by subject.
+        """
+        votes = self.get_votes(school_year_id=school_year_id, term=term)
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for vote in votes:
+            grouped.setdefault(vote["subject"], []).append(vote)
+        return grouped
     
     def add_vote(
         self,
