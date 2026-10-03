@@ -362,5 +362,40 @@ class TestDatabase(unittest.TestCase):
         mock_set_password.assert_any_call("votetracker", "testprov_username", "provuser")
         mock_set_password.assert_any_call("votetracker", "testprov_token", "provtoken")
 
+
+    def test_provider_mappings_sql_injection(self):
+        """Test that provider mappings correctly escape SQL wildcards."""
+        # Add setting for normal provider
+        self.db.set_setting("cv_mapping_Matematica", "Math")
+
+        # Add setting for provider with wildcard in name
+        self.db.set_setting("c_v_mapping_Scienze", "Science")
+        self.db.set_setting("cvX_mapping_Fisica", "Physics")
+
+        # 'c_v' has a wildcard _ which matches 'cvX' and 'cv' without escaping
+
+        # Verify get_all_provider_subject_mappings escapes _
+        cv_mappings = self.db.get_all_provider_subject_mappings("cv")
+        self.assertEqual(cv_mappings, {"Matematica": "Math"})
+
+        c_v_mappings = self.db.get_all_provider_subject_mappings("c_v")
+        self.assertEqual(c_v_mappings, {"Scienze": "Science"})
+
+        # Verify clear_all_provider_subject_mappings escapes _
+        self.db.clear_all_provider_subject_mappings("c_v")
+
+        # Check that 'cv' mappings are intact
+        cv_mappings = self.db.get_all_provider_subject_mappings("cv")
+        self.assertEqual(cv_mappings, {"Matematica": "Math"})
+
+        # Check that 'c_v' mappings are cleared
+        c_v_mappings = self.db.get_all_provider_subject_mappings("c_v")
+        self.assertEqual(c_v_mappings, {})
+
+        # Check that 'cvX' mappings are intact (which would be deleted if 'c_v' matched it)
+        cvX_mappings = self.db.get_all_provider_subject_mappings("cvX")
+        self.assertEqual(cvX_mappings, {"Fisica": "Physics"})
+
+
 if __name__ == '__main__':
     unittest.main()
