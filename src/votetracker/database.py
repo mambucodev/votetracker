@@ -482,6 +482,11 @@ class Database:
         """
         return self.get_setting(f"{provider_id}_mapping_{source_subject}")
 
+    @staticmethod
+    def _escape_like(s: str) -> str:
+        """Escape special characters for SQL LIKE clause."""
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
     def get_all_provider_subject_mappings(self, provider_id: str) -> dict[str, str]:
         """
         Get all subject mappings for a provider.
@@ -495,7 +500,8 @@ class Database:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             prefix = f"{provider_id}_mapping_"
-            cursor.execute("SELECT key, value FROM settings WHERE key LIKE ?", (f"{prefix}%",))
+            escaped_prefix = self._escape_like(prefix)
+            cursor.execute("SELECT key, value FROM settings WHERE key LIKE ? ESCAPE '\\'", (f"{escaped_prefix}%",))
             mappings = {}
             for row in cursor.fetchall():
                 source_subject = row[0].replace(prefix, "")
@@ -521,7 +527,8 @@ class Database:
         """
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM settings WHERE key LIKE ?", (f"{provider_id}_mapping_%",))
+            escaped_prefix = self._escape_like(f"{provider_id}_mapping_")
+            cursor.execute("DELETE FROM settings WHERE key LIKE ? ESCAPE '\\'", (f"{escaped_prefix}%",))
             conn.commit()
 
     # Provider sync settings
