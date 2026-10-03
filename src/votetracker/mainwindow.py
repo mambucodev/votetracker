@@ -247,9 +247,8 @@ class MainWindow(QMainWindow):
         valid_credentials: dict[str, str] = {k: v for k, v in credentials.items() if v is not None}
         success, message = provider.login(valid_credentials)
         if success:
-            # Notify settings page (if it has a method for this)
-            # The settings page will handle UI updates
-            pass
+            # Notify settings page to handle UI updates
+            self._settings_page.set_provider_connected_state(provider_id, provider)
 
     def _start_auto_sync_if_enabled(self):
         """Start auto-sync timer if enabled in settings."""

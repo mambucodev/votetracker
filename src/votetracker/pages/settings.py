@@ -1757,6 +1757,18 @@ class SettingsPage(QWidget):
         interval = widgets['sync_interval'].itemData(index)
         self._db.set_provider_sync_interval(provider_id, interval)
 
+
+    def set_provider_connected_state(self, provider_id: str, provider):
+        """Update UI to reflect a successful connection to a provider."""
+        widgets = self._provider_widgets.get(provider_id)
+        if not widgets:
+            return
+
+        widgets['status_label'].setText(f"{tr('Connected as')} {provider.get_user_display_name()}")
+        widgets['status_label'].setStyleSheet("color: #27ae60; font-weight: bold;")
+        widgets['import_btn'].setEnabled(True)
+        widgets['test_btn'].setEnabled(True)
+
     def handle_key(self, event: QKeyEvent) -> bool:
         """Handle keyboard shortcuts for this page. Returns True if handled."""
         key = event.key()
