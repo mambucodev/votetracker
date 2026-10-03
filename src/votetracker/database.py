@@ -91,9 +91,7 @@ class Database:
             create_indices(cursor)
             conn.commit()
     
-    # ========================================================================
     # SCHOOL YEARS
-    # ========================================================================
     
     def get_school_years(self, force_refresh: bool = False) -> list[dict[str, Any]]:
         """
@@ -202,9 +200,7 @@ class Database:
             logger.error(f"Unexpected error deleting school year {year_id}: {e}")
             return False
     
-    # ========================================================================
     # SETTINGS
-    # ========================================================================
     
     def get_setting(self, key: str, default: str | None = None) -> str | None:
         """Get a setting value."""
@@ -232,21 +228,34 @@ class Database:
         """Set the current term (1 or 2)."""
         self.set_setting("current_term", str(term))
 
-    # ========================================================================
     # CLASSEVIVA CREDENTIALS
-    # ========================================================================
 
     def save_classeviva_credentials(self, username: str, password: str):
-        """Store ClasseViva credentials with base64 encoding (NOT secure encryption)."""
-        # Encode credentials to base64 for basic obfuscation
-        encoded_user = base64.b64encode(username.encode()).decode()
-        encoded_pass = base64.b64encode(password.encode()).decode()
+        """Store ClasseViva credentials securely using keyring."""
+        try:
+            keyring.set_password("votetracker", "classeviva_username", username)
+            keyring.set_password("votetracker", "classeviva_password", password)
+        except Exception as e:
+            logger.error(f"Failed to save credentials to keyring: {e}")
+            # Do not fallback to insecure storage
+            raise
 
-        self.set_setting("classeviva_username", encoded_user)
-        self.set_setting("classeviva_password", encoded_pass)
+        # Clear legacy insecure credentials if they exist
+        self.set_setting("classeviva_username", "")
+        self.set_setting("classeviva_password", "")
 
     def get_classeviva_credentials(self) -> tuple[str | None, str | None]:
-        """Retrieve stored ClasseViva credentials."""
+        """Retrieve stored ClasseViva credentials securely from keyring."""
+        try:
+            username = keyring.get_password("votetracker", "classeviva_username")
+            password = keyring.get_password("votetracker", "classeviva_password")
+
+            if username and password:
+                return username, password
+        except Exception as e:
+            logger.error(f"Failed to retrieve credentials from keyring: {e}")
+
+        # Fallback to legacy base64 credentials for migration
         encoded_user = self.get_setting("classeviva_username")
         encoded_pass = self.get_setting("classeviva_password")
 
@@ -262,6 +271,18 @@ class Database:
 
     def clear_classeviva_credentials(self):
         """Remove stored ClasseViva credentials."""
+        try:
+            try:
+                keyring.delete_password("votetracker", "classeviva_username")
+            except keyring.errors.PasswordDeleteError:
+                pass
+            try:
+                keyring.delete_password("votetracker", "classeviva_password")
+            except keyring.errors.PasswordDeleteError:
+                pass
+        except Exception as e:
+            logger.error(f"Failed to clear credentials from keyring: {e}")
+
         self.set_setting("classeviva_username", "")
         self.set_setting("classeviva_password", "")
 
@@ -295,9 +316,7 @@ class Database:
         """Set the auto-sync interval in minutes."""
         self.set_setting("classeviva_sync_interval", str(minutes))
 
-    # ========================================================================
     # CLASSEVIVA SUBJECT MAPPINGS
-    # ========================================================================
 
     def save_subject_mapping(self, cv_subject: str, vt_subject: str):
         """Save a ClasseViva to VoteTracker subject mapping."""
@@ -329,9 +348,7 @@ class Database:
             cursor.execute("DELETE FROM settings WHERE key LIKE 'cv_mapping_%'")
             conn.commit()
 
-    # ========================================================================
     # SYNC PROVIDER (GENERIC)
-    # ========================================================================
     # Provider-agnostic methods for managing multiple sync providers
     # (ClasseViva, Axios, etc.)
 
@@ -371,6 +388,8 @@ class Database:
             key = f"{provider_id}_{field_name}"
             try:
                 keyring.set_password("votetracker", key, value)
+                # Clear legacy credentials if they exist
+                self.set_setting(key, "")
             except keyring.errors.KeyringError as e:
                 logger.error(f"Failed to save credential securely: {e}")
                 # Fallback to basic obfuscation if keyring fails
@@ -553,9 +572,7 @@ class Database:
         """Enable/disable auto-login for provider."""
         self.set_setting(f"{provider_id}_auto_login", "1" if enabled else "0")
 
-    # ========================================================================
     # SUBJECTS
-    # ========================================================================
     
     def get_subjects(self, force_refresh: bool = False) -> list[str]:
         """
@@ -663,9 +680,7 @@ class Database:
             logger.error(f"Unexpected error deleting subject '{name}': {e}")
             return False
     
-    # ========================================================================
     # VOTES
-    # ========================================================================
     
     def get_votes(
         self, 
@@ -694,7 +709,7 @@ class Database:
             """
             params: list[Any] = [school_year_id]
             
-            if subject:
+            if subject is not None:
                 query += " AND s.name = ?"
                 params.append(subject)
             
@@ -706,6 +721,20 @@ class Database:
             
             cursor.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
+
+    def get_votes_by_subject(
+        self,
+        school_year_id: int | None = None,
+        term: int | None = None
+    ) -> dict[str, list[dict[str, Any]]]:
+        """
+        Get all votes for a school year/term, grouped by subject.
+        """
+        votes = self.get_votes(school_year_id=school_year_id, term=term)
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for vote in votes:
+            grouped.setdefault(vote["subject"], []).append(vote)
+        return grouped
     
     def add_vote(
         self,
@@ -1037,9 +1066,7 @@ class Database:
             cursor.execute(query, params)
             return [row["name"] for row in cursor.fetchall()]
     
-    # ========================================================================
     # IMPORT / EXPORT
-    # ========================================================================
     
     def import_votes(self, votes: list[dict[str, Any]], school_year_id: int | None = None) -> bool:
         """
@@ -1112,9 +1139,7 @@ class Database:
             logger.error(f"Unexpected error clearing votes: {e}")
             return False
 
-    # ========================================================================
     # GRADE GOALS
-    # ========================================================================
 
     def set_grade_goal(self, subject: str, target_grade: float, school_year_id: int | None = None, term: int | None = None) -> bool:
         """
