@@ -1161,11 +1161,11 @@ class SettingsPage(QWidget):
         updated_count = 0
         skipped_count = 0
 
-        for grade in vt_grades:
-            # Get active school year
-            active_year = self._db.get_active_school_year()
-            school_year_id = active_year["id"] if active_year else None
+        # Get active school year
+        active_year = self._db.get_active_school_year()
+        school_year_id = active_year["id"] if active_year else None
 
+        for grade in vt_grades:
             # Check if vote already exists by metadata (subject, date, type)
             existing_vote = self._db.find_vote_by_metadata(
                 grade["subject"],
