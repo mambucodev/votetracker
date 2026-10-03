@@ -339,6 +339,38 @@ class TestDatabase(unittest.TestCase):
         mock_set_password.assert_any_call("votetracker", "classeviva_username", "user1")
         mock_set_password.assert_any_call("votetracker", "classeviva_password", "pass1")
 
+    def test_provider_mapping_sql_injection(self):
+        # Create mappings for different providers
+        self.db.save_provider_subject_mapping("test_1", "Math", "Mathematics")
+        self.db.save_provider_subject_mapping("test%1", "Science", "Physics")
+        self.db.save_provider_subject_mapping("test1", "History", "History Class")
+
+        # When querying for "test_1", we should only get Math, not test%1 or test1
+        # Because "_" is a single char wildcard in SQL LIKE if not escaped.
+        # It would otherwise match "test_1" and "test1" or maybe others if not careful
+
+        mappings_test_1 = self.db.get_all_provider_subject_mappings("test_1")
+        self.assertIn("Math", mappings_test_1)
+        self.assertNotIn("Science", mappings_test_1)
+        self.assertNotIn("History", mappings_test_1)
+        self.assertEqual(len(mappings_test_1), 1)
+
+        # Also test with %
+        mappings_test_pct = self.db.get_all_provider_subject_mappings("test%1")
+        self.assertIn("Science", mappings_test_pct)
+        self.assertNotIn("Math", mappings_test_pct)
+        self.assertNotIn("History", mappings_test_pct)
+        self.assertEqual(len(mappings_test_pct), 1)
+
+        # Test clearing
+        self.db.clear_all_provider_subject_mappings("test_1")
+        mappings_after_clear = self.db.get_all_provider_subject_mappings("test_1")
+        self.assertEqual(len(mappings_after_clear), 0)
+
+        # Ensure others are still there
+        mappings_test_pct = self.db.get_all_provider_subject_mappings("test%1")
+        self.assertEqual(len(mappings_test_pct), 1)
+
     @patch('keyring.get_password')
     def test_get_classeviva_credentials_migration(self, mock_get_password):
         # Mock keyring to return None (simulating not found in keyring)

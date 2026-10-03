@@ -495,7 +495,8 @@ class Database:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             prefix = f"{provider_id}_mapping_"
-            cursor.execute("SELECT key, value FROM settings WHERE key LIKE ?", (f"{prefix}%",))
+            escaped_prefix = prefix.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+            cursor.execute("SELECT key, value FROM settings WHERE key LIKE ? ESCAPE '\\'", (f"{escaped_prefix}%",))
             mappings = {}
             for row in cursor.fetchall():
                 source_subject = row[0].replace(prefix, "")
@@ -521,7 +522,9 @@ class Database:
         """
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM settings WHERE key LIKE ?", (f"{provider_id}_mapping_%",))
+            prefix = f"{provider_id}_mapping_"
+            escaped_prefix = prefix.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+            cursor.execute("DELETE FROM settings WHERE key LIKE ? ESCAPE '\\'", (f"{escaped_prefix}%",))
             conn.commit()
 
     # Provider sync settings
