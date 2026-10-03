@@ -1150,9 +1150,10 @@ class SettingsPage(QWidget):
             self._cv_progress.setVisible(True)
 
         # Apply subject mappings to grades
+        mappings = self._db.get_all_subject_mappings()
         for grade in vt_grades:
             cv_subject = grade["subject"]
-            mapped_subject = self._db.get_subject_mapping(cv_subject)
+            mapped_subject = mappings.get(cv_subject)
             if mapped_subject:
                 grade["subject"] = mapped_subject
 
