@@ -270,6 +270,16 @@ class Database:
         try:
             username = base64.b64decode(encoded_user.encode()).decode()
             password = base64.b64decode(encoded_pass.encode()).decode()
+
+            # Migrate to keyring and clear legacy
+            try:
+                keyring.set_password("votetracker", "classeviva_username", username)
+                keyring.set_password("votetracker", "classeviva_password", password)
+                self.set_setting("classeviva_username", "")
+                self.set_setting("classeviva_password", "")
+            except Exception as e:
+                logger.error(f"Failed to migrate classeviva credentials to keyring: {e}")
+
             return username, password
         except Exception:
             return None, None
@@ -415,10 +425,29 @@ class Database:
         """
         credentials = {}
         for field_name in field_names:
+            # 1. Try keyring first
+            try:
+                val = keyring.get_password("votetracker", f"{provider_id}_{field_name}")
+                if val is not None:
+                    credentials[field_name] = val
+                    continue
+            except Exception as e:
+                logger.error(f"Failed to retrieve {provider_id}_{field_name} from keyring: {e}")
+
+            # 2. Fallback to legacy base64 credentials for migration
             encoded_value = self.get_setting(f"{provider_id}_{field_name}")
             if encoded_value:
                 try:
-                    credentials[field_name] = base64.b64decode(encoded_value.encode()).decode()
+                    decoded = base64.b64decode(encoded_value.encode()).decode()
+                    credentials[field_name] = decoded
+
+                    # Migrate to keyring and clear legacy
+                    try:
+                        keyring.set_password("votetracker", f"{provider_id}_{field_name}", decoded)
+                        self.set_setting(f"{provider_id}_{field_name}", "")
+                    except Exception as e:
+                        logger.error(f"Failed to migrate {provider_id}_{field_name} to keyring: {e}")
+
                 except Exception:
                     credentials[field_name] = None
             else:
