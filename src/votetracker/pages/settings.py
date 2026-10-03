@@ -1620,6 +1620,9 @@ class SettingsPage(QWidget):
         error_count = 0
         skip_duplicates = widgets['skip_duplicates'].isChecked()
 
+        # Pre-fetch existing subjects and build cache mapping name -> id
+        subject_cache = self._db.get_all_subject_ids()
+
         for grade in grades:
             try:
                 # Map subject
@@ -1627,10 +1630,11 @@ class SettingsPage(QWidget):
                 vt_subject: str = subject_mappings.get(provider_subject, provider_subject)
 
                 # Get or create subject
-                subject_id = self._db.get_subject_id(vt_subject)
+                subject_id = subject_cache.get(vt_subject)
                 if not subject_id:
                     self._db.add_subject(vt_subject)
                     subject_id = self._db.get_subject_id(vt_subject)
+                    subject_cache[vt_subject] = subject_id
 
                 # Get current term if not specified in grade
                 term = grade.get('term', self._db.get_current_term())

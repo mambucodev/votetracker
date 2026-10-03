@@ -585,6 +585,13 @@ class Database:
             cursor.execute("SELECT id FROM subjects WHERE name = ?", (name,))
             row = cursor.fetchone()
             return row["id"] if row else None
+
+    def get_all_subject_ids(self) -> dict[str, int]:
+        """Get a dictionary mapping all subject names to their IDs."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name, id FROM subjects")
+            return {row["name"]: row["id"] for row in cursor.fetchall()}
     
     def add_subject(self, name: str) -> int | None:
         """
