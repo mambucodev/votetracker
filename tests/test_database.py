@@ -339,8 +339,9 @@ class TestDatabase(unittest.TestCase):
         mock_set_password.assert_any_call("votetracker", "classeviva_username", "user1")
         mock_set_password.assert_any_call("votetracker", "classeviva_password", "pass1")
 
+    @patch('keyring.set_password')
     @patch('keyring.get_password')
-    def test_get_classeviva_credentials_migration(self, mock_get_password):
+    def test_get_classeviva_credentials_migration(self, mock_get_password, mock_set_password):
         # Mock keyring to return None (simulating not found in keyring)
         mock_get_password.return_value = None
 
@@ -350,10 +351,18 @@ class TestDatabase(unittest.TestCase):
         self.db.set_setting("classeviva_username", enc_user)
         self.db.set_setting("classeviva_password", enc_pass)
 
-        # Should fallback to base64
+        # Should fallback to base64 and migrate
         user, pwd = self.db.get_classeviva_credentials()
         self.assertEqual(user, "olduser")
         self.assertEqual(pwd, "oldpass")
+
+        # Verify it migrated to keyring
+        mock_set_password.assert_any_call("votetracker", "classeviva_username", "olduser")
+        mock_set_password.assert_any_call("votetracker", "classeviva_password", "oldpass")
+
+        # Verify legacy settings were cleared
+        self.assertEqual(self.db.get_setting("classeviva_username"), "")
+        self.assertEqual(self.db.get_setting("classeviva_password"), "")
 
     @patch('keyring.set_password')
     def test_save_provider_credentials_keyring(self, mock_set_password):
@@ -361,6 +370,34 @@ class TestDatabase(unittest.TestCase):
         self.db.save_provider_credentials("testprov", creds)
         mock_set_password.assert_any_call("votetracker", "testprov_username", "provuser")
         mock_set_password.assert_any_call("votetracker", "testprov_token", "provtoken")
+
+    @patch('keyring.get_password')
+    def test_get_provider_credentials_keyring(self, mock_get_password):
+        mock_get_password.side_effect = lambda service, key: "sec_val" if key == "testprov_token" else None
+
+        creds = self.db.get_provider_credentials("testprov", ["token", "missing"])
+        self.assertEqual(creds["token"], "sec_val")
+        self.assertEqual(creds["missing"], None)
+
+    @patch('keyring.set_password')
+    @patch('keyring.get_password')
+    def test_get_provider_credentials_migration(self, mock_get_password, mock_set_password):
+        # Return None to simulate missing in secure storage
+        mock_get_password.return_value = None
+
+        # Setup legacy storage
+        enc_token = base64.b64encode(b"legacy_token").decode()
+        self.db.set_setting("testprov_token", enc_token)
+
+        # Should read legacy and migrate
+        creds = self.db.get_provider_credentials("testprov", ["token"])
+        self.assertEqual(creds["token"], "legacy_token")
+
+        # Check migration to secure storage
+        mock_set_password.assert_any_call("votetracker", "testprov_token", "legacy_token")
+
+        # Check legacy cleanup
+        self.assertEqual(self.db.get_setting("testprov_token"), "")
 
 if __name__ == '__main__':
     unittest.main()

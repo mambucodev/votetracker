@@ -270,6 +270,11 @@ class Database:
         try:
             username = base64.b64decode(encoded_user.encode()).decode()
             password = base64.b64decode(encoded_pass.encode()).decode()
+            # Migrate to secure storage safely
+            try:
+                self.save_classeviva_credentials(username, password)
+            except Exception as e:
+                logger.error(f"Failed to migrate classeviva credentials to secure storage: {e}")
             return username, password
         except Exception:
             return None, None
@@ -414,15 +419,39 @@ class Database:
             Dict of field_name -> value (None if not found)
         """
         credentials = {}
+        needs_migration = False
+
         for field_name in field_names:
+            try:
+                # First try secure storage
+                val = keyring.get_password("votetracker", f"{provider_id}_{field_name}")
+                if val:
+                    credentials[field_name] = val
+                    continue
+            except Exception as e:
+                logger.error(f"Failed to get {provider_id}_{field_name} from keyring: {e}")
+
+            # Fallback to legacy base64 storage
             encoded_value = self.get_setting(f"{provider_id}_{field_name}")
             if encoded_value:
                 try:
                     credentials[field_name] = base64.b64decode(encoded_value.encode()).decode()
+                    if credentials[field_name] is not None:
+                        needs_migration = True
                 except Exception:
                     credentials[field_name] = None
             else:
                 credentials[field_name] = None
+
+        if needs_migration:
+            # Only migrate non-None fields
+            migrate_creds = {k: v for k, v in credentials.items() if v is not None}
+            if migrate_creds:
+                try:
+                    self.save_provider_credentials(provider_id, migrate_creds)
+                except Exception as e:
+                    logger.error(f"Failed to migrate provider credentials to secure storage: {e}")
+
         return credentials
 
     def clear_provider_credentials(self, provider_id: str, field_names: list[str]):
