@@ -1161,6 +1161,7 @@ class SettingsPage(QWidget):
         updated_count = 0
         skipped_count = 0
 
+        current_term = self._db.get_current_term()
         for grade in vt_grades:
             # Get active school year
             active_year = self._db.get_active_school_year()
@@ -1207,7 +1208,7 @@ class SettingsPage(QWidget):
                     vote_type=grade['type'],
                     date=grade['date'],
                     description=grade.get('description', ''),
-                    term=grade.get('term', self._db.get_current_term()),
+                    term=grade.get('term', current_term),
                     weight=grade.get('weight', 1.0),
                     school_year_id=school_year_id
                 )
@@ -1620,6 +1621,7 @@ class SettingsPage(QWidget):
         error_count = 0
         skip_duplicates = widgets['skip_duplicates'].isChecked()
 
+        current_term = self._db.get_current_term()
         for grade in grades:
             try:
                 # Map subject
@@ -1633,7 +1635,7 @@ class SettingsPage(QWidget):
                     subject_id = self._db.get_subject_id(vt_subject)
 
                 # Get current term if not specified in grade
-                term = grade.get('term', self._db.get_current_term())
+                term = grade.get('term', current_term)
 
                 # Check if vote already exists by metadata (subject, date, type)
                 existing_vote = self._db.find_vote_by_metadata(
