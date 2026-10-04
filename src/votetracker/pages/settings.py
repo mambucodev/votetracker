@@ -1185,16 +1185,16 @@ class SettingsPage(QWidget):
 
                 if has_changes:
                     # Update existing vote
-                    self._db.update_vote(
-                        vote_id=existing_vote['id'],
-                        subject=grade["subject"],
-                        grade=grade['grade'],
-                        vote_type=grade['type'],
-                        date=grade['date'],
-                        description=grade.get('description', ''),
-                        term=grade.get('term', existing_vote['term']),
-                        weight=grade.get('weight', 1.0)
-                    )
+                    vote_data = {
+                        "subject": grade["subject"],
+                        "grade": grade['grade'],
+                        "type": grade['type'],
+                        "date": grade['date'],
+                        "description": grade.get('description', ''),
+                        "term": grade.get('term', existing_vote['term']),
+                        "weight": grade.get('weight', 1.0)
+                    }
+                    self._db.update_vote(existing_vote['id'], vote_data)
                     updated_count += 1
                     imported_count += 1
                 else:
@@ -1202,16 +1202,17 @@ class SettingsPage(QWidget):
                     skipped_count += 1
             else:
                 # Add new vote
-                self._db.add_vote(
-                    subject=grade["subject"],
-                    grade=grade['grade'],
-                    vote_type=grade['type'],
-                    date=grade['date'],
-                    description=grade.get('description', ''),
-                    term=grade.get('term', self._db.get_current_term()),
-                    weight=grade.get('weight', 1.0),
-                    school_year_id=school_year_id
-                )
+                vote_data = {
+                    "subject": grade["subject"],
+                    "grade": grade['grade'],
+                    "type": grade['type'],
+                    "date": grade['date'],
+                    "description": grade.get('description', ''),
+                    "term": grade.get('term', self._db.get_current_term()),
+                    "weight": grade.get('weight', 1.0),
+                    "school_year_id": school_year_id
+                }
+                self._db.add_vote(vote_data)
                 imported_count += 1
         self._cv_progress.setVisible(False)
         self._cv_import_btn.setEnabled(True)
@@ -1654,16 +1655,16 @@ class SettingsPage(QWidget):
 
                     if has_changes:
                         # Update existing vote
-                        self._db.update_vote(
-                            vote_id=existing_vote['id'],
-                            subject=vt_subject,
-                            grade=grade['grade'],
-                            vote_type=grade['type'],
-                            date=grade['date'],
-                            description=grade.get('description', ''),
-                            term=term,
-                            weight=grade.get('weight', 1.0)
-                        )
+                        vote_data = {
+                            "subject": vt_subject,
+                            "grade": grade['grade'],
+                            "type": grade['type'],
+                            "date": grade['date'],
+                            "description": grade.get('description', ''),
+                            "term": term,
+                            "weight": grade.get('weight', 1.0)
+                        }
+                        self._db.update_vote(existing_vote['id'], vote_data)
                         updated_count += 1
                         imported_count += 1
                     else:
@@ -1677,16 +1678,17 @@ class SettingsPage(QWidget):
                             continue
                 else:
                     # Add new vote
-                    self._db.add_vote(
-                        subject=vt_subject,
-                        grade=grade['grade'],
-                        vote_type=grade['type'],
-                        date=grade['date'],
-                        description=grade.get('description', ''),
-                        term=term,
-                        weight=grade.get('weight', 1.0),
-                        school_year_id=school_year_id
-                    )
+                    vote_data = {
+                        "subject": vt_subject,
+                        "grade": grade['grade'],
+                        "type": grade['type'],
+                        "date": grade['date'],
+                        "description": grade.get('description', ''),
+                        "term": term,
+                        "weight": grade.get('weight', 1.0),
+                        "school_year_id": school_year_id
+                    }
+                    self._db.add_vote(vote_data)
                     imported_count += 1
 
             except Exception:

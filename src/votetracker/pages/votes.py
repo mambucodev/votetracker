@@ -232,12 +232,7 @@ class VotesPage(QWidget):
             active_year = self._db.get_active_school_year()
             if active_year:
                 data["school_year_id"] = active_year["id"]
-            vote_id = self._db.add_vote(
-                data["subject"], data["grade"], data["type"],
-                data["date"], data["description"],
-                term=data["term"], weight=data["weight"],
-                school_year_id=data.get("school_year_id")
-            )
+            vote_id = self._db.add_vote(data)
             if self._undo_manager and vote_id:
                 self._undo_manager.record_add(vote_id, data)
             self.vote_changed.emit()
@@ -265,11 +260,7 @@ class VotesPage(QWidget):
                 data = dialog.get_vote_data()
                 if "school_year_id" in previous_data:
                     data["school_year_id"] = previous_data["school_year_id"]
-                self._db.update_vote(
-                    vote_id, data["subject"], data["grade"], data["type"],
-                    data["date"], data["description"],
-                    term=data["term"], weight=data["weight"]
-                )
+                self._db.update_vote(vote_id, data)
                 if self._undo_manager:
                     self._undo_manager.record_edit(vote_id, previous_data, data)
                 self.vote_changed.emit()

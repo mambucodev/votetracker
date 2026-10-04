@@ -732,24 +732,26 @@ class Database:
             grouped.setdefault(vote["subject"], []).append(vote)
         return grouped
     
-    def add_vote(
-        self,
-        subject: str,
-        grade: float,
-        vote_type: str,
-        date: str,
-        description: str,
-        term: int | None = None,
-        weight: float = 1.0,
-        school_year_id: int | None = None
-    ) -> int | None:
+    def add_vote(self, vote_data: dict[str, Any]) -> int | None:
         """
         Add a new vote.
+
+        Args:
+            vote_data: Dictionary containing vote data keys: subject, grade, type, date, description, term (optional), weight (optional), school_year_id (optional)
 
         Returns:
             int: Vote ID if successful, None otherwise
         """
         try:
+            subject = vote_data["subject"]
+            grade = vote_data["grade"]
+            vote_type = vote_data.get("type", "Written")
+            date = vote_data["date"]
+            description = vote_data.get("description", "")
+            term = vote_data.get("term")
+            weight = vote_data.get("weight", 1.0)
+            school_year_id = vote_data.get("school_year_id")
+
             # Ensure subject exists
             subject_id = self.get_subject_id(subject)
             if not subject_id:
@@ -785,24 +787,26 @@ class Database:
             logger.error(f"Unexpected error adding vote: {e}")
             return None
     
-    def update_vote(
-        self,
-        vote_id: int,
-        subject: str,
-        grade: float,
-        vote_type: str,
-        date: str,
-        description: str,
-        term: int,
-        weight: float = 1.0
-    ) -> bool:
+    def update_vote(self, vote_id: int, vote_data: dict[str, Any]) -> bool:
         """
         Update an existing vote.
+
+        Args:
+            vote_id: ID of the vote to update
+            vote_data: Dictionary containing vote data keys: subject, grade, type, date, description, term, weight (optional)
 
         Returns:
             bool: True if successful, False otherwise
         """
         try:
+            subject = vote_data["subject"]
+            grade = vote_data["grade"]
+            vote_type = vote_data.get("type", "Written")
+            date = vote_data["date"]
+            description = vote_data.get("description", "")
+            term = vote_data["term"]
+            weight = vote_data.get("weight", 1.0)
+
             subject_id = self.get_subject_id(subject)
             if not subject_id:
                 subject_id = self.add_subject(subject)
@@ -1088,10 +1092,17 @@ class Database:
                 type_map = {"Scritto": "Written", "Orale": "Oral", "Pratico": "Practical"}
                 vote_type = type_map.get(str(vote_type), str(vote_type))
 
-                result = self.add_vote(
-                    subject, grade, vote_type, date, description,
-                    term=term, weight=weight, school_year_id=school_year_id
-                )
+                vote_data = {
+                    "subject": subject,
+                    "grade": grade,
+                    "type": vote_type,
+                    "date": date,
+                    "description": description,
+                    "term": term,
+                    "weight": weight,
+                    "school_year_id": school_year_id
+                }
+                result = self.add_vote(vote_data)
                 if result is None:
                     logger.warning(f"Failed to import vote for {subject}")
             return True
