@@ -78,7 +78,8 @@ class AddVoteDialog(QDialog):
         
         # Description
         self._desc_edit = QLineEdit()
-        self._desc_edit.setPlaceholderText("e.g., Chapter 5 test")
+        self._desc_edit.setPlaceholderText(tr("e.g., Chapter 5 test"))
+        self._desc_edit.setClearButtonEnabled(True)
         layout.addRow("Description:", self._desc_edit)
         
         # Weight
@@ -92,11 +93,11 @@ class AddVoteDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
         
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton(tr("Cancel"))
         cancel_btn.setIcon(get_symbolic_icon("dialog-cancel"))
         cancel_btn.clicked.connect(self.reject)
         
-        save_btn = QPushButton("Save")
+        save_btn = QPushButton(tr("Save"))
         save_btn.setIcon(get_symbolic_icon("document-save"))
         save_btn.setDefault(True)
         save_btn.clicked.connect(self.accept)
@@ -169,18 +170,22 @@ class AddSubjectDialog(QDialog):
         
         layout.addWidget(QLabel("Subject name:"))
         self._name_edit = QLineEdit()
-        self._name_edit.setPlaceholderText("e.g., Geography")
+        self._name_edit.setPlaceholderText(tr("e.g., Geography"))
+        self._name_edit.setClearButtonEnabled(True)
         layout.addWidget(self._name_edit)
         
         # Buttons
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
         
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton(tr("Cancel"))
         cancel_btn.setIcon(get_symbolic_icon("dialog-cancel"))
         cancel_btn.clicked.connect(self.reject)
         
-        add_btn = QPushButton("Add")
+        add_btn = QPushButton(tr("Add"))
+
+
+
         add_btn.setIcon(get_symbolic_icon("list-add"))
         add_btn.setDefault(True)
         add_btn.clicked.connect(self.accept)
@@ -217,7 +222,9 @@ class EditSubjectDialog(QDialog):
         rename_group = QGroupBox("Rename")
         rename_layout = QHBoxLayout(rename_group)
         self._name_edit = QLineEdit(self._subject_name)
-        rename_btn = QPushButton("Rename")
+        self._name_edit.setClearButtonEnabled(True)
+        rename_btn = QPushButton(tr("Rename"))
+        rename_btn.setToolTip(tr("Rename subject"))
         rename_btn.setIcon(get_symbolic_icon("edit-rename"))
         rename_btn.clicked.connect(self._on_rename)
         rename_layout.addWidget(self._name_edit)
@@ -238,7 +245,8 @@ class EditSubjectDialog(QDialog):
         warning_label.setWordWrap(True)
         delete_layout.addWidget(warning_label)
         
-        delete_btn = QPushButton("Delete Subject")
+        delete_btn = QPushButton(tr("Delete Subject"))
+        delete_btn.setToolTip(tr("Delete subject and its votes"))
         delete_btn.setIcon(get_symbolic_icon("edit-delete"))
         delete_btn.clicked.connect(self._on_delete)
         delete_layout.addWidget(delete_btn)
@@ -248,7 +256,7 @@ class EditSubjectDialog(QDialog):
         # Cancel button
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton(tr("Cancel"))
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         layout.addLayout(btn_layout)
@@ -320,10 +328,13 @@ class AddSchoolYearDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
         
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton(tr("Cancel"))
         cancel_btn.clicked.connect(self.reject)
         
-        self._add_btn = QPushButton("Add")
+        self._add_btn = QPushButton(tr("Add"))
+
+
+        self._add_btn.setToolTip(tr("Add new school year"))
         self._add_btn.setIcon(get_symbolic_icon("list-add"))
         self._add_btn.setDefault(True)
         self._add_btn.clicked.connect(self.accept)
@@ -380,15 +391,17 @@ class ManageSchoolYearsDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
         
-        add_btn = QPushButton("Add Year")
+        add_btn = QPushButton(tr("Add Year"))
+        add_btn.setToolTip(tr("Add a new school year"))
         add_btn.setIcon(get_symbolic_icon("list-add"))
         add_btn.clicked.connect(self._add_year)
         
-        self._delete_btn = QPushButton("Delete")
+        self._delete_btn = QPushButton(tr("Delete"))
+        self._delete_btn.setToolTip(tr("Delete selected year"))
         self._delete_btn.setIcon(get_symbolic_icon("edit-delete"))
         self._delete_btn.clicked.connect(self._delete_year)
         
-        self._activate_btn = QPushButton("Set Active")
+        self._activate_btn = QPushButton(tr("Set Active"))
         self._activate_btn.clicked.connect(self._set_active)
         
         btn_layout.addWidget(add_btn)
@@ -401,7 +414,7 @@ class ManageSchoolYearsDialog(QDialog):
         # Close button
         close_layout = QHBoxLayout()
         close_layout.addStretch()
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(tr("Close"))
         close_btn.clicked.connect(self.accept)
         close_layout.addWidget(close_btn)
         layout.addLayout(close_layout)
@@ -655,9 +668,12 @@ class OnboardingWizard(QDialog):
         custom_layout = QHBoxLayout()
         self._custom_input = QLineEdit()
         self._custom_input.setPlaceholderText(tr("Add custom subject..."))
+        self._custom_input.setClearButtonEnabled(True)
         self._custom_input.returnPressed.connect(self._add_custom_subject)
 
         add_btn = QPushButton(tr("Add"))
+
+
         add_btn.clicked.connect(self._add_custom_subject)
 
         custom_layout.addWidget(self._custom_input)
@@ -981,6 +997,7 @@ class ManageSubjectMappingsDialog(QDialog):
         btn_layout.setSpacing(8)
 
         clear_all_btn = QPushButton(tr("Clear All Mappings"))
+        clear_all_btn.setToolTip(tr("Clear all mappings"))
         clear_all_btn.setIcon(get_symbolic_icon("edit-delete"))
         clear_all_btn.clicked.connect(self._clear_all_mappings)
         btn_layout.addWidget(clear_all_btn)
@@ -1031,6 +1048,7 @@ class ManageSubjectMappingsDialog(QDialog):
 
             # Delete button
             delete_btn = QPushButton(tr("Delete"))
+            delete_btn.setToolTip(tr("Delete mapping"))
             delete_btn.setIcon(get_symbolic_icon("edit-delete"))
             delete_btn.clicked.connect(
                 lambda checked, src=source_subject: self._delete_mapping(src)

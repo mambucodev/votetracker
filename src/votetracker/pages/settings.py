@@ -344,6 +344,7 @@ class SettingsPage(QWidget):
         username_layout.addWidget(QLabel(tr("Username") + ":"))
         self._cv_username = QLineEdit()
         self._cv_username.setPlaceholderText("S1234567")
+        self._cv_username.setClearButtonEnabled(True)
         username_layout.addWidget(self._cv_username, 1)
         account_layout.addLayout(username_layout)
 
@@ -352,6 +353,7 @@ class SettingsPage(QWidget):
         password_layout.addWidget(QLabel(tr("Password") + ":"))
         self._cv_password = QLineEdit()
         self._cv_password.setEchoMode(QLineEdit.EchoMode.Password)
+        self._cv_password.setClearButtonEnabled(True)
         password_layout.addWidget(self._cv_password, 1)
         account_layout.addLayout(password_layout)
 
@@ -567,6 +569,7 @@ class SettingsPage(QWidget):
             field_layout.addWidget(QLabel(tr(field_label) + ":"))
 
             line_edit = QLineEdit()
+            line_edit.setClearButtonEnabled(True)
             line_edit.setPlaceholderText(field_placeholder)
             if field_type == 'password':
                 line_edit.setEchoMode(QLineEdit.EchoMode.Password)
