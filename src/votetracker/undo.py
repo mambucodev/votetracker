@@ -104,23 +104,12 @@ class UndoManager(QObject):
             # Undo edit = restore previous data
             prev = action.previous_data
             if prev is not None:
-                self._db.update_vote(
-                    action.vote_id,
-                    prev["subject"], prev["grade"], prev["type"],
-                    prev["date"], prev["description"],
-                    prev["term"], prev.get("weight", 1.0)
-                )
+                self._db.update_vote(action.vote_id, prev)
 
         elif action.action_type == ActionType.DELETE:
             # Undo delete = re-add
             data = action.vote_data
-            new_id = self._db.add_vote(
-                data["subject"], data["grade"], data["type"],
-                data["date"], data["description"],
-                term=data.get("term", 1),
-                weight=data.get("weight", 1.0),
-                school_year_id=data.get("school_year_id")
-            )
+            new_id = self._db.add_vote(data)
             if new_id is not None:
                 action.vote_id = new_id
 
@@ -138,25 +127,14 @@ class UndoManager(QObject):
         if action.action_type == ActionType.ADD:
             # Redo add = add again
             data = action.vote_data
-            new_id = self._db.add_vote(
-                data["subject"], data["grade"], data["type"],
-                data["date"], data["description"],
-                term=data.get("term", 1),
-                weight=data.get("weight", 1.0),
-                school_year_id=data.get("school_year_id")
-            )
+            new_id = self._db.add_vote(data)
             if new_id is not None:
                 action.vote_id = new_id
 
         elif action.action_type == ActionType.EDIT:
             # Redo edit = apply new data
             data = action.vote_data
-            self._db.update_vote(
-                action.vote_id,
-                data["subject"], data["grade"], data["type"],
-                data["date"], data["description"],
-                data["term"], data.get("weight", 1.0)
-            )
+            self._db.update_vote(action.vote_id, data)
 
         elif action.action_type == ActionType.DELETE:
             # Redo delete = delete again

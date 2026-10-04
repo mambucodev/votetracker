@@ -45,12 +45,16 @@ class TestUndoManager(unittest.TestCase):
             "weight": 1.0,
             "school_year_id": self.year_id,
         }
-        vote_id = self.db.add_vote(
-            data["subject"], data["grade"], data["type"],
-            data["date"], data["description"],
-            term=data["term"], weight=data["weight"],
-            school_year_id=data["school_year_id"]
-        )
+        vote_id = self.db.add_vote({
+            "subject": data["subject"],
+            "grade": data["grade"],
+            "type": data["type"],
+            "date": data["date"],
+            "description": data["description"],
+            "term": data["term"],
+            "weight": data["weight"],
+            "school_year_id": data["school_year_id"]
+        })
         assert vote_id is not None
         self.undo.record_add(vote_id, data)
 
@@ -72,10 +76,16 @@ class TestUndoManager(unittest.TestCase):
 
     def test_undo_edit(self):
         """Test undoing and redoing an edited vote."""
-        vote_id = self.db.add_vote(
-            "History", 7.0, "Oral", "2024-02-01", "Old desc",
-            term=1, weight=1.0, school_year_id=self.year_id
-        )
+        vote_id = self.db.add_vote({
+            "subject": "History",
+            "grade": 7.0,
+            "type": "Oral",
+            "date": "2024-02-01",
+            "description": "Old desc",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": self.year_id
+        })
         assert vote_id is not None
         prev_data = self.db.get_vote(vote_id)
         assert prev_data is not None
@@ -89,11 +99,15 @@ class TestUndoManager(unittest.TestCase):
             "term": 1,
             "weight": 1.0,
         }
-        self.db.update_vote(
-            vote_id, new_data["subject"], new_data["grade"], new_data["type"],
-            new_data["date"], new_data["description"],
-            new_data["term"], new_data["weight"]
-        )
+        self.db.update_vote(vote_id, {
+            "subject": new_data["subject"],
+            "grade": new_data["grade"],
+            "type": new_data["type"],
+            "date": new_data["date"],
+            "description": new_data["description"],
+            "term": new_data["term"],
+            "weight": new_data["weight"]
+        })
         self.undo.record_edit(vote_id, prev_data, new_data)
 
         # Undo edit -> should revert to 7.0
@@ -112,10 +126,16 @@ class TestUndoManager(unittest.TestCase):
 
     def test_undo_delete_preserves_school_year(self):
         """Test undoing a deletion preserves the original school_year_id."""
-        vote_id = self.db.add_vote(
-            "History", 6.5, "Written", "2024-02-01", "Pop quiz",
-            term=1, weight=1.0, school_year_id=self.year_id
-        )
+        vote_id = self.db.add_vote({
+            "subject": "History",
+            "grade": 6.5,
+            "type": "Written",
+            "date": "2024-02-01",
+            "description": "Pop quiz",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": self.year_id
+        })
         assert vote_id is not None
         vote_data = self.db.get_vote(vote_id)
         assert vote_data is not None

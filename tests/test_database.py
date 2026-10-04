@@ -121,16 +121,16 @@ class TestDatabase(unittest.TestCase):
         assert active_year is not None
 
         # Add vote
-        vote_id = self.db.add_vote(
-            subject="Math",
-            grade=8.5,
-            vote_type="Written",
-            date="2024-01-15",
-            description="Test",
-            term=1,
-            weight=1.0,
-            school_year_id=active_year['id']
-        )
+        vote_id = self.db.add_vote({
+            "subject": "Math",
+            "grade": 8.5,
+            "type": "Written",
+            "date": "2024-01-15",
+            "description": "Test",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
         self.assertIsNotNone(vote_id)
 
         # Verify it exists
@@ -144,29 +144,28 @@ class TestDatabase(unittest.TestCase):
         assert active_year is not None
 
         # Add vote
-        vote_id = self.db.add_vote(
-            subject="Math",
-            grade=8.5,
-            vote_type="Written",
-            date="2024-01-15",
-            description="Test",
-            term=1,
-            weight=1.0,
-            school_year_id=active_year['id']
-        )
+        vote_id = self.db.add_vote({
+            "subject": "Math",
+            "grade": 8.5,
+            "type": "Written",
+            "date": "2024-01-15",
+            "description": "Test",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
         assert vote_id is not None
 
         # Update it
-        result = self.db.update_vote(
-            vote_id=vote_id,
-            subject="Math",
-            grade=9.0,
-            vote_type="Written",
-            date="2024-01-15",
-            description="Updated",
-            term=1,
-            weight=1.0
-        )
+        result = self.db.update_vote(vote_id, {
+            "subject": "Math",
+            "grade": 9.0,
+            "type": "Written",
+            "date": "2024-01-15",
+            "description": "Updated",
+            "term": 1,
+            "weight": 1.0
+        })
         self.assertTrue(result)
 
         # Verify update
@@ -180,16 +179,16 @@ class TestDatabase(unittest.TestCase):
         assert active_year is not None
 
         # Add vote
-        vote_id = self.db.add_vote(
-            subject="Math",
-            grade=8.5,
-            vote_type="Written",
-            date="2024-01-15",
-            description="Test",
-            term=1,
-            weight=1.0,
-            school_year_id=active_year['id']
-        )
+        vote_id = self.db.add_vote({
+            "subject": "Math",
+            "grade": 8.5,
+            "type": "Written",
+            "date": "2024-01-15",
+            "description": "Test",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
         assert vote_id is not None
 
         # Delete it
@@ -206,10 +205,46 @@ class TestDatabase(unittest.TestCase):
         assert active_year is not None
 
         # Add multiple votes
-        self.db.add_vote("Math", 8.5, "Written", "2024-01-15", "", 1, 1.0, active_year['id'])
-        self.db.add_vote("Math", 7.5, "Oral", "2024-01-16", "", 1, 1.0, active_year['id'])
-        self.db.add_vote("Science", 9.0, "Written", "2024-01-17", "", 1, 1.0, active_year['id'])
-        self.db.add_vote("Math", 8.0, "Written", "2024-01-18", "", 2, 1.0, active_year['id'])
+        self.db.add_vote({
+            "subject": "Math",
+            "grade": 8.5,
+            "type": "Written",
+            "date": "2024-01-15",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
+        self.db.add_vote({
+            "subject": "Math",
+            "grade": 7.5,
+            "type": "Oral",
+            "date": "2024-01-16",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
+        self.db.add_vote({
+            "subject": "Science",
+            "grade": 9.0,
+            "type": "Written",
+            "date": "2024-01-17",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
+        self.db.add_vote({
+            "subject": "Math",
+            "grade": 8.0,
+            "type": "Written",
+            "date": "2024-01-18",
+            "description": "",
+            "term": 2,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
 
         # Filter by subject
         math_votes = self.db.get_votes(subject="Math")
@@ -229,10 +264,46 @@ class TestDatabase(unittest.TestCase):
         assert active_year is not None
 
         # Add votes for multiple subjects
-        self.db.add_vote("Math", 8.0, "Written", "2024-01-15", "", 1, 1.0, active_year['id'])
-        self.db.add_vote("Math", 9.0, "Written", "2024-01-16", "", 1, 1.0, active_year['id'])
-        self.db.add_vote("Science", 7.0, "Written", "2024-01-17", "", 1, 1.0, active_year['id'])
-        self.db.add_vote("Science", 8.0, "Written", "2024-01-18", "", 1, 1.0, active_year['id'])
+        self.db.add_vote({
+            "subject": "Math",
+            "grade": 8.0,
+            "type": "Written",
+            "date": "2024-01-15",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
+        self.db.add_vote({
+            "subject": "Math",
+            "grade": 9.0,
+            "type": "Written",
+            "date": "2024-01-16",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
+        self.db.add_vote({
+            "subject": "Science",
+            "grade": 7.0,
+            "type": "Written",
+            "date": "2024-01-17",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
+        self.db.add_vote({
+            "subject": "Science",
+            "grade": 8.0,
+            "type": "Written",
+            "date": "2024-01-18",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
 
         stats = self.db.get_grade_statistics()
 
@@ -276,8 +347,26 @@ class TestDatabase(unittest.TestCase):
         assert active_year is not None
 
         # Add some votes
-        self.db.add_vote("Math", 7.0, "Written", "2024-01-15", "", 1, 1.0, active_year['id'])
-        self.db.add_vote("Math", 8.0, "Written", "2024-01-16", "", 1, 1.0, active_year['id'])
+        self.db.add_vote({
+            "subject": "Math",
+            "grade": 7.0,
+            "type": "Written",
+            "date": "2024-01-15",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
+        self.db.add_vote({
+            "subject": "Math",
+            "grade": 8.0,
+            "type": "Written",
+            "date": "2024-01-16",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
 
         # Current average is 7.5, target is 8.0
         needed = self.db.calculate_needed_grade("Math", 8.0, active_year['id'], 1, 1.0)
@@ -306,8 +395,26 @@ class TestDatabase(unittest.TestCase):
         assert active_year is not None
 
         # Add regular grade and a 0.0 mark (Italian +/-)
-        self.db.add_vote("Math", 8.0, "Written", "2024-01-15", "", 1, 1.0, active_year['id'])
-        self.db.add_vote("Math", 0.0, "Oral", "2024-01-16", "+ mark", 1, 1.0, active_year['id'])
+        self.db.add_vote({
+            "subject": "Math",
+            "grade": 8.0,
+            "type": "Written",
+            "date": "2024-01-15",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
+        self.db.add_vote({
+            "subject": "Math",
+            "grade": 0.0,
+            "type": "Oral",
+            "date": "2024-01-16",
+            "description": "+ mark",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
 
         stats = self.db.get_grade_statistics()
         # Average must be 8.0, NOT 4.0
@@ -323,8 +430,26 @@ class TestDatabase(unittest.TestCase):
         assert active_year is not None
 
         # Add regular grade and 0.0 mark
-        self.db.add_vote("Math", 7.0, "Written", "2024-01-15", "", 1, 1.0, active_year['id'])
-        self.db.add_vote("Math", 0.0, "Oral", "2024-01-16", "", 1, 1.0, active_year['id'])
+        self.db.add_vote({
+            "subject": "Math",
+            "grade": 7.0,
+            "type": "Written",
+            "date": "2024-01-15",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
+        self.db.add_vote({
+            "subject": "Math",
+            "grade": 0.0,
+            "type": "Oral",
+            "date": "2024-01-16",
+            "description": "",
+            "term": 1,
+            "weight": 1.0,
+            "school_year_id": active_year['id']
+        })
 
         # With 0.0 excluded, current sum is 7.0 with weight 1.0
         # To get 8.0 target with next weight 1.0: (7 + x) / 2 = 8 -> x = 9.0
